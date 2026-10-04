@@ -4,7 +4,15 @@
    Optional: registerSW({ onOfflineReady }) – called once the whole app is stored on the device.
    Silent on every error: without a service worker the app works the same, just not offline. */
 
-const UPDATE_CHECK_MS = 60 * 60 * 1000;
+const UPDATE_CHECK_MS = 5 * 60 * 1000;
+
+/* A new version took over: reload once the child is not in the middle of a lesson, game or the parent sheet. */
+function safeToReload() {
+  const html = document.documentElement;
+  if (html.classList.contains('in-learn') || html.classList.contains('settings-open')) return false;
+  const game = document.querySelector('.mg');
+  return !(game && !game.hidden);
+}
 let started = false;
 
 export function registerSW(options) {
@@ -20,12 +28,25 @@ export function registerSW(options) {
   const start = () => {
     let registration = null;
     let lastCheck = Date.now();
+    // first install (no controller yet) must not reload; a later take-over means a new version is active
+    const hadController = !!container.controller;
+    let pending = false, timer = 0;
+    const reloadWhenSafe = () => {
+      if (safeToReload()) { clearInterval(timer); window.location.reload(); }
+    };
+    container.addEventListener('controllerchange', () => {
+      if (!hadController || pending) return;
+      pending = true;
+      reloadWhenSafe();
+      if (pending) timer = setInterval(reloadWhenSafe, 4000);
+    });
     container.register('./sw.js', { scope: './', updateViaCache: 'none' })
       .then((reg) => { registration = reg; return container.ready; })
       .then(() => { if (onOfflineReady) onOfflineReady(); })
       .catch(() => {});
     // A tablet may keep the app open for days: look for a new version when it returns to the foreground.
-    // The new version installs in the background and is used from the next start (never a reload mid-play).
+    // The new version installs in the background, takes over, and the page reloads at a safe moment
+    // (cover, picker or home) – never in the middle of a lesson or a game.
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState !== 'visible' || !registration || Date.now() - lastCheck < UPDATE_CHECK_MS) return;
       lastCheck = Date.now();

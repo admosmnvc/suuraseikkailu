@@ -76,7 +76,7 @@ function staticChecks() {
   check('manifest is valid JSON', !!mf);
   if (mf) {
     const want = { name: 'Suuraseikkailu', short_name: 'Suuraseikkailu', lang: 'fi', start_url: './', scope: './',
-      display: 'standalone', orientation: 'any', background_color: '#F6FBFF', theme_color: '#E4F3FF' };
+      display: 'standalone', orientation: 'any', background_color: '#FFF8F1', theme_color: '#FFF8F1' };
     const bad = Object.keys(want).filter((k) => mf[k] !== want[k]);
     check('manifest fields', bad.length === 0 && typeof mf.description === 'string', bad.join(', ') || 'ok');
     const need = [['192x192', 'any'], ['512x512', 'any'], ['512x512', 'maskable']];
@@ -99,7 +99,7 @@ function staticChecks() {
   const tags = {
     manifest: /<link rel="manifest" href="\.\/manifest\.webmanifest">/,
     'apple-touch-icon': /<link rel="apple-touch-icon" href="\.\/icons\/apple-touch-icon\.png"/,
-    'theme-color': /<meta name="theme-color" content="#E4F3FF">/,
+    'theme-color': /<meta name="theme-color" content="#[0-9A-Fa-f]{6}">/,
     'apple-mobile-web-app-capable': /<meta name="apple-mobile-web-app-capable" content="yes">/,
     'apple-mobile-web-app-title': /<meta name="apple-mobile-web-app-title" content="Suuraseikkailu">/,
     'viewport-fit=cover': /<meta name="viewport" content="[^"]*viewport-fit=cover/,

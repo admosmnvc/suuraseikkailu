@@ -116,9 +116,24 @@ async function cacheFirst(event) {
   return res;
 }
 
+// Opening the app: network first (a new version shows at once), cache when offline or the network is slow.
+// Network answers are not stored: offline the app always starts from its own complete, consistent precache.
+var NAV_TIMEOUT_MS = 3000;
+function fetchWithin(req, ms) {
+  return new Promise(function (resolve, reject) {
+    var timer = setTimeout(function () { reject(new Error('timeout')); }, ms);
+    fetch(req, { cache: 'no-store' }).then(function (res) { clearTimeout(timer); resolve(res); },
+      function (err) { clearTimeout(timer); reject(err); });
+  });
+}
+
 async function navigate(event) {
   var req = event.request;
   var cache = await caches.open(CACHE);
+  try {
+    var net = await fetchWithin(req, NAV_TIMEOUT_MS);
+    if (net && net.ok) return net;
+  } catch (e) { /* offline or slow: use the stored app */ }
   var hit = await fromCache(cache, req, { ignoreSearch: true, ignoreVary: true });
   if (hit) return hit;
   try {
