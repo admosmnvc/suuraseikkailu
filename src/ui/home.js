@@ -1,100 +1,115 @@
-/* Home screen: greeting, section cards, ice palace progress picture, sticker album, parent button.
+/* Home of the playing child: player chip (-> picker), greeting, section cards, the progress picture
+   (girl: castle windows light up, boy: rocket built part by part), sticker album, parent long-press button.
    OWNER: ui agent. */
 import ART from '../art.js';
 import { SFX } from '../audio/sfx.js';
+import { LEVEL_NAMES } from '../content/prompts.js';
 import { reducedMotion } from '../util.js';
-import { $, esc, secVars, safe } from './dom.js';
+import { $, esc, safe } from './dom.js';
 
-const SILVER = '#DCE7F3';
 const HOLD_MS = 800;
+const TEXT = {
+  girl: { title: 'Linna', note: 'Jokainen rivi sytyttää yhden ikkunan.', full: 'Linna loistaa!', aria: (d, t) => 'Linna: ' + d + '/' + t + ' ikkunaa loistaa' },
+  boy: { title: 'Raketti', note: 'Jokainen rivi tuo raketille uuden osan.', full: 'Raketti on valmis!', aria: (d, t) => 'Raketti: ' + d + '/' + t + ' osaa valmiina' }
+};
 
-let shownLit = null;            /* palace windows lit the last time home was shown (null = first render) */
-let shownStickers = null;       /* sticker ids earned the last time home was shown */
-let palaceTimers = [];
+let shown = null;               /* { id, lit, stickers }: what this child's home showed last (null = first render) */
+let progTimers = [];
 
 export function greetingText(name) { return name ? 'Hei, ' + name + '!' : 'Hei!'; }
 
-/* Forget what was shown (after a reset): the next render draws without "new" animations. */
-export function forgetShown() { shownLit = null; shownStickers = null; }
+/* Forget what was shown (reset / other child): the next render draws without "new" animations. */
+export function forgetShown() { shown = null; }
 
-function cardHTML(sec, p, done) {
+function cardHTML(sec, p, done, level, next) {
   const N = sec.lines.length;
-  let gems = '';
-  for (let i = 0; i < N; i++) {
-    gems += '<span class="sec-gem' + (i < p ? '' : ' off') + '">' + (i < p ? ART.gem(sec.color) : ART.gem(SILVER)) + '</span>';
-  }
-  const status = done
-    ? '<span class="sec-done">' + ART.icon('check') + 'Valmis!</span>'
-    : '<span class="sec-count">' + p + '/' + N + '</span>';
-  return '<span class="sec-orb" aria-hidden="true">' + ART.gem(sec.color, 'sec-orb-gem') +
-      (done ? '<span class="sec-tiara">' + ART.tiara(sec.color) + '</span>' : '') + '</span>' +
+  let dots = '';
+  for (let i = 0; i < N; i++) dots += '<i' + (i < p ? ' class="on"' : '') + '></i>';
+  return '<span class="sec-orb" aria-hidden="true">' + ART.icon('play') + '</span>' +
     '<span class="sec-body">' +
+      (next ? '<span class="sec-next" aria-hidden="true">' + (p > 0 ? 'Jatka tästä' : 'Aloita tästä') + '</span>' : '') +
       '<span class="sec-row"><span class="sec-name">' + esc(sec.name) + '</span>' +
       '<span class="sec-ar" lang="ar" dir="rtl">' + esc(sec.ar) + '</span></span>' +
       '<span class="sec-sub">' + esc(sec.sub) + '</span>' +
-      '<span class="sec-prog" aria-hidden="true"><span class="sec-gems">' + gems + '</span>' + status + '</span>' +
-    '</span>';
+      '<span class="sec-prog" aria-hidden="true"><span class="sec-dots">' + dots + '</span>' +
+        '<span class="sec-count">' + (done ? 'Valmis!' : p + '/' + N) + '</span>' +
+        '<span class="sec-level" title="' + LEVEL_NAMES[level] + '">' + ART.levelIcon(level, 'sec-level-art') + '</span></span>' +
+    '</span>' +
+    (done ? '<span class="sec-done" aria-hidden="true">' + ART.icon('check', 'sec-done-ico') + '</span>' : '');
 }
 
+/* The first section not finished yet is the screen's hero (.next: full width, bigger, "Jatka tästä"). */
 function renderCards(ctx) {
   const box = $('secGrid');
   box.textContent = '';
-  ctx.sections.forEach((sec) => {
-    const N = sec.lines.length, p = ctx.prog(sec), done = ctx.isDone(sec);
+  const hero = ctx.sections.find((s) => !ctx.isDone(s)) || null;
+  ctx.sections.forEach((sec, i) => {
+    const N = sec.lines.length, p = ctx.prog(sec), done = ctx.isDone(sec), level = ctx.levelOf(sec), next = sec === hero;
     const b = document.createElement('button');
     b.type = 'button';
-    b.className = 'sec-card jelly' + (done ? ' done' : '');
+    b.className = 'sec-card jelly' + (done ? ' done' : '') + (next ? ' next' : '');
     b.id = 'card-' + sec.id;
     b.dataset.id = sec.id;
-    b.setAttribute('aria-label', sec.name + ', ' + sec.sub + ', ' + p + '/' + N + (done ? ', valmis' : ''));
-    secVars(b, sec.color);
-    b.innerHTML = cardHTML(sec, p, done);
+    b.dataset.c = String((i % 4) + 1);
+    b.setAttribute('aria-label', sec.name + ', ' + sec.sub + ', ' + p + '/' + N + (done ? ', valmis' : '') + ', taso ' + LEVEL_NAMES[level] +
+      (next ? ', ' + (p > 0 ? 'jatka tästä' : 'aloita tästä') : ''));
+    b.innerHTML = cardHTML(sec, p, done, level, next);
     box.appendChild(b);
   });
 }
 
-function renderPalace(ctx) {
+function renderProgress(ctx, first) {
+  const theme = ctx.theme, tx = TEXT[theme] || TEXT.girl;
   const total = ctx.sections.reduce((n, s) => n + s.lines.length, 0);
   const lit = ctx.sections.reduce((n, s) => n + ctx.prog(s), 0);
-  palaceTimers.forEach(clearTimeout);
-  palaceTimers = [];
-  const from = shownLit === null || shownLit > lit || reducedMotion() ? lit : shownLit;
-  const art = $('palaceArt');
-  art.innerHTML = ART.palace({ windows: total, lit: from });
-  art.setAttribute('aria-label', 'Jääpalatsi: ' + lit + '/' + total + ' ikkunaa loistaa');
-  $('palaceCount').textContent = lit >= total ? 'Palatsi loistaa!' : lit + '/' + total;
-  /* newly earned windows light up one by one */
+  progTimers.forEach(clearTimeout);
+  progTimers = [];
+  const from = first || shown.lit > lit || reducedMotion() ? lit : shown.lit;
+  const art = $('progArt');
+  art.dataset.theme = theme;
+  art.innerHTML = ART.progress(theme, { total, done: from, cls: 'prog-pic' });
+  art.setAttribute('aria-label', tx.aria(lit, total));
+  $('progTitle').textContent = tx.title;
+  $('progNote').textContent = tx.note;
+  $('progCount').textContent = lit >= total ? tx.full : lit + '/' + total;
+  /* newly earned windows / rocket parts light up one by one */
   for (let i = from, j = 0; i < lit; i++, j++) {
-    palaceTimers.push(setTimeout(() => {
-      const w = art.querySelector('.pw[data-i="' + i + '"]');
+    progTimers.push(setTimeout(() => {
+      const w = art.querySelector('[data-i="' + i + '"]');
       if (w) w.classList.add('on');
       safe(() => SFX.ding(i));
     }, 650 + j * 420));
   }
-  shownLit = lit;
+  return lit;
 }
 
-function renderAlbum(ctx) {
+function renderAlbum(ctx, first) {
+  const theme = ctx.theme;
   const items = ctx.sections.map((sec) => ({ id: sec.id, name: sec.name, earned: ctx.isDone(sec) }));
-  items.push({ id: 'palace', name: 'Palatsi', earned: ctx.sections.length > 0 && ctx.sections.every(ctx.isDone) });
-  const before = shownStickers;
+  items.push({ id: 'bonus', name: 'Bonus', earned: ctx.sections.length > 0 && ctx.sections.every(ctx.isDone) });
+  const before = first ? null : shown.stickers;
   $('album').innerHTML = items.map((it) => {
     const fresh = it.earned && before && !before.has(it.id);
-    return '<li class="album-item jelly' + (it.earned ? ' earned' : ' ghost') + (fresh ? ' fresh' : '') + '">' +
-      '<span class="album-art" aria-hidden="true">' + ART.sticker(it.id, it.earned) + '</span>' +
+    return '<li class="album-item' + (it.earned ? ' earned' : ' ghost') + (fresh ? ' fresh' : '') + '" data-id="' + it.id + '">' +
+      '<span class="album-art" aria-hidden="true">' + ART.sticker(theme, it.id, it.earned) + '</span>' +
       '<span class="album-name">' + esc(it.name) + '<span class="vh">' + (it.earned ? ': tarra ansaittu' : ': tarra vielä ansaitsematta') + '</span></span></li>';
   }).join('');
-  const n = items.filter((it) => it.earned).length;
-  $('albumCount').textContent = n + '/' + items.length;
-  shownStickers = new Set(items.filter((it) => it.earned).map((it) => it.id));
+  $('albumCount').textContent = items.filter((it) => it.earned).length + '/' + items.length;
+  return new Set(items.filter((it) => it.earned).map((it) => it.id));
 }
 
-/* ctx: { state, sections, prog(sec), isDone(sec) } */
+/* ctx: { child, theme, sections, prog(sec), isDone(sec), levelOf(sec) } */
 export function renderHome(ctx) {
-  $('greeting').textContent = greetingText(ctx.state.name);
+  const c = ctx.child;
+  const first = !shown || shown.id !== c.id;
+  $('whoAva').innerHTML = ART.avatar(ctx.theme, 'who-ava-art');
+  $('whoName').textContent = c.name;
+  $('whoBtn').setAttribute('aria-label', c.name + ': vaihda pelaajaa');
+  $('greeting').textContent = greetingText(c.name);
   renderCards(ctx);
-  renderPalace(ctx);
-  renderAlbum(ctx);
+  const lit = renderProgress(ctx, first);
+  const stickers = renderAlbum(ctx, first);
+  shown = { id: c.id, lit, stickers };
 }
 
 /* Parent button: hold 800 ms (ring fills) -> onOpen(); a short tap -> onHint(). Keyboard click opens directly. */

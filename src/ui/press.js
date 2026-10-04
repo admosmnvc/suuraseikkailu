@@ -1,5 +1,6 @@
 /* Touch feedback for everything with class "jelly": squash on press, bounce back on release,
-   a tiny sparkle at the finger and SFX.tap(). Reduced motion: no squash, bounce or sparkle. OWNER: ui agent. */
+   a tiny sparkle at the finger and SFX.tap(). Reduced motion: .pressed still marks the press (CSS shows it as a
+   still darkening), no bounce or sparkle. OWNER: ui agent. */
 import { SFX } from '../audio/sfx.js';
 import { reducedMotion } from '../util.js';
 
@@ -32,14 +33,15 @@ export function initPress() {
     const el = e.target.closest('.jelly');
     if (!el || el.disabled) return;
     try { SFX.tap(); } catch (err) { /* sound is optional */ }
-    if (reducedMotion()) return;
+    const still = reducedMotion();
     el.classList.remove('boing');
     el.classList.add('pressed');
-    spark(e.clientX, e.clientY);
+    if (!still) spark(e.clientX, e.clientY);
     const release = () => {
       window.removeEventListener('pointerup', release, true);
       window.removeEventListener('pointercancel', release, true);
       el.classList.remove('pressed');
+      if (still) return;
       void el.offsetWidth;
       el.classList.add('boing');
     };

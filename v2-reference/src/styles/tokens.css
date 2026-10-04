@@ -1,0 +1,60 @@
+/* Design tokens: light, bubbly ice palace. Shared by every stylesheet.
+   OWNER: ui agent (may ADD tokens; must not rename or remove existing ones). */
+:root {
+  color-scheme: light;
+
+  /* palette (KORJAUSPYYNTO.md §2) */
+  --snow: #F6FBFF;        /* background, snow */
+  --frost: #E4F3FF;       /* surfaces */
+  --ice: #BFE6FF;         /* ice */
+  --glacier: #7FD3F2;     /* accent */
+  --sapphire: #2F6FE0;    /* buttons */
+  --ink: #23306B;         /* dark text: use on all light surfaces */
+  --lilac: #C8B6FF;
+  --orchid: #B45FE0;      /* accent */
+  --rose: #FF9FD6;        /* small accent */
+  --silver: #DCE7F3;      /* borders */
+  --white: #FFFFFF;
+
+  /* derived text colours (contrast >= 4.5:1 on --snow / --frost / white) */
+  --ink-soft: #3F4C8A;
+  --ink-faint: #5A6699;
+  --sapphire-deep: #1E4FB0;
+
+  /* section colours (data.js sections[].color) */
+  --sec-shahada: #33C3D6;
+  --sec-fatiha: #9A7BFF;
+  --sec-ikhlas: #FF8BC8;
+  --sec-kawthar: #4A86FF;
+
+  /* type */
+  --f-display: "Fredoka", ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif;
+  --f-body: "Nunito", ui-rounded, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-arabic: "Amiri Quran", "Amiri", "Scheherazade New", "Noto Naskh Arabic", "Geeza Pro", serif;
+
+  /* shape */
+  --r-s: 14px;
+  --r-m: 22px;
+  --r-l: 32px;
+  --r-pill: 999px;
+  --tap-min: 64px;        /* minimum hit target */
+
+  /* depth */
+  --shadow-soft: 0 6px 18px rgba(47, 111, 224, .14), 0 2px 4px rgba(35, 48, 107, .08);
+  --shadow-bubble: 0 10px 24px rgba(47, 111, 224, .22), inset 0 -6px 12px rgba(35, 48, 107, .10), inset 0 6px 10px rgba(255, 255, 255, .85);
+
+  /* safe areas */
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+
+  /* added by ui: candy bubbles, motion, layout */
+  --candy-hi: #FFE6F5;
+  --candy: #FFB8E2;
+  --candy-lo: #D9A6FF;
+  --candy-edge: #D58BD0;
+  --ice-edge: #8FC7EA;
+  --ease-jelly: cubic-bezier(.2, 1.6, .4, 1);
+  --bar-h: 128px;         /* learn action bar height above the safe area */
+}

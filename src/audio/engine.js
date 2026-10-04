@@ -358,7 +358,8 @@ async function playClip(clip, t, opts = {}) {
     const f = await loadSrc(clip.src);
     if (t !== token) return stopped;
     if (!f.missing) {
-      preSlowed = kind === 'recitation' && !!clip.id; /* data lines with a rec id = Shahada teacher files */
+      /* Shahada teacher files (lines with a rec id, and the shahada-c-* chunk clips) are generated slow already */
+      preSlowed = kind === 'recitation' && (!!clip.id || /(^|\/)audio\/shahada-/.test(String(clip.src)));
       const res = await playUrl(f.url, kind, t);
       preSlowed = false;
       if (res.r !== 'failed') return res.r === 'ended' ? { ok: true, source: 'file' } : stopped;
@@ -436,8 +437,11 @@ export function line(sec, i) {
 }
 
 /* Finnish clip by PROMPTS id / meaning id; 'name' exists only as a parent recording. */
+/* 'name' and 'name-<childId>' are recording-only clips (a child's name): no file, no fixed text. */
+const isNameId = (id) => id === 'name' || /^name-/.test(String(id));
 export function prompt(id) {
-  return { kind: 'voice', id, src: id === 'name' ? null : 'audio/fi/' + id + '.mp3', text: id === 'name' ? '' : promptText(id), lang: 'fi' };
+  const nameClip = isNameId(id);
+  return { kind: 'voice', id, src: nameClip ? null : 'audio/fi/' + id + '.mp3', text: nameClip ? '' : promptText(id), lang: 'fi' };
 }
 
 export function meaning(sec, i) {

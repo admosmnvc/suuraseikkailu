@@ -185,7 +185,7 @@ Komento vertaa tiedoston `src/content/data.js` arabiankielisiä rivejä tallenne
   juuressa että alikansiossa.
 - `node tools/pwa-serve.cjs dist --port 5106 [--base /alikansio/]` on pieni testipalvelin, joka tukee
   Range-pyyntöjä.
-- `npm run build` ja sitten `node tools/e2e.cjs` käy koko sovelluksen läpi Chromiumissa (noin 3 min):
+- `npm run build` ja sitten `node tools/e2e.cjs dist` käy koko sovelluksen läpi Chromiumissa (noin 9 min):
   kaikki osiot ja vaiheet, minipelit, palkinnot, loppujuhlat, asetukset, äänitys, äänijärjestys, offline,
   näyttökoot 360–1024 px. Kuvakaappaukset menevät kansioon `../qa/screens/`, ja lopuksi tulostuu
   PASS/FAIL-taulukko (paluuarvo 1, jos jokin epäonnistuu). `--only flow-390x844,audio` ajaa vain osan.
@@ -196,7 +196,7 @@ Komento vertaa tiedoston `src/content/data.js` arabiankielisiä rivejä tallenne
 ```
 index.html                  sivun runko
 src/main.js                 käynnistys, aloitusportti ja kulku
-src/state.js                edistyminen ja asetukset (localStorage 'suuraseikkailu-v1', v1:n kanssa yhteensopiva)
+src/profiles.js             lapset, edistyminen ja asetukset (localStorage 'suuraseikkailu-v3'; v1/v2-tallennus siirtyy)
 src/ui/                     näkymät, huurretausta ja vanhempien asetukset (settings.js)
 src/audio/                  ääniputki: engine.js (jono, resitaatio, kehotteet), context.js,
                             recorder.js (omat äänitykset), tts.js (laitteen puhe varalla), sfx.js (efektit)

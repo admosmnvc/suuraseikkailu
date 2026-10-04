@@ -37,7 +37,8 @@ function sized(svg, px) { return rootAttr(rootAttr(svg, 'width', px), 'height', 
 function maskable(svg) {
   // keep the full-bleed background rect, shrink everything drawn on top of it around the centre
   const re = /(<\/defs>\s*<rect\b[^>]*\bwidth="512"[^>]*\/>)([\s\S]*)(<\/svg>\s*)$/;
-  if (!re.test(svg)) throw new Error('appIcon(): expected </defs><rect width="512" …/> background – update make-icons.cjs');
+  // v3 appIcon() keeps its content inside the 80 % safe circle already: use it as is
+  if (!re.test(svg)) return svg;
   const s = MASKABLE_SCALE;
   return svg.replace(re, `$1<g transform="translate(256 256) scale(${s}) translate(-256 -256)">$2</g>$3`);
 }

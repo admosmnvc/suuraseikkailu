@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="fi">
+<html lang="fi" data-theme="girl">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Suuraseikkailu</title>
 <meta name="description" content="Suuraseikkailu: Shahada, Al-Fatiha, Al-Ikhlas ja Al-Kawthar rivi kerrallaan.">
-<meta name="theme-color" content="#E4F3FF">
+<meta name="theme-color" content="#FFF8F1">
 <meta name="color-scheme" content="light">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -21,27 +21,27 @@
 <div class="bg" id="bg" data-ui aria-hidden="true"></div>
 
 <div class="app" id="app" data-ui>
-  <main class="wrap home" id="home">
+  <main class="wrap home" id="home" hidden>
     <header class="home-head">
-      <div class="brand">
-        <span class="brand-art" data-art="tiara" aria-hidden="true"></span>
-        <h1>Suuraseikkailu</h1>
-      </div>
-      <div class="stars jelly" id="homeStars" role="img" aria-label="Tähtiä: 0"><span class="stars-ico" data-art="crystal" aria-hidden="true"></span><span class="stars-num" aria-hidden="true">0</span></div>
+      <button type="button" class="who-chip jelly" id="whoBtn" aria-label="Vaihda pelaajaa">
+        <span class="who-ava" id="whoAva" aria-hidden="true"></span>
+        <span class="who-text"><span class="who-name" id="whoName"></span><span class="who-sub">Vaihda pelaajaa</span></span>
+      </button>
+      <div class="stars" id="homeStars" role="img" aria-label="Tähtiä: 0"><span class="stars-ico" data-icon="star" aria-hidden="true"></span><span class="stars-num" aria-hidden="true">0</span></div>
     </header>
 
-    <section class="greet" aria-labelledby="greeting">
-      <h2 id="greeting">Hei!</h2>
+    <section class="greet" id="greet" aria-labelledby="greeting">
+      <h1 id="greeting">Hei!</h1>
       <p>Mitä opitaan tänään?</p>
     </section>
 
     <div class="sec-grid" id="secGrid"></div>
 
     <div class="home-extras">
-      <section class="panel palace-panel" aria-labelledby="palaceTitle">
-        <div class="panel-head"><h2 id="palaceTitle">Jääpalatsi</h2><p class="panel-count" id="palaceCount"></p></div>
-        <div class="palace-art jelly" id="palaceArt" role="img" aria-label="Jääpalatsi"></div>
-        <p class="panel-note">Jokainen vaihe sytyttää yhden ikkunan.</p>
+      <section class="panel prog-panel" aria-labelledby="progTitle">
+        <div class="panel-head"><h2 id="progTitle">Linna</h2><p class="panel-count" id="progCount"></p></div>
+        <div class="prog-art" id="progArt" role="img" aria-label=""></div>
+        <p class="panel-note" id="progNote"></p>
       </section>
 
       <section class="panel album" aria-labelledby="albumTitle">
@@ -69,7 +69,11 @@
           <h1 id="learnName">Suura</h1>
           <span class="learn-ar" id="learnAr" lang="ar" dir="rtl"></span>
         </div>
-        <div class="stars jelly" id="learnStars" role="img" aria-label="Tähtiä: 0"><span class="stars-ico" data-art="crystal" aria-hidden="true"></span><span class="stars-num" aria-hidden="true">0</span></div>
+        <button type="button" class="level-chip jelly" id="levelBtn" aria-label="Vaihda taso">
+          <span class="level-chip-ico" id="levelIco" aria-hidden="true"></span>
+          <span class="level-chip-name" id="levelName">HELPPO</span>
+        </button>
+        <div class="stars" id="learnStars" role="img" aria-label="Tähtiä: 0"><span class="stars-ico" data-icon="star" aria-hidden="true"></span><span class="stars-num" aria-hidden="true">0</span></div>
       </div>
     </header>
 
@@ -85,43 +89,84 @@
 </div>
 
 <div class="actionbar" id="actionbar" data-ui hidden>
-  <div class="actionbar-in">
-    <button type="button" class="bb bb-ice bb-listen jelly" id="listenBtn">
-      <span class="bb-ico" aria-hidden="true"><span class="ico-play" data-icon="play"></span><span class="eq"><i></i><i></i><i></i></span></span>
-      <span class="bb-label">Kuuntele</span>
+  <div class="actionbar-in" id="actionbarIn">
+    <button type="button" class="pb pb-listen jelly" id="listenBtn">
+      <span class="pb-ico" aria-hidden="true"><span class="ico-play" data-icon="replay"></span><span class="eq"><i></i><i></i><i></i></span></span>
+      <span class="pb-label">Kuuntele</span>
     </button>
-    <button type="button" class="bb bb-candy bb-said jelly" id="saidBtn">
-      <span class="bb-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-      <span class="bb-ico" data-art="crystal" aria-hidden="true"></span>
-      <span class="bb-label">Sanoin!</span>
+    <button type="button" class="pb pb-said jelly" id="saidBtn">
+      <span class="pb-ico" data-icon="check" aria-hidden="true"></span>
+      <span class="pb-label">Sanoin!</span>
     </button>
   </div>
 </div>
 
+<div class="ov ov-level" id="levelPick" data-ui hidden>
+  <div class="ov-card level-card" role="dialog" aria-modal="true" aria-labelledby="levelTitle">
+    <button type="button" class="round-btn ov-close jelly" id="levelClose" aria-label="Takaisin"><span data-icon="close" aria-hidden="true"></span></button>
+    <p class="level-sec"><span id="levelSecName"></span> <span class="level-sec-ar" id="levelSecAr" lang="ar" dir="rtl"></span></p>
+    <h2 class="ov-title" id="levelTitle">Valitse taso!</h2>
+    <div class="level-list" id="levelList">
+      <button type="button" class="level-opt jelly" id="lvl-easy" data-level="easy"><span class="level-ico" aria-hidden="true"></span><span class="level-txt"><span class="level-name">HELPPO</span><span class="level-sub">Sana kerrallaan</span></span><span class="level-pick" data-icon="check" aria-hidden="true"></span></button>
+      <button type="button" class="level-opt jelly" id="lvl-medium" data-level="medium"><span class="level-ico" aria-hidden="true"></span><span class="level-txt"><span class="level-name">KESKITASO</span><span class="level-sub">Kaksi sanaa kerrallaan</span></span><span class="level-pick" data-icon="check" aria-hidden="true"></span></button>
+      <button type="button" class="level-opt jelly" id="lvl-hard" data-level="hard"><span class="level-ico" aria-hidden="true"></span><span class="level-txt"><span class="level-name">VAIKEA</span><span class="level-sub">Koko rivi kerrallaan</span></span><span class="level-pick" data-icon="check" aria-hidden="true"></span></button>
+    </div>
+  </div>
+</div>
+
 <div class="ov" id="reward" data-ui hidden>
-  <div class="ov-card" role="dialog" aria-modal="true" aria-labelledby="rewardTitle" aria-describedby="rewardGem">
-    <div class="ov-crown" id="rewardCrown" aria-hidden="true"></div>
+  <div class="ov-card reward-card" role="dialog" aria-modal="true" aria-labelledby="rewardTitle" aria-describedby="rewardGem">
+    <div class="ov-art" id="rewardArt" aria-hidden="true"></div>
     <h2 class="ov-title" id="rewardTitle">Hienoa!</h2>
     <p class="ov-text" id="rewardGem"></p>
-    <p class="ov-plus"><span class="plus-ico" data-art="crystal" aria-hidden="true"></span><span>+1 tähti</span></p>
+    <p class="ov-plus"><span class="plus-ico" data-icon="star" aria-hidden="true"></span><span>+1 tähti</span></p>
     <p class="ov-next" id="rewardNext"></p>
     <div class="ov-actions">
-      <button type="button" class="bb bb-candy bb-big jelly nudge" id="rewardGo"><span class="bb-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="bb-label">Jatka</span></button>
+      <button type="button" class="pb pb-go pb-big jelly nudge" id="rewardGo"><span class="pb-label">Jatka</span><span class="pb-ico" data-icon="play" aria-hidden="true"></span></button>
     </div>
   </div>
 </div>
 
 <div class="ov ov-finale" id="finale" data-ui hidden>
-  <div class="ov-card" role="dialog" aria-modal="true" aria-labelledby="finaleTitle" aria-describedby="finaleText">
+  <div class="ov-card finale-card" role="dialog" aria-modal="true" aria-labelledby="finaleTitle" aria-describedby="finaleText">
     <div class="finale-art" id="finaleArt" aria-hidden="true"></div>
     <h2 class="ov-title" id="finaleTitle">Mashaallah!</h2>
     <p class="ov-text" id="finaleText"></p>
     <p class="ov-text ov-sub" id="finaleSticker" hidden></p>
-    <p class="ov-plus"><span class="plus-ico" data-art="crystal" aria-hidden="true"></span><span id="finalePlus">+3 tähteä</span></p>
+    <p class="ov-plus"><span class="plus-ico" data-icon="star" aria-hidden="true"></span><span id="finalePlus">+3 tähteä</span></p>
     <div class="ov-actions">
-      <button type="button" class="bb bb-ice bb-big jelly" id="finaleHome"><span class="bb-ico" data-icon="home" aria-hidden="true"></span><span class="bb-label">Kotiin</span></button>
-      <button type="button" class="bb bb-candy bb-big jelly" id="finaleAgain"><span class="bb-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="bb-ico" data-icon="replay" aria-hidden="true"></span><span class="bb-label">Uudestaan</span></button>
+      <button type="button" class="pb pb-home pb-big jelly" id="finaleHome"><span class="pb-ico" data-icon="home" aria-hidden="true"></span><span class="pb-label">Kotiin</span></button>
+      <button type="button" class="pb pb-go pb-big jelly" id="finaleAgain"><span class="pb-ico" data-icon="replay" aria-hidden="true"></span><span class="pb-label">Uudestaan</span></button>
     </div>
+  </div>
+</div>
+
+<div class="cover-art" id="coverArt" data-ui aria-hidden="true"></div>
+
+<div class="who" id="who" data-ui data-view="pick" hidden>
+  <div class="who-in">
+    <section class="who-pick" aria-labelledby="whoTitle">
+      <div class="who-head">
+        <h2 class="who-title" id="whoTitle">Kuka pelaa tänään?</h2>
+        <button type="button" class="round-btn jelly" id="whoClose" aria-label="Takaisin" hidden><span data-icon="close" aria-hidden="true"></span></button>
+      </div>
+      <div class="who-grid" id="whoGrid"></div>
+    </section>
+
+    <form class="who-new" id="newForm" autocomplete="off" novalidate>
+      <div class="who-head">
+        <h2 class="who-title" id="newTitle">Uusi pelaaja</h2>
+        <button type="button" class="round-btn jelly" id="newBack" aria-label="Takaisin" hidden><span data-icon="back" aria-hidden="true"></span></button>
+      </div>
+      <label class="new-label" for="newName" id="newNameLabel">Kirjoita lapsen nimi.</label>
+      <input class="new-name" id="newName" name="name" type="text" inputmode="text" autocapitalize="words" spellcheck="false" enterkeyhint="done" placeholder="Nimi" maxlength="24">
+      <p class="new-label new-label-theme" id="newThemeLabel">Valitse: tyttö vai poika?</p>
+      <div class="new-themes" role="group" aria-labelledby="newThemeLabel">
+        <button type="button" class="theme-card jelly" id="pickGirl" data-theme="girl" data-pick="girl"><span class="theme-ava" aria-hidden="true"></span><span class="theme-name">Tyttö</span></button>
+        <button type="button" class="theme-card jelly" id="pickBoy" data-theme="boy" data-pick="boy"><span class="theme-ava" aria-hidden="true"></span><span class="theme-name">Poika</span></button>
+      </div>
+      <p class="new-msg" id="newMsg" role="status" aria-live="polite"></p>
+    </form>
   </div>
 </div>
 
@@ -129,13 +174,10 @@
 
 <div class="gate" id="gate" data-ui data-mode="start">
   <div class="gate-in">
-    <p class="gate-brand">Suuraseikkailu</p>
-    <button type="button" class="gate-bubble jelly" id="gateBtn">
-      <span class="gate-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
-      <span class="gate-art" id="gateArt" aria-hidden="true"></span>
-      <span class="gate-label" id="gateLabel">Aloita</span>
+    <button type="button" class="gate-btn jelly" id="gateBtn">
+      <span class="gate-face"><span class="gate-ico" data-icon="play" aria-hidden="true"></span><span class="gate-label" id="gateLabel">Aloita Suuraseikkailu</span></span>
     </button>
-    <p class="gate-hint" id="gateHint">Napauta kuplaa!</p>
+    <p class="gate-hint" id="gateHint" hidden></p>
   </div>
 </div>
 

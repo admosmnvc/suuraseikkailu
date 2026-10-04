@@ -1,157 +1,192 @@
-# Suuraseikkailu v2 – build contracts (read fully before touching code)
+# Suuraseikkailu v3 – build contracts (read fully before touching code)
 
-Product brief: `KORJAUSPYYNTO.md` (Finnish). This file adds the module split, ownership and APIs so
-several agents can work **in parallel without editing each other's files**.
+v2 is live and working (light ice palace, one child). v3 = owner's new brief below. Several agents work **in parallel**
+on disjoint files. v2 product brief (still valid where not changed): `KORJAUSPYYNTO.md`.
 
-Owner's extra decision (binding):
-- Teacher voice: Shahada (2 lines) and **all Finnish prompts/praise/meanings/game titles** are
-  pre-generated MP3s spoken by a **cheerful, upbeat teacher voice** (Finnish: `fi-FI-NooraNeural`,
-  Arabic: `ar-SA-ZariyahNeural`). They are NEVER snippets cut from the recitation.
-  Surah lines stay Mishary Alafasy recitation (`public/audio/0*.mp3`, `1*.mp3`).
-- Delivery: a zip of the static site (no hosting by us). Must work from any sub-path (Vite `base: './'`).
+## Owner's v3 brief (binding, summarised from the owner's own words)
+1. **Two themes – STYLE CHANGED (owner: "pop art" was the wrong word; the pop-art cover felt stuffy/cluttered).
+   Target: PREMIUM, uplifting, modern kids' app** (quality level of top kids' apps: think Sago Mini / Pok Pok /
+   Khan Academy Kids – as inspiration only, never copy). Rules:
+   - Clean, airy compositions; ONE clear hero/focal point per screen; generous whitespace; few elements, each polished.
+   - Soft "clay / 3D-lite" look: chunky rounded shapes, gentle gradients, soft inner highlight, soft coloured shadows.
+     NO thick black outlines, NO halftone/Ben-Day dots, NO comic bursts/speech-burst clutter, NO busy patterns.
+   - Harmonious bright palettes on light creamy/sky backgrounds. Girl: coral pink #FF7A9A, rose #FFB3C7, lavender
+     #B9A4FF, peach #FFC9A8, mint #8EE3C8, gold #FFD36E, cream #FFF8F1. Boy: sky blue #5AB4FF, deep blue #2F6BFF,
+     sunny yellow #FFD54A, tangerine #FF9A3C, teal #2EC4B6, red #FF5A5F, cream #F5FAFF. Ink (text) #24324F.
+   - Rounded friendly type: Fredoka (display) + Nunito (body); NO Bangers. Praise words as clean big rounded text with a
+     soft glow/confetti, e.g. "Hienoa!", "Upeaa!" (not comic bursts).
+   - Motion: springy, smooth, delightful micro-interactions; tasteful confetti; reduced motion respected.
+   - Animals (pony, puppy, kitten, bunny) cute and simple with soft shading; vehicles friendly; still NO humans.
+   - The Arabic card stays calm and dignified (white card, soft shadow, no decoration on/behind the text).
+2. **Cover**: first screen = split cover, half girl theme / half boy theme (both visible), big button
+   **"Aloita Suuraseikkailu"**. Tap → enter the child's name + pick **Tyttö / Poika** → that choice = the theme the child
+   plays in. **Several children**: profiles; intuitive "+ Lisää lapsi"; next launches show the children's cards to pick.
+3. **Levels for every section** (incl. Shahada): **HELPPO** = one word at a time, **KESKITASO** = two words at a time,
+   **VAIKEA** = whole line (v2 behaviour). Owner's Shahada example: HELPPO "Ash-hadu · an laa · ilaaha · illallaah",
+   KESKITASO "Ash-hadu an laa · ilaaha illallaah", VAIKEA the whole line. Level is chosen **both** in the child's profile
+   (default) **and** at the start of each surah (three big buttons; last pick remembered per surah).
+4. **Minigames for ages 4–7, far more dynamic**, theme-specific: boys = cars/speed ("vaihda auton renkaat"),
+   girls = princess mood, horses, animals ("harjaa hevosen tukka"). **Clear visual instructions** (animated hand showing
+   the gesture). **Instantly responsive**: feedback in the same frame as the touch – v2 queued/paced taps (S.paced,
+   10.5 s floor) and the owner felt the lag: REMOVE all artificial pacing; length comes from the task itself.
+5. Progress picture: girls keep the castle whose windows light up; boys get a **rocket** that is built part by part
+   (one part per completed line) and launches when a surah is finished.
+6. Characters: **animals may have faces** (horse, puppy, kitten, bunny, etc.). **No humans** anywhere (no princess
+   figure, no people, no human faces): princess mood = crowns, tiaras, dresses on hangers, castles, jewels.
+7. Word audio for surahs (HELPPO/KESKITASO): **real human word-by-word recordings** (quran.com word audio,
+   `https://audio.qurancdn.com/wbw/SSS_AAA_WWW.mp3`), never snippets cut from the Mishary recitation.
+   Shahada (not Quran): teacher voice ar-SA-ZariyahNeural per chunk. Finnish prompts: teacher voice fi-FI-NooraNeural.
 
-## Hard rules (from KORJAUSPYYNTO.md – never break)
-- `src/content/data.js` field `ar` is Tanzil text: never edit/normalise. `node tools/check-arabic.mjs` must pass.
-  Show Arabic in `var(--f-arabic)` (Amiri Quran), calm light card, no decorations on top of it.
-- No music: only short SFX (pop, clink, sparkle), recitation and speech. No background music, no melodic jingles
-  (no recognisable scale runs / arpeggio fanfares).
-- No characters: no faces, people, animals, creatures, no princess figure. Princess mood = objects only
-  (crowns, tiaras, ice palace, snowflakes, crystals, gems, bubbles, sparkle). Palace may have domes and crescents.
-- No Disney/Frozen names, logos, fonts, images or songs. All art is our own inline SVG/CSS.
-- UI text in Finnish, short and warm. Parent reads, child listens and taps.
-- Keep features: parent settings via long-press, child's name in praise, slow recitation, minigame every step or
-  every 2nd step, stars, stickers, progress saved on device (`localStorage` key `suuraseikkailu-v1`, v1-compatible shape).
-- Hit targets >= 64 px, nothing punishes a wrong tap, respect `prefers-reduced-motion`, no horizontal scroll at
-  360–1024 px, iPhone safe areas (`env(safe-area-inset-*)`), no console errors.
+## Hard rules (unchanged from v2 – never break)
+- `src/content/data.js` field `ar` is Tanzil text: never edit. `node tools/check-arabic.mjs` must pass. Word chunks are
+  exact space-separated substrings of `ar` (joining a line's words with ' ' must give `ar` exactly).
+- No music (only short SFX, recitation, speech). No Disney/Frozen or other brands, logos, songs. Own art only.
+- UI in Finnish, short and warm. Ages 4–7, the parent reads.
+- Keep v2 features: Aloita/gate audio unlock + "Jatketaan!" relock gate, single audio queue, slow recitation,
+  minigame every step / every 2nd step, stars, stickers, recordings, Testaa äänet, offline PWA, long-press parent
+  settings, credits, safe areas, >= 64 px targets, no horizontal scroll 360–1024 px, reduced motion, no console errors.
 
-## Stack / layout
-Vite 8 + plain JavaScript ES modules (no framework). `npm run build` -> `dist/`.
+## Ownership (edit ONLY your files; others work at the same time)
 ```
-index.html                 [ui]       body markup + <script type=module src=./src/main.js>; head is FOUNDATION (pwa may edit head only)
-src/main.js                [ui]       entry: imports fonts+styles, boot, gate, flow, wiring
-src/state.js               [ui]       load/save state (v1-compatible), defaults
-src/ui/background.js       [ui]       frost background: rising bubbles, snowflakes, sparkles, palace silhouette
-src/ui/*.js (others)       [ui]       optional split of home/learn/overlays/caption – ui agent's choice
-src/styles/tokens.css      [ui]       FOUNDATION palette tokens (others may read; ui may add, never rename)
-src/styles/app.css         [ui]       all app styles except settings + games
-src/ui/settings.js         [settings] settings sheet (renders into #settings), recordings UI, sound-test panel
-src/styles/settings.css    [settings]
-src/audio/context.js       [audio]    shared AudioContext (create/resume/state, buses)
-src/audio/engine.js        [audio]    voice channel: queue, recitation, prompts, fallbacks, lock detection, diagnostics
-src/audio/recorder.js      [audio]    MediaRecorder -> IndexedDB
-src/audio/tts.js           [audio]    speechSynthesis last-resort fallback
-src/audio/sfx.js           [audio]    synthesized SFX (quieter than voice, never over recitation)
-src/fx.js                  [games]    full-screen particle canvas (FX)
-src/games/**               [games]    8 minigames + framework
-src/styles/games.css       [games]
-src/art.js                 [art]      all SVG art (icons, crown, palace, stickers, app icon…)
-src/pwa.js                 [pwa]      SW registration/update
-vite.config.js             [pwa]      build config + SW precache generation plugin
-public/manifest.webmanifest, public/icons/*   [pwa]
-public/audio/fi/*.mp3, public/audio/shahada-*.mp3, tools/make_voices.py   [voices]
-public/audio/0*.mp3,1*.mp3 FOUNDATION (Mishary, do not touch)
-src/content/data.js, src/content/prompts.js   FOUNDATION (frozen; ask integration if a change is needed)
-src/util.js                FOUNDATION helpers (clamp, rand, now, shuffle, reducedMotion, hexToRgb, mix, shade, TAU)
-tools/check-arabic.mjs, tools/list-clips.mjs  FOUNDATION
-v1-reference/              read-only: the v1 code (index.html, games.js, art.js, games.css, data.js)
-README.md                  [pwa]      Finnish: how to build, run, deploy (Netlify Drop / GitHub Pages / Cloudflare Pages)
+FOUNDATION (frozen; ask the orchestrator for changes)
+  src/content/data.js, src/content/prompts.js, src/profiles.js, CONTRACTS.md, src/util.js
+content agent   src/content/words.js, src/content/chunks.js, public/audio/wbw/**, public/audio/shahada-c-*.mp3,
+                public/audio/fi/** (regenerate for new prompts), tools/make_voices.py, tools/build-words.*,
+                tools/check-arabic.mjs (extend: word chunks join back to ar), tools/voices*.{json,md}, tools/list-clips.mjs
+art agent       src/art.js (may split into src/art/*.js re-exported by src/art.js), tools/art-*
+games-core+boy  src/games/core.js, src/games/hint.js, src/games/gestures.js, src/games/index.js, src/games/boy/**,
+                src/fx.js, src/styles/games.css, tools/games-test.* (remove v2 game files you replace)
+games-girl      src/games/girl/**, src/styles/games-girl.css (imported by src/games/girl/index.js)
+ui agent        index.html (body + <head> theme-color), src/main.js, src/ui/* (except settings.js), src/styles/tokens.css,
+                src/styles/app.css, src/state.js (delete; use profiles.js), tools/e2e.cjs (update)
+settings agent  src/ui/settings.js, src/styles/settings.css
+unchanged       src/audio/* (engine API below), src/pwa.js, vite.config.js, tools/pwa-*, public/icons (regenerated at the end)
 ```
-**Only edit files you own.** If you need something from another module that the contract does not give you,
-code defensively (feature-check) and report it in your final summary under `needs`.
+Working rules: build only into your own outDir (`npx vite build --outDir ../build-<role> --emptyOutDir`), own dev port
+(ui 5201, settings 5202, content 5203, games-boy 5204, games-girl 5205, art 5206). A build error in someone else's file:
+wait and retry, never fix it. Write whole files you own; never sed/Write files you don't own. Playwright:
+`/opt/node-tools/node_modules/playwright` (CommonJS), Chromium pre-installed. Look at your screenshots with Read.
+Fonts available via npm (@fontsource): fredoka, nunito, amiri-quran already installed; you MAY add `@fontsource/bangers`
+(comic display font, ui/art/games use it only for bursts/titles; it is caps-only) – the ui agent installs it.
 
-## Working rules for agents
-- Project root: the directory containing this file. Run commands there.
-- Never run a bare `npm run build` / `vite build` into `dist/` (shared). Build into your own dir:
-  `npx vite build --outDir ../build-<agent> --emptyOutDir`. Dev server: `npx vite --host 127.0.0.1 --port <your port>`
-  (ports: ui 5101, settings 5102, audio 5103, games 5104, art 5105, pwa 5106, voices 5107, integration 5110).
-- Other agents edit their files at the same time. A build error in a file you do not own: wait a minute and retry;
-  do not "fix" it. Keep your own files syntactically valid as often as possible (write whole files, not half-edits).
-- Browser testing: Playwright is at `/opt/node-tools/node_modules/playwright` (CommonJS `require`), Chromium is
-  pre-installed (do not run `playwright install`). See `../smoke.cjs` for a tiny static server + page example.
-- No new npm dependencies without need (allowed already: vite, @fontsource/fredoka, @fontsource/nunito,
-  @fontsource/amiri-quran). Everything must work offline after first load.
-
-## Data
-`DATA = (await import('./content/data.js')).default` → `{ sections: [{ id, name, ar, sub, acc, color, quran, lines: [{ ar, tr, fi, audio, n, rec?, tts? }] }], credits: string[] }`
-- Section ids: `shahada` (2 lines), `fatiha` (7), `ikhlas` (5), `kawthar` (4). Each surah starts with Bismillah
-  (Fatiha: verse 1 `n=1`; Ikhlas/Kawthar: separate first line `n=0`, no verse marker).
-- Shahada lines: `audio: 'audio/shahada-1.mp3'|'-2'`, `rec: 'shahada-1'|'shahada-2'`, `tts` = Arabic for device speech.
-- Paths are relative (`audio/...`) – resolve against `document.baseURI`, never with a leading `/`.
-
-## Prompts (src/content/prompts.js)
-`PROMPTS` (id → Finnish text), `PRAISE_IDS`, `GAME_COUNT = 8`, `gameId(i)`, `finaleId(secId)`, `meaningId(secId, i)`,
-`promptText(id)`, `RECORDABLE` (clips a parent can record: shahada-1/2, name, turn-*, praise-*, gem, finale-*),
-`allVoiceClips()`. File convention: Finnish clip `<id>` → `audio/fi/<id>.mp3`. `'name'` = recording only.
-
-## Audio API (owner: audio) – `import * as engine from './audio/engine.js'`
-Clip = `{ kind: 'recitation'|'voice', id?: string|null, src?: string|null, text?: string, lang: 'ar'|'fi' }`.
-Source order per clip: parent recording (by `id`, IndexedDB) → MP3 `src` → device speech (`text`, `lang`) →
-silent wait (~4 s for an Arabic line so the parent can read it; ~0 for Finnish).
+## Data: words and chunks (owner: content) – `import { chunks, words } from './content/chunks.js'`
 ```js
-engine.unlock()                 // SYNC, call inside the gate tap handler: AudioContext resume + navigator.audioSession.type='playback'
-                                //   + bless the single shared <audio> element + warm speechSynthesis. Never throws.
-engine.isLocked() -> boolean    // true before first unlock, and when audio got locked again (background return, interruption)
-engine.onLockChange(cb)         // cb(locked:boolean). UI shows the gate bubble again when locked === true.
-engine.preload(srcs[])          // warm cache (fetch -> blob URLs); call when a section opens
-engine.line(sec, i) -> Clip     // clip for a data line (recitation; Shahada = voice files with rec ids)
-engine.prompt(id) -> Clip       // Finnish clip (PROMPTS id, meaning id, or 'name')
-engine.meaning(sec, i) -> Clip  // = prompt(meaningId(sec.id, i))
-engine.playSequence(clips, { gapMs?, onItem?(i) }) -> Promise<boolean>
-                                // stops current playback first; one clip at a time, in order, never overlapping;
-                                // true = all finished, false = interrupted by stop()/another play
-engine.play(clip) -> Promise<boolean>
-engine.stop()                   // immediate silence of voice channel + queue + speech
-engine.isBusy() -> boolean; engine.busyKind() -> 'recitation'|'voice'|null
-engine.setSlow(bool)            // recitation playbackRate 0.8, preservesPitch true
-engine.setSpeechEnabled(bool)   // false = Finnish prompts silent (resolve immediately); recitation unaffected
-engine.refreshRecordings()      // call after recordings change (settings)
-engine.diagnostics() -> { mp3, context, lastError, fiVoice, arVoice, recordings: string[] }   // strings for the test panel
-engine.test(kind: 'recitation'|'sfx'|'fi'|'ar') -> Promise<{ ok: boolean, detail: string }>   // detail e.g. "MP3: OK",
-                                // "AudioContext: running", "Virhe: NotAllowedError", "Suomen puheääni: ei löytynyt"
+words(secId, lineIndex) -> [{ ar, tr, src }]      // Tanzil words of the line (ar exact), Finnish-friendly transliteration
+                                                  // per word (as the word is said on its own), src = word audio (Quran)
+chunks(secId, lineIndex, level) -> [{ ar, tr, clips }]
+  // level 'hard' -> []  (the line itself is the unit)
+  // 'easy'   -> one chunk per word (Shahada: the owner's units: أَشْهَدُ | أَنْ لَا | إِلَٰهَ | إِلَّا اللَّهُ, line 2 similar)
+  // 'medium' -> two easy-chunks per chunk (last may be single)
+  // ar = exact substring of the line's ar (words joined by ' '), tr = transliteration shown under it,
+  // clips = engine clips to play in order with gap 0: Quran: one {kind:'recitation', id:null, src:'audio/wbw/SSS_AAA_WWW.mp3',
+  //   text:'', lang:'ar'} per word; Shahada: one teacher clip {kind:'recitation', id:null, src:'audio/shahada-c-<line>-<level>-<i>.mp3',
+  //   text:<tts with diacritics>, lang:'ar'} per chunk.
 ```
-`import * as recorder from './audio/recorder.js'`:
-`isSupported()`, `has(id)`, `list()`, `get(id) -> Blob|null`, `remove(id)`, `start()` (asks mic, max 15 s auto-stop),
-`stopAndSave(id) -> Blob`, `cancel()`, `isRecording()`, `onChange(cb)`.
-`import { SFX } from './audio/sfx.js'`: `unlock()`, `setEnabled(bool)`, `pop()`, `ding(i)`, `chime(i)`, `plop()`, `whoosh()`,
-`boom()`, `sparkle()`, `success()`, `tap()` (same names as v1; quieter than voice; skipped while recitation plays).
+Bismillah of Ikhlas/Kawthar (line 0) uses the Fatiha 1:1 word audio.
 
-## Art API (owner: art) – `import ART from './art.js'` (also `export const ART`)
-All return SVG markup strings (`aria-hidden="true"`), scale to their container (width/height 100% or viewBox only).
-```
-ART.icon(name, cls)   names: home play star speech gear close check replay back sound mic stop trash crown gem snowflake sparkle
-ART.ayah(n)           verse-end marker with Arabic digits (keep v1 look adapted to light theme)
-ART.arabicDigits(n)   ART.starPath(cx, cy, R, r, points?, rotation?)
-ART.crystal(cls)      8-pointed star as an ice crystal (star counter icon)
-ART.snowflake(cls)    ART.bubble(cls)    ART.gem(color, cls)    ART.tiara(color, cls)
-ART.crown({ slots, filled, colors?, cls? })   sockets are elements `.crown-slot[data-i]`, filled ones also `.on`
-ART.palace({ windows, lit, cls? })            ice palace with domes + crescents; windows `.pw[data-i]`, lit ones `.on`
-ART.palaceSilhouette()                         wide light silhouette for the background bottom (preserveAspectRatio xMidYMax slice)
-ART.sticker(id, earned)   ids: shahada fatiha ikhlas kawthar palace(bonus: all four done). Not earned = frosted outline.
-ART.appIcon()             512×512 square SVG (crown + crystal on frost) used by the pwa agent for PNG icons
-```
-## Games API (owner: games) – `import MiniGames from './games/index.js'`
-`MiniGames.count === 8`, `MiniGames.titles` (= PROMPTS game-0..7 texts), `MiniGames.play({ index, onDone, say }) -> { abort() }`.
-`say('game-<i>')` is called once at start with the prompt id (UI plays `engine.prompt(id)`). Index order:
-0 balloons, 1 snowflake rain, 2 bubbles, 3 crystal lanterns, 4 fruit basket, 5 sparkle/aurora fireworks,
-6 "Koristele kruunu" (NEW), 7 "Sytytä palatsin valot" (NEW). Length 10–20 s, no losing, big targets.
-`import { FX } from './fx.js'`: `burst(x,y,colors,n)`, `sparkle(x,y)`, `confetti(n)`, `firework(x,y,hue)`, `rocket(...)`, `show(ms)`, `clear()`.
+## Flow per level (owner: ui) – FINAL (owner decision: "koko ajan pitää sanoa alusta")
+The v2 cumulative chaining is THE method on every level; the level only sets the size of the UNIT added per step:
+HELPPO unit = one easy chunk (word; Shahada: the owner's units), KESKITASO unit = one medium chunk (two words),
+VAIKEA unit = one line. Units run continuously through the whole section (across line boundaries).
+- Step k = units 1..k FROM THE VERY START of the section → "Sanoin!" → minigame (every / every-2nd step, as v2)
+  → reward (+1 star) → "Jatka" → step k+1. The last step (= the whole section) → finale (no minigame), +3/+1 stars as v2.
+  Turn prompts as v2: step 1 'turn-1', later 'turn-all' ("Sano kaikki alusta asti").
+- Audio of step k: every line fully inside units 1..k plays as the normal LINE clip (engine.line: Mishary / Shahada
+  teacher line, gapMs 250 between lines); the current, partially covered line plays its covered chunks' clips (gap 0 inside
+  a chunk, ~150 ms between chunks). When step k completes a line exactly, that line plays as the line clip.
+- Screen: cards for all lines touched so far (v2 style); in the current partial line the covered words are shown normally,
+  the newest unit highlighted ("UUSI"), the not-yet-covered words of that line hidden or very dimmed; transliteration
+  shows only the covered part. No decoration on Arabic.
+- Progress: child.progress[secId] = completed LINES (a line is complete when a completed step covers its last unit) →
+  castle windows / rocket parts / crown slots (one per line, 18 total). The reward overlay after every step shows +1 star
+  and a comic burst; when the step completed a line, the gem flies into the crown (girl) / the part into the rocket (boy)
+  and the window/part lights. child.steps[secId][level] = completed steps at HELPPO/KESKITASO (VAIKEA uses progress, as v2).
+  Changing the level mid-section resumes at the first unit of the first incomplete line (derived from progress).
+- Step bubbles: one per step can be many (Al-Fatiha HELPPO = 29): show a compact scrollable row or a progress bar with
+  the current number "Vaihe 5/29"; reopening a section resumes at the next step; done sections open in review = last step.
+- Example Shahada HELPPO (9 units: Ash-hadu | an laa | ilaaha | illallaah | wa ash-hadu | anna | Muhammadan |
+  ‘abduhuu | wa rasuuluh): step 1 "Ash-hadu" → game; step 2 "Ash-hadu an laa" → game; … step 4 = line 1 (window 1)
+  → game; step 5 = line 1 + "wa ash-hadu" → game; … step 9 = whole Shahada → finale. 8 games (every=1).
+  Al-Fatiha HELPPO: 29 steps, 28 games (14 with every-2nd). VAIKEA = exactly v2.
+- Removed prompts: chunk-turn, chunk-good, line-now, surah-now (no separate chunk practice, no extra final step).
 
-## Settings API (owner: settings) – `import * as settings from './ui/settings.js'`
+## Profiles / state (FOUNDATION: src/profiles.js – read it)
+`loadStore(sectionIds)`, `saveStore(store)`, `activeChild(store)`, `addChild(store, name, theme, ids)`,
+`updateChild(store, id, {name, theme, level})`, `removeChild(store, id)`, `setActive(store, id)`,
+`levelFor(child, secId)`, `resetChild(child, ids)`, `NAME_MAX`, `MAX_CHILDREN`.
+Store: `{ version: 3, children: [{ id, name, theme, level, levelBySection, progress, steps, done, stars, game }], activeId,
+settings: { speech, slow, translit, sfx, every } }`. Settings are shared by all children (device-level).
+The theme is applied as `<html data-theme="girl|boy">` (ui). Mutate the one store object; call saveStore after changes.
+
+## Prompts (FOUNDATION: src/content/prompts.js)
+New ids: cover, who, ask-name (text only, no audio), ask-theme, pick-level, level-easy/medium/hard, rocket-part, rocket-launch, game-boy-0..5, game-girl-0..5. `THEMES`, `LEVELS`, `LEVEL_NAMES`
+(HELPPO/KESKITASO/VAIKEA), `GAME_COUNT = 6` per theme, `gameId(theme, i)`, `levelId(level)`. Old game-0..7 ids are gone.
+Girl reward prompt 'gem' (gem into the crown), boy reward prompt 'rocket-part'. Finale prompts are shared;
+boys additionally hear 'rocket-launch' when a surah is finished.
+
+## Audio API (unchanged, see src/audio/engine.js)
+`engine.unlock()` (sync in a click), `isLocked`, `onLockChange`, `preload(srcs)`, `line(sec,i)`, `prompt(id)`,
+`meaning(sec,i)`, `playSequence(clips, {gapMs, onItem})`, `play(clip)`, `stop()`, `isBusy()`, `busyKind()`, `setSlow`,
+`setSpeechEnabled`, `refreshRecordings`, `diagnostics`, `test(kind)`. Word/chunk clips are kind 'recitation'
+(always play, SFX ducked). `SFX` (src/audio/sfx.js): unlock, setEnabled, pop, ding(i), chime(i), plop, whoosh, boom,
+sparkle, success, tap, test. SFX play instantly (Web Audio) – use them on pointerdown for instant feedback.
+
+## Art API v3 (owner: art) – `import ART from './art.js'`
+All return SVG strings (aria-hidden), PREMIUM soft style (see brief 1: no outlines/halftone), viewBox only (scale to container).
+```
+ART.icon(name, cls)                     home play star speech gear close check replay back sound mic stop trash plus user
+                                        edit crown gem rocket car lock (24x24, currentColor stroke, bold)
+ART.cover()                             full split cover: left girl (castle, horse with a face, crown, hearts, sparkles),
+                                        right boy (race car, rocket, checkered flag, speed lines); diagonal comic split;
+                                        preserveAspectRatio xMidYMid slice; no text in the SVG
+ART.avatar(theme, cls)                  profile badge (girl: crown/horse head; boy: race car/rocket) – no humans
+ART.progress(theme, { total, done, cls }) girl: castle with `total` windows, `done` lit (.pw[data-i], .on);
+                                        boy: rocket with `total` parts assembled bottom-up (.rp[data-i], .on), flame when total===done
+ART.reward(theme, { slots, filled, cls }) girl: crown with gem sockets; boy: mini rocket with part slots;
+                                        both use `.slot[data-i]` and `.on` (ui adds .on to animate the newest)
+ART.sticker(theme, id, earned)          ids: shahada fatiha ikhlas kawthar bonus; girl: tiara, horse, castle, bunny, crown…;
+                                        boy: race car, rocket, trophy, helmet, flag…; not earned = grey halftone ghost
+ART.burst(color, cls)                   comic explosion/burst shape (text is HTML on top), ART.bubble(cls) speech bubble
+ART.background(theme)                   wide pop-art backdrop for the bottom/back of screens (girl: castle hills, hearts,
+                                        stars; boy: city/track/space, speed lines) – xMidYMax slice
+ART.levelIcon(level, cls)               1/2/3 filled stars style badges for easy/medium/hard
+ART.ayah(n), ART.arabicDigits(n)        verse marker (keep calm, it sits next to Arabic)
+ART.appIcon()                           512x512 split icon (pink/purple half with crown, blue/red half with rocket), no text
+```
+## Games API v3 (owner: games-core+boy; girl games plug in) – `import MiniGames from './games/index.js'`
 ```js
-settings.initSettings({ root, state, save, onChange, onReset, credits })
-  // root: the empty <div id="settings" class="overlay overlay-settings" hidden> in index.html (settings renders inside)
-  // state: shared state object; settings mutates name, speech, slow, translit, sfx, every, then calls save() and onChange(key)
-  // onReset(): called after the parent confirmed "Aloita alusta"; the app clears progress/done/stars/game
-  // credits: DATA.credits (string[]) – shown as "Lähteet ja lisenssit"
+MiniGames.count(theme) === 6; MiniGames.titles(theme) -> 6 PROMPTS texts
+MiniGames.play({ theme, index, onDone, say }) -> { abort() }   // index modulo 6; say(gameId(theme, idx)) once at start
+```
+Each game module: `export default { id, title, start(S) }` in src/games/<theme>/<name>.js; src/games/<theme>/index.js
+exports an array of 6 in prompt order. Core session `S` (core.js) keeps the v2 basics (arena, S.later, S.on, S.add,
+S.point/goal markers, S.active, finish → onDone, hidden-page pause, abort cleanup) and adds (games-core implements,
+both game agents use):
+```js
+S.hint({ type: 'tap'|'drag'|'rub'|'hold', at: {x,y}, to?: {x,y} })   // animated hand demo; auto-hides on first touch
+S.idleHint(fn, ms=2500)                                              // re-show a hint after ms without progress
+gestures.drag(el, { onStart, onMove, onEnd })                        // pointer capture, instant follow (no easing lag)
+gestures.rub(el, { onRub(dist, x, y) })                              // brushing/scrubbing amount
+gestures.hold(el, { onHold(ms), onRelease })                         // press-and-hold progress
+```
+Rules for every game: visible response in the SAME frame as pointerdown (transform/class change + SFX), no queued taps,
+no debounce on success; finish 10–20 s through content (e.g. 4 nuts + swap tire + 4 nuts), never fail, idle hand hint,
+targets >= 64 px, reduced-motion fallback, 360–1024 px + landscape phone, Finnish only, no humans (animals with faces ok).
+Boy games (titles fixed): 0 Vaihda auton renkaat, 1 Pese auto puhtaaksi, 2 Tankkaa auto täyteen, 3 Vihreä valo kaasua,
+4 Aja kilpaa ja kerää tähdet, 5 Pysäköi auto ruutuun. Girl games: 0 Harjaa hevosen harja, 1 Ruoki eläimet,
+2 Kylvetä koiranpentu, 3 Koristele kakku, 4 Kasvata kukkaniitty, 5 Sytytä linnan valot.
+
+## Settings API v3 (owner: settings) – `import * as settings from './ui/settings.js'`
+```js
+settings.initSettings({ root, store, save, onChange, onReset, onChildrenChange, credits })
+  // store: the profiles store (settings edits store.settings.* and children via profiles.js helpers)
+  // onChange(key) for speech/slow/translit/sfx/every; onReset(childId) after confirmed reset of ONE child;
+  // onChildrenChange() after add/rename/theme/level/delete of children (ui re-renders, re-applies theme)
 settings.openSettings(); settings.closeSettings(); settings.isSettingsOpen()
 ```
-Settings imports `engine` and `recorder` itself (recordings + "Testaa äänet" panel). The long-press parent button
-lives on the home screen (ui) and calls `settings.openSettings()` after an 800 ms hold.
-
-## State (owner: ui) – `localStorage['suuraseikkailu-v1']`
-`{ progress: { shahada, fatiha, ikhlas, kawthar }, done: {}, stars, name, speech, slow, translit, sfx, every: 1|2, game }`
-(v1 shape; `game` = next minigame index, used modulo 8).
+Settings sections v3: Lapset (list: name, theme Tyttö/Poika toggle, default level HELPPO/KESKITASO/VAIKEA, rename,
+"Aloita alusta" per child with confirm, delete with confirm, "+ Lisää lapsi"), Ääni ja näyttö, Minipeli, Omat äänitykset,
+Testaa äänet, Vinkit, Lähteet ja lisenssit (add: "Sana-äänitteet: Quran.com (audio.qurancdn.com)").
 
 ## Final summary each agent returns
-`files` (paths written), `api` (anything others must know / deviations from this contract), `tests` (what you ran
-and the result), `needs` (things another owner must change), `risks`.
+files, api (deviations), tests (what ran + results), needs (for other owners), risks. Concise.

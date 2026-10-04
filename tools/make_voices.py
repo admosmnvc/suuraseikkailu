@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Suuraseikkailu: generate the teacher-voice clips (Finnish prompts + Arabic Shahada).
+"""Suuraseikkailu: generate the teacher-voice clips (Finnish prompts + Arabic Shahada lines and chunks).
 
 Real speech from Microsoft Edge neural TTS (python package `edge-tts`), never snippets of the
 recitation. The clip list comes from the app itself (`node tools/list-clips.mjs`, i.e.
-src/content/prompts.js), so texts are defined in exactly one place.
+src/content/prompts.js + the Shahada chunk clips of src/content/chunks.js), so texts are defined in
+exactly one place. The mastering below is also used for the Quran word recordings (tools/build-words.py).
 
 Pipeline per clip (deterministic apart from the TTS service itself):
   1. synthesize `sayText` (= text with the SAY_AS respellings applied) with retries + backoff
@@ -20,7 +21,7 @@ Usage (run from anywhere; needs node, ffmpeg, edge-tts):
   python3 tools/make_voices.py --only praise-1,shahada-2
   python3 tools/make_voices.py --check      # validate only, no network
   python3 tools/make_voices.py --asr        # also back-transcribe with faster-whisper (optional QA)
-  python3 tools/make_voices.py --prune      # delete public/audio/fi/*.mp3 that no clip uses
+  python3 tools/make_voices.py --prune      # delete public/audio/fi/*.mp3 and *-c-*.mp3 that no clip uses
 Exit code 1 if any clip fails validation.
 """
 import argparse
@@ -165,14 +166,19 @@ def recitation_target():
 
 
 # Trim both ends (silenceremove on the reversed signal handles the tail). 10 ms of the
-# sub-threshold lead-in/decay are kept and faded, so the cut itself never clicks; then pad PAD_S.
-_CUT = f'silenceremove=start_periods=1:start_threshold={SILENCE_DB}dB:start_silence=0.01,afade=t=in:d=0.01'
-TRIM = (f'aformat=channel_layouts=mono,{_CUT},areverse,{_CUT},areverse,'
-        f'adelay={int(PAD_S * 1000)}:all=1,apad=pad_dur={PAD_S}')
+# sub-threshold lead-in/decay are kept and faded, so the cut itself never clicks; then pad.
+# detection: 'rms' (default, 20 ms window) for TTS; the word recordings use 'peak', so nothing above the
+# threshold is ever removed from a human recording.
+def trim_filter(pad_s, detection='rms'):
+    det = '' if detection == 'rms' else f':detection={detection}'
+    cut = f'silenceremove=start_periods=1:start_threshold={SILENCE_DB}dB:start_silence=0.01{det},afade=t=in:d=0.01'
+    return (f'aformat=channel_layouts=mono,{cut},areverse,{cut},areverse,'
+            f'adelay={int(pad_s * 1000)}:all=1,apad=pad_dur={pad_s}')
 
 
-def master(raw, out, target):
+def master(raw, out, target, pad_s=PAD_S, detection='rms'):
     """Two-pass linear loudnorm + MP3 encode. Returns loudnorm's normalization_type."""
+    TRIM = trim_filter(pad_s, detection)
     ln = f'loudnorm=I={target}:TP={TP_TARGET}:LRA=50:dual_mono=true'  # same meter as measure()
     m = last_json(ffmpeg('-i', raw, '-af', f'{TRIM},{ln}:print_format=json', '-f', 'null', '-'))
     ln2 = (f"{ln}:measured_I={m['input_i']}:measured_TP={m['input_tp']}:measured_LRA={m['input_lra']}"
@@ -274,7 +280,7 @@ def main():
     ap.add_argument('--jobs', type=int, default=4, help='parallel TTS requests')
     ap.add_argument('--asr', nargs='?', const='large-v3-turbo', metavar='MODEL',
                     help='back-transcribe the processed clips with faster-whisper')
-    ap.add_argument('--prune', action='store_true', help='delete unused public/audio/fi/*.mp3')
+    ap.add_argument('--prune', action='store_true', help='delete unused public/audio/fi/*.mp3, *-c-*.mp3')
     args = ap.parse_args()
 
     clips = list_clips()
@@ -320,7 +326,8 @@ def main():
         asr([e for e in entries if not only or e['id'] in only], args.asr)
 
     used = {(PUBLIC / c['file']).resolve() for c in clips}
-    for f in sorted((PUBLIC / 'audio' / 'fi').glob('*.mp3')):
+    generated = sorted((PUBLIC / 'audio' / 'fi').glob('*.mp3')) + sorted((PUBLIC / 'audio').glob('*-c-*.mp3'))
+    for f in generated:
         if f.resolve() not in used:
             if args.prune:
                 f.unlink()
@@ -340,7 +347,7 @@ def main():
     }, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
 
     for e in entries:
-        log(f"{e['id']:16s} {e['duration_s']:6.2f} s {e['lufs']:6.1f} LUFS {e['true_peak_dbtp']:5.1f} dBTP  {e['normalization']}")
+        log(f"{e['id']:20s} {e['duration_s']:6.2f} s {e['lufs']:6.1f} LUFS {e['true_peak_dbtp']:5.1f} dBTP  {e['normalization']}")
     if failed:
         log('\nFAILED:\n  ' + '\n  '.join(failed))
         sys.exit(1)

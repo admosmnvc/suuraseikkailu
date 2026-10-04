@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="fi" data-theme="girl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- Dev tool for the v3 parent settings sheet (not part of the app build).
+     Run:  node tools/settings-v3-test.cjs   (starts its own Vite dev server on 127.0.0.1:5202)
+     or manually:  npx vite --host 127.0.0.1 --port 5202  ->  http://127.0.0.1:5202/tools/settings-v3-test.html
+     Fake profiles store: 2 children (Amina = girl, active; Omar = boy). Like the app, <html data-theme>
+     follows the active child (applied in onChildrenChange).
+     Query flags: ?open=1 opens the sheet at load, ?kids=0 starts with no children. -->
+<base href="../">
+<title>Asetukset v3 – testi</title>
+<style>
+  html, body { margin: 0; min-height: 100%; }
+  body { min-height: 100vh; padding: 20px 16px; font-family: "Nunito", system-ui, sans-serif; color: #24324F; background: #FFF8F1; }
+  html[data-theme="boy"] body { background: #F5FAFF; }
+  h1 { margin: 0 0 12px; font: 700 1.5rem "Fredoka", system-ui, sans-serif; }
+  #openBtn { min-height: 64px; padding: 0 26px; border: 0; border-radius: 999px; background: #FFD36E; color: #24324F; font: 800 1.1rem "Nunito", sans-serif; box-shadow: 0 8px 18px rgba(242, 181, 63, .35); }
+  pre { max-width: 100%; overflow: auto; white-space: pre-wrap; font-size: 12px; background: #fff; border-radius: 16px; padding: 10px; box-shadow: 0 4px 14px rgba(36, 50, 79, .08); }
+</style>
+</head>
+<body>
+<h1>Suuraseikkailu v3 – asetusten testi</h1>
+<button type="button" id="openBtn">Avaa asetukset</button>
+<pre id="out"></pre>
+<div id="settings" hidden></div>
+<script type="module">
+  import '/src/styles/tokens.css';
+  import '@fontsource/fredoka/latin-600.css';
+  import '@fontsource/fredoka/latin-700.css';
+  import '@fontsource/nunito/latin-400.css';
+  import '@fontsource/nunito/latin-700.css';
+  import '@fontsource/nunito/latin-800.css';
+  import '@fontsource/amiri-quran/arabic-400.css';
+  import DATA from '/src/content/data.js';
+  import * as engine from '/src/audio/engine.js';
+  import * as profiles from '/src/profiles.js';
+  import * as recorder from '/src/audio/recorder.js';
+  import * as settings from '/src/ui/settings.js';
+
+  const q = new URLSearchParams(location.search);
+  const ids = DATA.sections.map((s) => s.id);
+  const store = { version: 3, children: [], activeId: null, settings: { speech: true, slow: false, translit: true, sfx: true, every: 1 } };
+  if (q.get('kids') !== '0') {
+    const a = profiles.newChild('Amina', 'girl', ids);
+    Object.assign(a, { level: 'easy', stars: 7, progress: { shahada: 2, fatiha: 3, ikhlas: 0, kawthar: 0 }, done: { shahada: true }, game: 2 });
+    const o = profiles.newChild('Omar', 'boy', ids);
+    Object.assign(o, { level: 'medium', stars: 3, progress: { shahada: 1, fatiha: 0, ikhlas: 0, kawthar: 0 }, done: {}, game: 1 });
+    store.children.push(a, o);
+    store.activeId = a.id;
+  }
+  const log = [];
+  const out = document.getElementById('out');
+  const show = () => { out.textContent = JSON.stringify({ activeId: store.activeId, children: store.children.map((c) => [c.id, c.name, c.theme, c.level, c.stars]), settings: store.settings, log: log.slice(-8) }, null, 1); };
+  const applyTheme = () => {
+    const c = profiles.activeChild(store);
+    document.documentElement.dataset.theme = (c && c.theme) || 'girl';
+  };
+  /* the app unlocks audio at its gate; here the first tap anywhere does it */
+  document.addEventListener('pointerdown', () => { try { engine.unlock(); } catch (e) { /* ignore */ } }, { capture: true, once: true });
+
+  settings.initSettings({
+    root: document.getElementById('settings'),
+    store,
+    save: () => { log.push('save'); show(); },
+    onChange: (k) => { log.push('change:' + k); show(); },
+    /* the sheet resets the child itself (profiles.resetChild) before calling this */
+    onReset: (id) => { log.push('reset:' + id); show(); },
+    onChildrenChange: () => { log.push('children'); applyTheme(); show(); },
+    credits: DATA.credits
+  });
+  document.getElementById('openBtn').addEventListener('click', () => settings.openSettings());
+  window.__t = { store, log, settings, engine, profiles, recorder, ids };
+  applyTheme();
+  show();
+  if (q.get('open')) settings.openSettings();
+</script>
+</body>
+</html>

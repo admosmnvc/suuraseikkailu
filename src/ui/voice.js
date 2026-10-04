@@ -77,6 +77,29 @@ export function speak(items, opts = {}) {
   }, () => false);
 }
 
+/* Several speak() sequences one after another, each with its own gap, pauseMs before a group (e.g. 250 ms
+   between lines, 0 inside a chunk, 150 ms between chunks). The first group starts synchronously (tap rule).
+   groups: [{ items, gapMs, pauseMs }]; opts.onItem(i) counts items across all groups. Resolves like speak(). */
+export function speakGroups(groups, opts = {}) {
+  const list = groups.filter((g) => g && g.items && g.items.some(Boolean));
+  let base = 0;
+  return (async () => {
+    for (let g = 0; g < list.length; g++) {
+      const grp = list[g];
+      if (g > 0 && grp.pauseMs > 0) {
+        const my = tok;
+        await new Promise((r) => setTimeout(r, grp.pauseMs));
+        if (my !== tok) return false;
+      }
+      const off = base;
+      const ok = await speak(grp.items, { gapMs: grp.gapMs || 0, onItem: (i) => { if (typeof opts.onItem === 'function') opts.onItem(off + i); } });
+      if (!ok) return false;
+      base += grp.items.filter(Boolean).length;
+    }
+    return true;
+  })();
+}
+
 /* Immediate silence: voice channel, caption and highlights. */
 export function stopVoice() {
   tok++;

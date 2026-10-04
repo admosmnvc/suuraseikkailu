@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="fi" data-theme="girl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tyttöjen minipelit – testi</title>
+<style>
+  [hidden] { display: none !important; }
+  html, body { margin: 0; }
+  body { min-height: 100vh; background: #FFF0F7; color: #1B1B3A; font-family: system-ui, sans-serif; padding: 16px; box-sizing: border-box; }
+  h1 { margin: 0 0 8px; font-size: 1.6rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; max-width: 760px; }
+  .grid button { min-height: 64px; border-radius: 16px; border: 3px solid #1B1B3A; background: #fff; font: 700 1rem system-ui; box-shadow: 4px 4px 0 #1B1B3A; }
+  #log { margin-top: 12px; white-space: pre-line; }
+</style>
+</head>
+<body>
+  <h1>Tyttöjen minipelit</h1>
+  <div class="grid" id="grid"></div>
+  <div id="log" aria-live="polite"></div>
+  <script type="module">
+    import '@fontsource/fredoka/latin-600.css';
+    import '@fontsource/fredoka/latin-700.css';
+    import '@fontsource/nunito/latin-400.css';
+    import '@fontsource/nunito/latin-700.css';
+    import '../src/styles/tokens.css';
+    import '../src/styles/games.css';
+    import GIRL from '../src/games/girl/index.js';
+    import MiniGames from '../src/games/index.js';
+    import { SFX } from '../src/audio/sfx.js';
+
+    const log = document.getElementById('log');
+
+    function play(i) {
+      return new Promise((resolve) => {
+        const t0 = performance.now();
+        let said = null;
+        const onDone = () => { const ms = performance.now() - t0; log.textContent = 'valmis ' + i + ': ' + (ms / 1000).toFixed(1) + ' s'; resolve({ ms, said }); };
+        window.__ggHandle = MiniGames.play({ theme: 'girl', index: i, onDone, say: (id) => { said = id; } });
+      });
+    }
+
+    /* latency probe: pointerdown -> first DOM change inside the girl game stage (class / style / child).
+       Mutations inside a pointerdown handler are delivered right after it (same task), i.e. before the next frame.
+       ms = mutation time - event.timeStamp (input delivery + handler); handler = handler time only. */
+    const lat = [];
+    let pend = null;
+    const inStage = (n) => { const e = n && (n.nodeType === 1 ? n : n.parentNode); return !!(e && e.closest && e.closest('.gg-stage')); };
+    window.addEventListener('pointerdown', (e) => {
+      if (!document.querySelector('.mg:not([hidden]) .gg-stage')) return;
+      const p = pend = { t: e.timeStamp, start: performance.now(), frame: false };
+      requestAnimationFrame(() => { p.frame = true; if (pend === p) { lat.push({ ms: null, beforeFrame: false }); pend = null; } });
+    }, true);
+    new MutationObserver((list) => {
+      if (!pend || !list.some((m) => inStage(m.target))) return;
+      const t = performance.now();
+      lat.push({ ms: t - pend.t, handler: t - pend.start, beforeFrame: !pend.frame });
+      pend = null;
+    }).observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true });
+
+    window.__gg = { GIRL, MiniGames, SFX, play, lat, abort: () => { const h = window.__ggHandle; if (h && h.abort) h.abort(); } };
+
+    GIRL.forEach((g, i) => {
+      const b = document.createElement('button');
+      b.textContent = i + '. ' + g.title;
+      b.addEventListener('click', () => { SFX.unlock(); play(i); });
+      document.getElementById('grid').appendChild(b);
+    });
+    log.textContent = 'pelejä ' + GIRL.length;
+  </script>
+</body>
+</html>

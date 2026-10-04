@@ -1,44 +1,59 @@
-/* FX - one full-screen particle canvas (viewport coordinates), frosty ice-palace palette.
-   OWNER: games agent.
+/* FX – one full-screen particle canvas (viewport coordinates), soft premium look, palette per theme.
+   OWNER: games-core.
 
-   API (unchanged from v1):
-     FX.burst(x, y, colors?, n?)   pop of coloured dots + a few sparkles + a ring
-     FX.sparkle(x, y)              twinkling 4-point sparkle stars
-     FX.confetti(n?)               falling snowflakes, sequins and ice diamonds
-     FX.firework(x, y, hue?)       sparkle firework (hue picks one of the frost palette pairs)
+   API (unchanged names from v2):
+     FX.burst(x, y, colors?, n?)   soft glow flash + shaded dots + a white ring
+     FX.sparkle(x, y)              4-point sparkle stars with a soft glow
+     FX.confetti(n?)               falling flat confetti: stars + circles + strips (girl: + hearts)
+     FX.firework(x, y, hue?)       streak firework (hue picks one of the theme's colour pairs)
      FX.rocket(x0, y0, x1, y1, onArrive?)
-     FX.show(ms?)                  finale: gentle aurora ribbons + sparkle fireworks
+     FX.show(ms?)                  finale: soft fireworks at the screen sides / top corners only (no ribbons)
      FX.clear()
+   v3 additions:
+     FX.setTheme('girl'|'boy'|null) force a palette (the minigame core sets it while a game runs);
+                                    null = follow <html data-theme> (default girl palette)
+     FX.palette()                  the current theme colours (array of hex)
 
-   Everything is drawn with normal (source-over) blending so it stays visible on the light
-   theme: coloured bodies with white cores instead of additive glows (which vanish on white).
-   prefers-reduced-motion: particles do not fly; they appear in place and fade (minimal movement). */
+   Look: rounded shapes with a white highlight and a soft glow, no outlines (CONTRACTS brief 1).
+   prefers-reduced-motion: particles do not fly; they appear in place and fade. */
 import { TAU, clamp, rand, now, reducedMotion, hexToRgb, shade } from './util.js';
 import { SFX } from './audio/sfx.js';
 
+const THEMES = {
+  girl: {
+    main: ['#FF7A9A', '#B9A4FF', '#FFD36E', '#8EE3C8', '#FFB3C7', '#FFC9A8'],
+    spark: ['#FFD36E', '#FFFFFF', '#FFB3C7', '#B9A4FF'],
+    fire: [['#FF7A9A', '#FFD0DC'], ['#B9A4FF', '#E6DDFF'], ['#FFC94D', '#FFEDB0'], ['#5FD6B4', '#C9F5E7'], ['#FF9E7A', '#FFDCCB']],
+    hearts: true
+  },
+  boy: {
+    main: ['#5AB4FF', '#2F6BFF', '#FFD54A', '#FF9A3C', '#2EC4B6', '#FF5A5F'],
+    spark: ['#FFD54A', '#FFFFFF', '#5AB4FF', '#FF9A3C'],
+    fire: [['#2F6BFF', '#BFD5FF'], ['#5AB4FF', '#CFE8FF'], ['#FFC21F', '#FFEFA8'], ['#2EC4B6', '#BDF0EA'], ['#FF7A3C', '#FFD7B8']],
+    hearts: false
+  }
+};
+
 export const FX = (function () {
   let cv = null, g = null, W = 1, H = 1, dpr = 1;
-  let raf = 0, last = 0, inFrame = false, showTimer = 0;
+  let raf = 0, last = 0, inFrame = false, showTimer = 0, forced = null;
   const parts = [], rings = [], rockets = [];
-  let aurora = null; /* { t: elapsed s, dur: s, ribbons: [] } while FX.show() runs */
-  const MAXP = 1400;
+  const MAXP = 1200;
 
   /* Particle kinds */
-  const DOT = 0, SPARK = 1, FLAKE = 2, STREAK = 3, EMBER = 4, FLASH = 5;
-
-  /* Saturated enough to read on --snow / --frost; white is only ever used as a core/highlight. */
-  const FROST = ['#7FD3F2', '#4A86FF', '#9A7BFF', '#B45FE0', '#FF8BC8', '#33C3D6', '#2F6FE0', '#C8B6FF'];
-  const SPARK_C = ['#7FD3F2', '#9A7BFF', '#FF8BC8', '#4A86FF', '#B45FE0', '#33C3D6'];
-  const EMBER_C = ['#9A7BFF', '#7FD3F2', '#FF9FD6', '#4A86FF'];
-  /* firework colour pairs [main, light] picked by hue (5 bands of 72 degrees) */
-  const FIRE = [['#2F6FE0', '#A9D4FF'], ['#B45FE0', '#E6CCFF'], ['#FF6FBF', '#FFC6E8'], ['#1FB0D3', '#AEEFFF'], ['#8A6BFF', '#D8CCFF']];
-  const AURORA_C = ['#5FDCCF', '#9A7BFF', '#FF9FD6', '#7FD3F2'];
+  const DOT = 0, SPARK = 1, FLAKE = 2, STREAK = 3, EMBER = 4, BANG = 5;
 
   function rm() { return reducedMotion(); }
   function k(n) { return rm() ? Math.max(1, Math.round(n * 0.4)) : n; }
   function snd(name) { try { if (SFX && typeof SFX[name] === 'function') SFX[name](); } catch (e) { /* silent */ } }
   function pick(list) { return list[(Math.random() * list.length) | 0]; }
   function rgba(hex, a) { const c = hexToRgb(hex); return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + a.toFixed(3) + ')'; }
+  function themeName() {
+    if (forced) return forced;
+    const t = (document.documentElement && document.documentElement.dataset.theme) || '';
+    return t === 'boy' ? 'boy' : 'girl';
+  }
+  function T() { return THEMES[themeName()]; }
 
   function resize() {
     if (!cv) return;
@@ -83,10 +98,9 @@ export const FX = (function () {
     parts.push(p);
   }
 
-  /* ---------- drawing helpers ---------- */
-  /* concave 4-point sparkle star of radius R around (0,0) in the current transform */
+  /* ---------- shapes (around the current transform origin or x,y) ---------- */
   function sparkPath(x, y, R) {
-    const r = R * 0.16;
+    const r = R * 0.22;
     g.beginPath();
     g.moveTo(x, y - R);
     g.quadraticCurveTo(x + r, y - r, x + R, y);
@@ -95,61 +109,28 @@ export const FX = (function () {
     g.quadraticCurveTo(x - r, y - r, x, y - R);
     g.closePath();
   }
-  function drawSpark(x, y, R, c, al) {
-    g.globalAlpha = al * 0.22; g.fillStyle = c;
-    g.beginPath(); g.arc(x, y, R * 0.9, 0, TAU); g.fill();
-    g.globalAlpha = al; sparkPath(x, y, R); g.fill();
-    g.fillStyle = '#FFFFFF';
-    sparkPath(x, y, R * 0.45); g.fill();
-  }
-  /* six-armed snowflake glyph, radius s, centred on the transform origin */
-  function drawSnow(s, c) {
-    g.strokeStyle = c;
-    g.lineWidth = Math.max(1.2, s * 0.2);
+  function starPath(R, n, inner) {
     g.beginPath();
-    for (let a = 0; a < 6; a++) {
-      const ca = Math.cos(a * TAU / 6), sa = Math.sin(a * TAU / 6);
-      g.moveTo(0, 0); g.lineTo(ca * s, sa * s);
-      /* one V branch per arm */
-      const bx = ca * s * 0.55, by = sa * s * 0.55, bl = s * 0.32;
-      for (let sd = -1; sd <= 1; sd += 2) {
-        const ba = a * TAU / 6 + sd * 0.8;
-        g.moveTo(bx, by); g.lineTo(bx + Math.cos(ba) * bl, by + Math.sin(ba) * bl);
-      }
+    for (let i = 0; i < n * 2; i++) {
+      const a = (i / (n * 2)) * TAU - Math.PI / 2, r = i % 2 ? R * inner : R;
+      if (i) g.lineTo(Math.cos(a) * r, Math.sin(a) * r); else g.moveTo(Math.cos(a) * r, Math.sin(a) * r);
     }
-    g.stroke();
-    g.fillStyle = '#FFFFFF';
-    g.beginPath(); g.arc(0, 0, s * 0.18, 0, TAU); g.fill();
+    g.closePath();
   }
-
-  function drawAurora(tsec) {
-    const A = aurora, fadeIn = 0.9, fadeOut = 1.3;
-    let env = Math.min(1, A.t / fadeIn, Math.max(0, (A.dur - A.t) / fadeOut));
-    if (env <= 0) return;
-    env = env * env * (3 - 2 * env); /* smoothstep */
-    const tt = rm() ? 0 : tsec; /* reduced motion: static ribbons that only fade */
-    const step = Math.max(14, W / 36);
-    for (let i = 0; i < A.ribbons.length; i++) {
-      const rb = A.ribbons[i], y0 = rb.y * H, amp = rb.amp * H, th = rb.th * H;
-      const top = [];
-      for (let x = -step; x <= W + step; x += step) {
-        top.push([x, y0 + Math.sin(x * rb.f + tt * rb.sp + rb.ph) * amp + Math.sin(x * rb.f * 2.3 - tt * rb.sp * 0.6) * amp * 0.35]);
-      }
-      g.beginPath();
-      for (let j = 0; j < top.length; j++) { if (j) g.lineTo(top[j][0], top[j][1]); else g.moveTo(top[j][0], top[j][1]); }
-      for (let j = top.length - 1; j >= 0; j--) {
-        const x = top[j][0];
-        g.lineTo(x, top[j][1] + th * (0.55 + 0.45 * Math.sin(x * rb.f * 1.7 + tt * 0.8 + rb.ph * 2)));
-      }
-      g.closePath();
-      const gr = g.createLinearGradient(0, y0 - amp * 1.4, 0, y0 + th + amp * 1.4);
-      gr.addColorStop(0, rgba(rb.c, 0));
-      gr.addColorStop(0.45, rgba(rb.c, 0.3 * env)); /* gentle: text under it stays readable */
-      gr.addColorStop(1, rgba(rb.c, 0));
-      g.globalAlpha = 1;
-      g.fillStyle = gr;
-      g.fill();
-    }
+  function heartPath(s) {
+    g.beginPath();
+    g.moveTo(0, s * 0.9);
+    g.bezierCurveTo(-s * 1.3, 0, -s * 0.9, -s * 1.05, 0, -s * 0.45);
+    g.bezierCurveTo(s * 0.9, -s * 1.05, s * 1.3, 0, 0, s * 0.9);
+    g.closePath();
+  }
+  function drawSpark(x, y, R, c, al) {
+    g.globalAlpha = al * 0.25; g.fillStyle = c;
+    g.beginPath(); g.arc(x, y, R * 0.8, 0, TAU); g.fill();
+    g.globalAlpha = al;
+    sparkPath(x, y, R); g.fill();
+    g.fillStyle = '#FFFFFF';
+    sparkPath(x, y, R * 0.42); g.fill();
   }
 
   function frame(ts) {
@@ -166,12 +147,7 @@ export const FX = (function () {
     g.globalAlpha = 1;
     g.clearRect(0, 0, W, H);
 
-    if (aurora) {
-      aurora.t += dt;
-      if (aurora.t >= aurora.dur) aurora = null; else drawAurora(tsec);
-    }
 
-    /* rockets: move (ease-out), leave embers, call onArrive */
     for (i = rockets.length - 1; i >= 0; i--) {
       r = rockets[i];
       r.t += dt;
@@ -183,7 +159,7 @@ export const FX = (function () {
         for (let j = 0; j < 3; j++) {
           const f = Math.random();
           add({ t: EMBER, x: r.px + (r.x - r.px) * f + rand(-1.5, 1.5), y: r.py + (r.y - r.py) * f,
-            vx: rand(-20, 20), vy: rand(10, 50), gr: 50, dr: 0.9, life: rand(0.3, 0.55), r: rand(1.6, 3), c: pick(EMBER_C) });
+            vx: rand(-20, 20), vy: rand(10, 50), gr: 50, dr: 0.9, life: rand(0.3, 0.55), r: rand(2, 3.4), c: pick(T().spark) });
         }
       }
       if (q >= 1) {
@@ -192,7 +168,6 @@ export const FX = (function () {
       }
     }
 
-    /* update particles */
     for (i = parts.length - 1; i >= 0; i--) {
       p = parts[i];
       p.life -= dt;
@@ -207,37 +182,36 @@ export const FX = (function () {
         p.y += p.vy * dt;
         p.rot += p.vr * dt;
         p.fl += p.vf * dt;
-      } else if (p.t !== FLASH) {
+      } else if (p.t !== BANG) {
         const d = Math.pow(p.dr, dt * 60);
         p.vx *= d; p.vy *= d;
         p.vy += p.gr * dt;
         p.x += p.vx * dt; p.y += p.vy * dt;
-        if (p.vr) p.rot += p.vr * dt;
       }
     }
 
-    /* flashes first (soft tinted glow behind everything else) */
+    /* soft glow flashes first (behind the dots) */
     for (i = 0; i < parts.length; i++) {
       p = parts[i];
-      if (p.t !== FLASH) continue;
+      if (p.t !== BANG) continue;
       lf = p.life / p.max;
-      const rad = p.r * (1.6 - 0.6 * lf);
+      const rad = p.r * (1.5 - 0.5 * lf);
       const gr = g.createRadialGradient(p.x, p.y, 0, p.x, p.y, rad);
-      gr.addColorStop(0, rgba(p.c, 0.5 * lf));
+      gr.addColorStop(0, rgba('#FFFFFF', 0.85 * lf));
+      gr.addColorStop(0.35, rgba(p.c, 0.45 * lf));
       gr.addColorStop(1, rgba(p.c, 0));
       g.globalAlpha = 1; g.fillStyle = gr;
       g.beginPath(); g.arc(p.x, p.y, rad, 0, TAU); g.fill();
     }
 
-    /* expanding rings */
     for (i = rings.length - 1; i >= 0; i--) {
       const rg = rings[i];
       rg.life -= dt;
       if (rg.life <= 0) { rings.splice(i, 1); continue; }
       const q2 = 1 - rg.life / rg.max, ee = 1 - (1 - q2) * (1 - q2);
-      g.globalAlpha = (1 - q2) * 0.8;
-      g.strokeStyle = rg.c;
-      g.lineWidth = Math.max(0.5, rg.w * (1 - q2));
+      g.globalAlpha = (1 - q2) * 0.9;
+      g.strokeStyle = '#FFFFFF';
+      g.lineWidth = Math.max(1, rg.w * (1 - q2));
       g.beginPath(); g.arc(rg.x, rg.y, rg.r + (rg.R - rg.r) * ee, 0, TAU); g.stroke();
     }
 
@@ -247,44 +221,37 @@ export const FX = (function () {
       lf = p.life / p.max;
       if (p.t === DOT) {
         al = Math.min(1, lf * 1.6, p.fade ? (p.max - p.life) / 0.2 : 1);
-        const rr = p.r * (0.45 + 0.55 * lf);
+        const rr = p.r * (0.5 + 0.5 * lf);
         g.globalAlpha = al; g.fillStyle = p.c;
         g.beginPath(); g.arc(p.x, p.y, rr, 0, TAU); g.fill();
-        g.globalAlpha = al * 0.8; g.fillStyle = '#FFFFFF';
-        g.beginPath(); g.arc(p.x - rr * 0.3, p.y - rr * 0.3, rr * 0.35, 0, TAU); g.fill();
+        g.globalAlpha = al * 0.85; g.fillStyle = '#FFFFFF';
+        g.beginPath(); g.arc(p.x - rr * 0.32, p.y - rr * 0.32, rr * 0.34, 0, TAU); g.fill();
       } else if (p.t === SPARK) {
-        const tw = 0.6 + 0.4 * Math.sin(tsec * p.tf + p.ph);
-        al = Math.min(1, lf * 2, (p.max - p.life) / 0.15);
+        const tw = 0.7 + 0.3 * Math.sin(tsec * p.tf + p.ph);
+        al = Math.min(1, lf * 2, (p.max - p.life) / 0.12);
         drawSpark(p.x, p.y, p.r * (0.55 + 0.45 * lf) * tw * 2.4, p.c, al);
       } else if (p.t === FLAKE) {
         al = Math.min(1, p.life / 0.6, (p.max - p.life) / 0.3);
-        const cs = Math.cos(p.rot), sn = Math.sin(p.rot);
-        g.globalAlpha = al * 0.95;
-        if (p.kind === 0) {
-          g.setTransform(cs * dpr, sn * dpr, -sn * dpr, cs * dpr, p.x * dpr, p.y * dpr);
-          drawSnow(p.s, p.c);
-        } else {
-          const fl = Math.cos(p.fl);
-          g.setTransform(cs * dpr, sn * dpr, -sn * fl * dpr, cs * fl * dpr, p.x * dpr, p.y * dpr);
-          g.fillStyle = fl < 0 ? p.c2 : p.c;
-          g.beginPath();
-          if (p.kind === 1) g.arc(0, 0, p.s, 0, TAU);
-          else { g.moveTo(0, -p.s * 1.3); g.lineTo(p.s * 0.8, 0); g.lineTo(0, p.s * 1.3); g.lineTo(-p.s * 0.8, 0); g.closePath(); }
-          g.fill();
-          g.fillStyle = '#FFFFFF';
-          g.globalAlpha = al * 0.7;
-          g.beginPath(); g.arc(-p.s * 0.3, -p.s * 0.35, p.s * 0.3, 0, TAU); g.fill();
-        }
+        const cs = Math.cos(p.rot), sn = Math.sin(p.rot), fl = Math.cos(p.fl);
+        g.globalAlpha = al;
+        g.setTransform(cs * dpr, sn * dpr, -sn * fl * dpr, cs * fl * dpr, p.x * dpr, p.y * dpr);
+        g.fillStyle = fl < 0 ? p.c2 : p.c;
+        if (p.kind === 0) starPath(p.s * 1.3, 5, 0.48);
+        else if (p.kind === 1) { g.beginPath(); g.arc(0, 0, p.s, 0, TAU); }
+        else if (p.kind === 2) { g.beginPath(); g.rect(-p.s * 0.55, -p.s * 1.3, p.s * 1.1, p.s * 2.6); }
+        else heartPath(p.s * 1.15);
+        g.fill();
+        g.fillStyle = '#FFFFFF'; g.globalAlpha = al * 0.55;
+        g.beginPath(); g.arc(-p.s * 0.3, -p.s * 0.35, p.s * 0.3, 0, TAU); g.fill();
         g.setTransform(dpr, 0, 0, dpr, 0, 0);
       } else if (p.t === STREAK) {
         al = lf < 0.35 ? lf / 0.35 : 1;
         if (p.fk && lf < 0.5) al *= (Math.sin(tsec * 34 + p.ph) > 0 ? 1 : 0.3);
-        g.globalAlpha = al; g.strokeStyle = p.c; g.lineWidth = p.r;
-        g.beginPath(); g.moveTo(p.x - p.vx * 0.08, p.y - p.vy * 0.08); g.lineTo(p.x, p.y); g.stroke();
-        g.fillStyle = '#FFFFFF'; g.globalAlpha = al * 0.9;
-        g.beginPath(); g.arc(p.x, p.y, p.r * 0.45, 0, TAU); g.fill();
+        g.globalAlpha = al;
+        g.strokeStyle = p.c; g.lineWidth = p.r;
+        g.beginPath(); g.moveTo(p.x - p.vx * 0.07, p.y - p.vy * 0.07); g.lineTo(p.x, p.y); g.stroke();
       } else if (p.t === EMBER) {
-        g.globalAlpha = lf * 0.9; g.fillStyle = p.c;
+        g.globalAlpha = lf * 0.95; g.fillStyle = p.c;
         g.beginPath(); g.arc(p.x, p.y, p.r * (0.4 + 0.6 * lf), 0, TAU); g.fill();
       }
     }
@@ -292,64 +259,65 @@ export const FX = (function () {
     for (i = 0; i < rockets.length; i++) {
       r = rockets[i];
       if (r.still) continue;
-      g.globalAlpha = 0.55; g.strokeStyle = '#9A7BFF'; g.lineWidth = 3;
-      g.beginPath(); g.moveTo(r.x, r.y); g.lineTo(r.x - (r.x - r.px) * 3, r.y - (r.y - r.py) * 3); g.stroke();
-      drawSpark(r.x, r.y, 11, '#7FD3F2', 1);
+      drawSpark(r.x, r.y, 12, T().spark[0], 1);
     }
     g.globalAlpha = 1;
 
     inFrame = false;
-    if (parts.length || rings.length || rockets.length || aurora) raf = requestAnimationFrame(frame);
+    if (parts.length || rings.length || rockets.length) raf = requestAnimationFrame(frame);
   }
 
   /* ---------- public effects ---------- */
   function burst(x, y, colors, n) {
     if (!ensure()) return;
-    colors = (colors && colors.length) ? colors : ['#7FD3F2', '#C8B6FF', '#FF9FD6'];
-    n = k(n > 0 ? n : 20);
+    const th = T();
+    colors = (colors && colors.length) ? colors : th.main;
+    n = k(n > 0 ? n : 18);
     const still = rm();
+    add({ t: BANG, x: x, y: y, life: 0.32, r: still ? 34 : 44, rot: rand(0, TAU), c: colors[0] });
     for (let i = 0; i < n; i++) {
-      const a = Math.random() * TAU, sp = still ? 0 : rand(140, 380);
-      const off = still ? rand(8, 40) : 0;
-      add({ t: DOT, x: x + Math.cos(a) * off, y: y + Math.sin(a) * off, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - (still ? 0 : 50),
-        gr: still ? 0 : 520, dr: 0.92, life: rand(0.55, 0.95), r: rand(3, 6), c: colors[i % colors.length], fade: still });
+      const a = Math.random() * TAU, sp = still ? 0 : rand(160, 400);
+      const off = still ? rand(10, 44) : 0;
+      add({ t: DOT, x: x + Math.cos(a) * off, y: y + Math.sin(a) * off, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - (still ? 0 : 60),
+        gr: still ? 0 : 560, dr: 0.92, life: rand(0.5, 0.9), r: rand(3.5, 7), c: colors[i % colors.length], fade: still });
     }
-    for (let i = 0; i < Math.ceil(n / 4); i++) {
-      const a = Math.random() * TAU, sp = still ? 0 : rand(60, 200);
-      add({ t: SPARK, x: x + (still ? Math.cos(a) * 26 : 0), y: y + (still ? Math.sin(a) * 26 : 0), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
-        gr: still ? 0 : 120, dr: 0.93, life: rand(0.5, 0.85), r: rand(2.4, 3.6), tf: rand(14, 24), ph: rand(0, TAU), c: pick(SPARK_C) });
+    for (let i = 0; i < Math.ceil(n / 5); i++) {
+      const a = Math.random() * TAU, sp = still ? 0 : rand(80, 220);
+      add({ t: SPARK, x: x + (still ? Math.cos(a) * 28 : 0), y: y + (still ? Math.sin(a) * 28 : 0), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+        gr: still ? 0 : 140, dr: 0.93, life: rand(0.5, 0.8), r: rand(2.8, 4), tf: rand(14, 24), ph: rand(0, TAU), c: pick(th.spark) });
     }
-    rings.push({ x: x, y: y, r: 8, R: still ? 40 : rand(56, 76), life: 0.4, max: 0.4, c: colors[0], w: 4 });
+    rings.push({ x: x, y: y, r: 10, R: still ? 40 : rand(56, 74), life: 0.36, max: 0.36, w: 4 });
     kick();
   }
 
   function sparkle(x, y) {
     if (!ensure()) return;
-    const n = k(14), still = rm();
+    const th = T(), n = k(9), still = rm();
     for (let i = 0; i < n; i++) {
-      const a = Math.random() * TAU, sp = still ? 0 : rand(40, 200), off = still ? rand(6, 46) : rand(0, 6);
-      add({ t: SPARK, x: x + Math.cos(a) * off, y: y + Math.sin(a) * off, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - (still ? 0 : 30),
-        gr: still ? 0 : 120, dr: 0.93, life: rand(0.55, 1), r: rand(2.2, 3.8), tf: rand(12, 22), ph: rand(0, TAU), c: pick(SPARK_C) });
+      const a = Math.random() * TAU, sp = still ? 0 : rand(60, 220), off = still ? rand(8, 42) : rand(0, 6);
+      add({ t: SPARK, x: x + Math.cos(a) * off, y: y + Math.sin(a) * off, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - (still ? 0 : 40),
+        gr: still ? 0 : 160, dr: 0.92, life: rand(0.45, 0.8), r: rand(2.6, 4.2), tf: rand(12, 22), ph: rand(0, TAU), c: pick(th.spark) });
     }
-    add({ t: FLASH, x: x, y: y, life: 0.3, r: 34, c: '#9A7BFF' });
+    rings.push({ x: x, y: y, r: 6, R: still ? 26 : 38, life: 0.28, max: 0.28, w: 3.5 });
     kick();
   }
 
   function confetti(n) {
     if (!ensure()) return;
+    const th = T();
     n = k(n > 0 ? n : 60);
     const still = rm();
     for (let i = 0; i < n; i++) {
-      const c = pick(FROST), kind = Math.random() < 0.5 ? 0 : (Math.random() < 0.6 ? 1 : 2);
-      const base = { t: FLAKE, kind: kind, c: c, c2: shade(c, -0.25), s: kind === 0 ? rand(6, 10) : rand(3.5, 6),
-        rot: rand(0, TAU), fl: rand(0, TAU), ph: rand(0, TAU) };
+      const c = pick(th.main);
+      let kind = (Math.random() * 3) | 0;
+      if (th.hearts && Math.random() < 0.3) kind = 3;
+      const base = { t: FLAKE, kind: kind, c: c, c2: shade(c, -0.22), s: rand(4.5, 7.5), rot: rand(0, TAU), fl: rand(0, TAU), ph: rand(0, TAU) };
       if (still) {
-        /* reduced motion: flakes appear where they are, hang still and fade */
         add(Object.assign(base, { x: rand(0, W), y: rand(0, H * 0.85), vx: 0, vy: 0, term: 0, sf: 0, sw: 0, vr: 0, vf: 0, life: rand(1.6, 2.6) }));
       } else {
-        add(Object.assign(base, { x: rand(0, W), y: rand(-H * 0.35, -14), vx: rand(-16, 16), vy: rand(40, 110),
-          term: Math.max(90, H * rand(0.14, 0.24)), sf: rand(1.2, 2.6), sw: rand(14, 38),
-          vr: rand(-2, 2), vf: kind === 0 ? 0 : rand(4, 9), life: 9 }));
+        add(Object.assign(base, { x: rand(0, W), y: rand(-H * 0.35, -14), vx: rand(-16, 16), vy: rand(60, 140),
+          term: Math.max(110, H * rand(0.16, 0.28)), sf: rand(1.2, 2.6), sw: rand(14, 38),
+          vr: rand(-3, 3), vf: rand(4, 9), life: 8 }));
       }
     }
     kick();
@@ -357,33 +325,32 @@ export const FX = (function () {
 
   function firework(x, y, hue) {
     if (!ensure()) return;
+    const th = T();
     const h = (typeof hue === 'number' && isFinite(hue)) ? ((hue % 360) + 360) % 360 : rand(0, 360);
-    const pair = FIRE[Math.floor(h / 72) % FIRE.length], c1 = pair[0], c2 = pair[1];
-    const base = clamp(Math.min(W, H) * 0.55, 180, 380);
+    const pair = th.fire[Math.floor(h / 72) % th.fire.length], c1 = pair[0], c2 = pair[1];
+    const base = clamp(Math.min(W, H) * 0.36, 130, 260);
     if (rm()) {
-      /* static sparkle ring that fades in place */
-      for (let i = 0; i < 16; i++) {
-        const a = (i / 16) * TAU, d = base * rand(0.18, 0.42);
+      for (let i = 0; i < 14; i++) {
+        const a = (i / 14) * TAU, d = base * rand(0.18, 0.42);
         add({ t: SPARK, x: x + Math.cos(a) * d, y: y + Math.sin(a) * d, vx: 0, vy: 0, gr: 0, dr: 1,
-          life: rand(1, 1.5), r: rand(2.4, 3.6), tf: rand(6, 10), ph: rand(0, TAU), c: i % 3 ? c1 : c2 });
+          life: rand(1, 1.5), r: rand(2.6, 3.8), tf: rand(6, 10), ph: rand(0, TAU), c: i % 3 ? c1 : c2 });
       }
-      add({ t: FLASH, x: x, y: y, life: 0.5, r: 50, c: c1 });
+      add({ t: BANG, x: x, y: y, life: 0.5, r: 40, rot: 0, c: c1 });
       kick();
       return;
     }
-    const n = 64;
+    const n = 32;
     for (let i = 0; i < n; i++) {
       const a = (i / n) * TAU + rand(-0.06, 0.06), sp = base * (0.45 + 0.55 * Math.sqrt(Math.random())), q = Math.random();
       add({ t: STREAK, x: x, y: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, gr: 140, dr: 0.97,
-        life: rand(0.9, 1.4), r: rand(2, 3.2), fk: Math.random() < 0.35, ph: rand(0, TAU), c: q < 0.6 ? c1 : (q < 0.85 ? shade(c1, 0.25) : c2) });
+        life: rand(0.9, 1.3), r: rand(3, 4.4), fk: Math.random() < 0.3, ph: rand(0, TAU), c: q < 0.6 ? c1 : (q < 0.85 ? shade(c1, 0.25) : c2) });
     }
-    /* lingering glitter that drifts down slowly */
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < 12; i++) {
       const a = Math.random() * TAU, sp = base * rand(0.15, 0.5);
       add({ t: SPARK, x: x, y: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, gr: 40, dr: 0.95,
-        life: rand(1.2, 1.8), r: rand(2.2, 3.4), tf: rand(10, 18), ph: rand(0, TAU), c: pick([c1, c2, '#9A7BFF', '#7FD3F2']) });
+        life: rand(1.1, 1.7), r: rand(2.6, 3.8), tf: rand(10, 18), ph: rand(0, TAU), c: pick([c1, c2].concat(th.spark)) });
     }
-    add({ t: FLASH, x: x, y: y, life: 0.35, r: 46, c: c1 });
+    add({ t: BANG, x: x, y: y, life: 0.3, r: 38, rot: rand(0, TAU), c: c1 });
     kick();
   }
 
@@ -400,27 +367,21 @@ export const FX = (function () {
     if (!ensure()) return;
     ms = ms > 0 ? ms : 5000;
     const end = now() + ms;
-    aurora = {
-      t: 0, dur: ms / 1000 + 0.6,
-      ribbons: AURORA_C.slice(0, 3).map(function (c, i) {
-        /* three soft ribbons in the top quarter of the screen */
-        return { c: c, y: 0.03 + i * 0.07 + rand(-0.015, 0.015), amp: rand(0.02, 0.035), th: rand(0.06, 0.1),
-          f: rand(0.004, 0.008) * (390 / Math.max(390, W)) * 1.4, sp: rand(0.5, 0.9) * (i % 2 ? -1 : 1), ph: rand(0, TAU) };
-      })
-    };
+    let side = Math.random() < 0.5 ? 0 : 1;
     if (showTimer) clearTimeout(showTimer);
     (function launch() {
       showTimer = 0;
-      if (now() >= end - 700) return; /* last launch well before the end: the show ends tidily */
-      /* page hidden: no frames run, so rockets would pile up and all burst at once on return */
+      if (now() >= end - 700) return;
       if (document.hidden) { showTimer = setTimeout(launch, 600); return; }
-      const x1 = rand(0.14, 0.86) * W, y1 = rand(0.12, 0.5) * H, hue = rand(0, 360);
+      /* fireworks only at the screen sides / top corners, never over the card in the middle */
+      side = 1 - side;
+      const x1 = (side ? rand(0.76, 0.94) : rand(0.06, 0.24)) * W, y1 = rand(0.05, 0.18) * H, hue = rand(0, 360);
       if (rm()) {
         firework(x1, y1, hue);
         snd('sparkle');
       } else {
         snd('whoosh');
-        rocket(clamp(x1 + rand(-0.12, 0.12) * W, 0.06 * W, 0.94 * W), H + 8, x1, y1, function () { firework(x1, y1, hue); snd('boom'); });
+        rocket(clamp(x1 + rand(-0.04, 0.04) * W, 0.04 * W, 0.96 * W), H + 8, x1, y1, function () { firework(x1, y1, hue); snd('boom'); });
       }
       showTimer = setTimeout(launch, rm() ? rand(850, 1150) : rand(520, 820));
     })();
@@ -428,7 +389,7 @@ export const FX = (function () {
   }
 
   function clear() {
-    parts.length = 0; rings.length = 0; rockets.length = 0; aurora = null;
+    parts.length = 0; rings.length = 0; rockets.length = 0;
     if (showTimer) { clearTimeout(showTimer); showTimer = 0; }
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
     if (g) {
@@ -438,7 +399,11 @@ export const FX = (function () {
     }
   }
 
-  return { burst: burst, sparkle: sparkle, confetti: confetti, firework: firework, rocket: rocket, show: show, clear: clear };
+  function setTheme(t) { forced = (t === 'boy' || t === 'girl') ? t : null; }
+  function palette() { return T().main.slice(); }
+
+  return { burst: burst, sparkle: sparkle, confetti: confetti, firework: firework, rocket: rocket, show: show, clear: clear,
+    setTheme: setTheme, palette: palette };
 })();
 
 export default FX;

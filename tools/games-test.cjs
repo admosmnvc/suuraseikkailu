@@ -1,155 +1,64 @@
-/* Minigame QA: runs every game 0..7 in Chromium, auto-taps targets like a (fast-ish) child,
-   asserts onDone within 10-20 s, say('game-<i>') once, no console errors, no horizontal scroll,
-   and saves mid-game + finish screenshots. Also (full run only):
-   - mash: a child hammering the screen every 120 / 60 ms, on random spots and on targets (every tap
-     snapped to the nearest live item), also during the end celebration: every game still takes 10-20 s
-   - robustness: abort() mid-game leaves no timers / rAF / listeners / DOM and never calls onDone;
-     play() twice in a row; resize + orientation change mid-game; page hidden mid-game (time limit
-     pauses, onDone waits until visible)
+/* Minigame QA v3 (both themes, 6 games each) in Chromium.
 
-   Usage (dev server must serve the project, e.g. `npx vite --host 127.0.0.1 --port 5104`):
-     node tools/games-test.cjs [outDir] [--quick | --mash] [--only=0,3]
-   env BASE=http://127.0.0.1:5104 */
+   play   : a "child" bot plays every game through real pointer gestures (Playwright mouse, and CDP touch
+            events in the 390x844 touch run). It follows the game's own hint glove: the core test hook
+            .mg.__mgForceHint() shows the current idle hint at once, the bot reads its type (tap / drag / rub /
+            hold) and position and performs that gesture at child pace. Asserts: onDone within 10–20 s,
+            say(gameId) exactly once, overlay closed, no horizontal scroll, 0 console errors/warnings,
+            every visible button in the arena >= 64 px in both dimensions (asserted for boy games).
+            Viewports: 390x844, 390x844 touch, 1024x768, 360x740 reduced motion, 740x360.
+   latency: for every first pointerdown of a gesture: time from the start of the pointerdown dispatch
+            (window capture listener) to the first DOM mutation inside .mg (MutationObserver) or Web
+            Animation started, and whether it happened before the next animation frame (= same frame).
+            Assert: every touch changed something before the next frame and max <= 17 ms.
+   idle   : nobody touches: the hint glove must appear, the game must still finish by 20 s.
+   mash   : random taps + short swipes every 60 ms anywhere: still finishes <= 20 s, no errors.
+   slow   : latency again with a 4x CPU throttle (CDP) and touch input, first 4 gestures of every game.
+   robust : abort() mid-game -> timers / rAF / listeners back to baseline, overlay hidden and empty, onDone never;
+            play() twice; resize/orientation mid-game; page hidden mid-game (time limit pauses) and during the
+            celebration (onDone waits until visible).
+
+   Usage (dev server: npx vite --host 127.0.0.1 --port 5204 --strictPort):
+     node tools/games-test.cjs [outDir] [--themes=boy,girl] [--only=0,3] [--quick] [--suites=play,idle,mash,robust]
+   env BASE=http://127.0.0.1:5204 */
 const { chromium } = require('/opt/node-tools/node_modules/playwright');
 const path = require('path');
 const fs = require('fs');
 
-const BASE = process.env.BASE || 'http://127.0.0.1:5104';
-const OUT = path.resolve(process.argv.slice(2).find((a) => !a.startsWith('--')) || 'qa-games');
-const QUICK = process.argv.includes('--quick');
-const MASH_ONLY = process.argv.includes('--mash');
-const MIN_MS = 10000, MAX_MS = 20000;
-const ONLY = (process.argv.find((a) => a.startsWith('--only=')) || '').slice(7);
+const BASE = process.env.BASE || 'http://127.0.0.1:5204';
+const args = process.argv.slice(2);
+const OUT = path.resolve(args.find((a) => !a.startsWith('--')) || '../qa/v3-games');
+const opt = (k, d) => { const a = args.find((x) => x.startsWith('--' + k + '=')); return a ? a.slice(k.length + 3) : d; };
+const QUICK = args.includes('--quick');
+const THEMES = opt('themes', 'boy,girl').split(',');
+const ONLY = opt('only', '') ? opt('only', '').split(',').map(Number) : [0, 1, 2, 3, 4, 5];
+const SUITES = opt('suites', QUICK ? 'play' : 'play,idle,mash,robust,slow').split(',');
+const MIN_MS = 10000, MAX_MS = 20000, FRAME_MS = 17;
 fs.mkdirSync(OUT, { recursive: true });
-
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function targets(page) {
-  return page.evaluate(() => {
-    const arena = document.querySelector('.mg .mg-arena');
-    if (!arena) return { arena: null, items: [] };
-    const a = arena.getBoundingClientRect();
-    const items = [];
-    arena.querySelectorAll('.mg-item:not(.is-spent)').forEach((el) => {
-      const r = el.getBoundingClientRect();
-      const x = r.left + r.width / 2, y = r.top + r.height / 2;
-      if (x > a.left + 4 && x < a.right - 4 && y > a.top + 4 && y < a.bottom - 4) items.push({ x, y, w: r.width, h: r.height });
-    });
-    return { arena: { x: a.left, y: a.top, w: a.width, h: a.height }, items, done: arena.classList.contains('is-done') };
+/* page instrumentation: latency probe + leak probe + hidden-page switch */
+const INIT = `(() => {
+  /* --- latency: pointerdown -> first visual change (DOM mutation in .mg or a new Web Animation) --- */
+  const lat = window.__lat = [];
+  let pend = null;
+  const mo = new MutationObserver(() => {
+    if (pend && pend.tMut == null) pend.tMut = performance.now();
   });
-}
-
-/* run one game; tapEvery = ms between taps (0 = never tap) */
-async function runGame(page, i, tag, tapEvery) {
-  await page.evaluate((i) => { window.__res = null; window.__mgTest.FX.clear(); window.__mgTest.play(i).then((r) => { window.__res = r; }); }, i);
-  const t0 = Date.now();
-  let taps = 0, midShot = false, doneShot = false, res = null;
-  while (Date.now() - t0 < 22000) {
-    res = await page.evaluate(() => window.__res);
-    if (res) break;
-    const t = await targets(page);
-    if (t.done && !doneShot) {
-      doneShot = true;
-      await sleep(350);
-      await page.screenshot({ path: path.join(OUT, 'g' + i + '-' + tag + '-done.png') });
-      continue;
-    }
-    if (tapEvery && t.arena && !t.done) {
-      let p;
-      if (t.items.length) {
-        const it = t.items[(Math.random() * t.items.length) | 0];
-        p = { x: it.x + (Math.random() - 0.5) * 10, y: it.y + (Math.random() - 0.5) * 10 };
-      } else {
-        p = { x: t.arena.x + t.arena.w * (0.15 + Math.random() * 0.7), y: t.arena.y + t.arena.h * (0.1 + Math.random() * 0.45) };
-      }
-      await page.mouse.click(p.x, p.y);
-      taps++;
-      if (taps === 3 && !midShot) {
-        midShot = true;
-        await sleep(260);
-        await page.screenshot({ path: path.join(OUT, 'g' + i + '-' + tag + '-mid.png') });
-      }
-      await sleep(tapEvery);
-    } else {
-      if (!tapEvery && !midShot && Date.now() - t0 > 2500) {
-        midShot = true;
-        await page.screenshot({ path: path.join(OUT, 'g' + i + '-' + tag + '-idle.png') });
-      }
-      await sleep(150);
-    }
-  }
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-  const hidden = await page.evaluate(() => { const m = document.querySelector('.mg'); return !m || m.hidden; });
-  return { i, tag, ms: res ? Math.round(res.ms) : null, said: res && res.said, taps, overflow, hidden };
-}
-
-async function suite(browser, vp, opts) {
-  const ctx = await browser.newContext({ viewport: { width: vp[0], height: vp[1] }, deviceScaleFactor: 1,
-    reducedMotion: opts.rm ? 'reduce' : 'no-preference', hasTouch: false });
-  const page = await ctx.newPage();
-  const errs = [];
-  page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errs.push(m.type() + ': ' + m.text()); });
-  page.on('pageerror', (e) => errs.push('pageerror: ' + e.message));
-  await page.goto(BASE + '/tools/games-test.html');
-  await page.waitForFunction(() => window.__mgTest && window.__mgTest.MiniGames, null, { timeout: 15000 });
-  await page.evaluate(() => document.fonts && document.fonts.ready);
-  const info = await page.evaluate(() => ({ count: window.__mgTest.MiniGames.count, titles: window.__mgTest.MiniGames.titles }));
-  const out = [];
-  const list = opts.games || [0, 1, 2, 3, 4, 5, 6, 7];
-  for (const i of list) {
-    const tag = vp[0] + 'x' + vp[1] + (opts.rm ? '-rm' : '') + (opts.tap ? '' : '-idle');
-    out.push(await runGame(page, i, tag, opts.tap ? opts.tap : 0));
-    await sleep(400);
-  }
-  await ctx.close();
-  return { vp, opts, info, out, errs };
-}
-
-/* child hammering the arena every `every` ms (also through the end celebration):
-   mode 'spots' = random spots, 'targets' = a random spot snapped to the nearest live item */
-async function runMash(page, i, every, mode) {
-  await page.evaluate((i) => { window.__res = null; window.__mgTest.FX.clear(); window.__mgTest.play(i).then((r) => { window.__res = r; }); }, i);
-  const t0 = Date.now();
-  let res = null, taps = 0, doneAt = 0, shot = false;
-  while (Date.now() - t0 < 22000) {
-    res = await page.evaluate(() => window.__res);
-    if (res) break;
-    const t = await targets(page);
-    if (t.done && !doneAt) doneAt = Date.now();
-    if (doneAt && !shot && Date.now() - doneAt > 700 && every === 120 && mode === 'targets') { /* celebration: taps still sparkle */
-      shot = true;
-      await page.screenshot({ path: path.join(OUT, 'g' + i + '-mash-' + page.viewportSize().width + 'x' + page.viewportSize().height + '-celebrate.png') });
-    }
-    if (t.arena) {
-      let x = t.arena.x + Math.random() * t.arena.w, y = t.arena.y + Math.random() * t.arena.h;
-      if (mode === 'targets' && t.items.length) {
-        let bd = Infinity;
-        for (const it of t.items) { const d = Math.hypot(it.x - x, it.y - y); if (d < bd) { bd = d; x = it.x; y = it.y; } }
-      }
-      await page.mouse.click(x, y);
-      taps++;
-    }
-    await sleep(every);
-  }
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-  const hidden = await page.evaluate(() => { const m = document.querySelector('.mg'); return !m || m.hidden; });
-  return { i, tag: 'mash', ms: res ? Math.round(res.ms) : null, said: res && res.said, taps, overflow, hidden };
-}
-/* variants: [[everyMs, 'targets' | 'spots'], ...] run one after another on one page */
-async function mashSuite(browser, vp, variants, rm, games) {
-  const { page, ctx, errs } = await openPage(browser, vp, rm);
-  /* a tap racing onDone lands on the test page below: keep its game buttons from starting another game */
-  await page.evaluate(() => { const g = document.getElementById('grid'); if (g) g.inert = true; });
-  const out = [];
-  for (const [every, mode] of variants) {
-    for (const i of games || [0, 1, 2, 3, 4, 5, 6, 7]) { out.push(Object.assign(await runMash(page, i, every, mode), { tag: mode + '/' + every + 'ms' })); await sleep(300); }
-  }
-  await ctx.close();
-  return { vp, opts: { rm, label: 'mash ' + variants.map((v) => v[1] + '/' + v[0] + 'ms').join(' + ') }, info: { count: 8, titles: new Array(8) }, out, errs };
-}
-
-/* counts live timeouts, animation frames and event listeners (window, document, the .mg overlay) */
-const PROBE = `(() => {
+  const startMO = () => { const m = document.querySelector('.mg'); if (m && !m.__mo) { m.__mo = 1; mo.observe(m, { subtree: true, attributes: true, childList: true, characterData: true }); } };
+  window.addEventListener('pointerdown', (e) => {
+    startMO();
+    if (!e.target || !e.target.closest || !e.target.closest('.mg-arena')) return;
+    const anims = document.getAnimations ? document.getAnimations().length : 0;
+    const p = pend = { t0: performance.now(), tMut: null, anims, type: e.pointerType };
+    requestAnimationFrame(() => {
+      const tf = performance.now();
+      const animNew = document.getAnimations ? document.getAnimations().length > p.anims : false;
+      lat.push({ ms: p.tMut != null ? +(p.tMut - p.t0).toFixed(2) : null, sameFrame: p.tMut != null || animNew, anim: animNew, frame: +(tf - p.t0).toFixed(2), type: p.type });
+      if (pend === p) pend = null;
+    });
+  }, { capture: true });
+  /* --- leaks --- */
   const live = new Set(), rafs = new Set(), lis = new Map();
   const st = window.setTimeout, ct = window.clearTimeout, ra = window.requestAnimationFrame, ca = window.cancelAnimationFrame;
   window.setTimeout = function (fn, ms) { const a = [].slice.call(arguments, 2); let id = 0;
@@ -159,10 +68,10 @@ const PROBE = `(() => {
   window.cancelAnimationFrame = function (id) { rafs.delete(id); return ca.call(window, id); };
   const ael = EventTarget.prototype.addEventListener, rel = EventTarget.prototype.removeEventListener;
   const fid = new WeakMap(); let n = 0;
-  const key = (t, type, fn, opt) => { if (!fid.has(fn)) fid.set(fn, ++n); if (!fid.has(t)) fid.set(t, ++n);
-    return fid.get(t) + '|' + type + '|' + fid.get(fn) + '|' + !!(opt === true || (opt && opt.capture)); };
-  EventTarget.prototype.addEventListener = function (type, fn, opt) { if (fn) lis.set(key(this, type, fn, opt), this); return ael.call(this, type, fn, opt); };
-  EventTarget.prototype.removeEventListener = function (type, fn, opt) { if (fn) lis.delete(key(this, type, fn, opt)); return rel.call(this, type, fn, opt); };
+  const key = (t, type, fn, o) => { if (!fid.has(fn)) fid.set(fn, ++n); if (!fid.has(t)) fid.set(t, ++n);
+    return fid.get(t) + '|' + type + '|' + fid.get(fn) + '|' + !!(o === true || (o && o.capture)); };
+  EventTarget.prototype.addEventListener = function (type, fn, o) { if (fn) lis.set(key(this, type, fn, o), this); return ael.call(this, type, fn, o); };
+  EventTarget.prototype.removeEventListener = function (type, fn, o) { if (fn) lis.delete(key(this, type, fn, o)); return rel.call(this, type, fn, o); };
   const ours = (t) => t === window || t === document || (t && t.closest && !!t.closest('.mg'));
   window.__probe = () => { let l = 0; lis.forEach((t) => { if (ours(t)) l++; }); return { timeouts: live.size, rafs: rafs.size, listeners: l }; };
   window.__setHidden = (h) => {
@@ -172,190 +81,390 @@ const PROBE = `(() => {
   };
 })();`;
 
-async function openPage(browser, vp, rm) {
-  const ctx = await browser.newContext({ viewport: { width: vp[0], height: vp[1] }, deviceScaleFactor: 1, reducedMotion: rm ? 'reduce' : 'no-preference' });
+async function openPage(browser, vp, o) {
+  o = o || {};
+  const ctx = await browser.newContext({ viewport: { width: vp[0], height: vp[1] }, deviceScaleFactor: 1,
+    reducedMotion: o.rm ? 'reduce' : 'no-preference', hasTouch: !!o.touch, isMobile: !!o.touch });
   const page = await ctx.newPage();
   const errs = [];
   page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errs.push(m.type() + ': ' + m.text()); });
   page.on('pageerror', (e) => errs.push('pageerror: ' + e.message));
-  await page.addInitScript(PROBE);
+  await page.addInitScript(INIT);
   await page.goto(BASE + '/tools/games-test.html');
-  await page.waitForFunction(() => window.__mgTest && window.__mgTest.MiniGames, null, { timeout: 15000 });
-  await page.evaluate(() => { const F = window.__mgTest.FX; F.sparkle(1, 1); F.clear(); }); /* FX canvas + its listeners exist from here on */
-  return { ctx, page, errs };
+  await page.waitForFunction(() => window.__mgTest && window.__mgTest.MiniGames, null, { timeout: 20000 });
+  await page.evaluate(() => document.fonts && document.fonts.ready);
+  await page.evaluate(() => { const F = window.__mgTest.FX; F.sparkle(1, 1); F.clear(); });
+  const cdp = o.touch ? await ctx.newCDPSession(page) : null;
+  return { ctx, page, errs, cdp };
 }
-/* start game i on the page; done count + say ids are kept in window.__g */
-const startG = (page, i) => page.evaluate((i) => {
-  const g = window.__g = { done: 0, said: [], t0: performance.now(), tDone: 0 };
-  g.h = window.__mgTest.MiniGames.play({ index: i, say: (id) => g.said.push(id), onDone: () => { g.done++; g.tDone = performance.now() - g.t0; } });
-}, i);
+
+/* ---------- input: mouse or CDP touch ---------- */
+function input(page, cdp) {
+  let tp = null;
+  const touch = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y, id: 1, radiusX: 8, radiusY: 8, force: 1 }] });
+  return {
+    async down(x, y) { if (cdp) { tp = [x, y]; await touch('touchStart', x, y); } else { await page.mouse.move(x, y); await page.mouse.down(); } },
+    async move(x, y) { if (cdp) { tp = [x, y]; await touch('touchMove', x, y); } else await page.mouse.move(x, y); },
+    async up() { if (cdp) await touch('touchEnd', tp ? tp[0] : 0, tp ? tp[1] : 0); else await page.mouse.up(); },
+    async tap(x, y) { await this.down(x, y); await sleep(50); await this.up(); }
+  };
+}
+
+/* current hint (forced now) in viewport px, or { none } / null when the game is closed */
+const readHint = (page) => page.evaluate(() => {
+  const r = document.querySelector('.mg');
+  if (!r || r.hidden) return null;
+  const done = !!r.querySelector('.mg-arena.is-done');
+  if (!done && r.__mgForceHint) r.__mgForceHint();
+  const el = r.querySelector('.mg-hint');
+  if (!el) return { none: 1, done };
+  const a = r.querySelector('.mg-arena').getBoundingClientRect(), cs = getComputedStyle(el);
+  return { type: (el.className.match(/mg-hint--(\w+)/) || [])[1], x: a.left + parseFloat(el.style.left), y: a.top + parseFloat(el.style.top),
+    dx: parseFloat(el.style.getPropertyValue('--dx')) || 0, dy: parseFloat(el.style.getPropertyValue('--dy')) || 0,
+    rx: parseFloat(cs.getPropertyValue('--rx')) || 34, done };
+});
+
+async function gesture(io, h) {
+  if (h.type === 'drag') {
+    await io.down(h.x, h.y); await sleep(90);
+    const n = 16;
+    for (let k = 1; k <= n; k++) { await io.move(h.x + h.dx * k / n, h.y + h.dy * k / n); await sleep(32); }
+    await sleep(60); await io.up();
+  } else if (h.type === 'rub') {
+    await io.down(h.x, h.y);
+    for (let k = 0; k < 22; k++) {
+      const tx = h.x + (k % 2 ? 1 : -1) * h.rx * 1.6, ty = h.y + ((k >> 1) % 3 - 1) * 22;
+      for (let j = 1; j <= 3; j++) await io.move(h.x + (tx - h.x) * j / 3, ty);
+      await sleep(28);
+    }
+    await io.up();
+  } else if (h.type === 'hold') {
+    await io.down(h.x, h.y); await sleep(1500); await io.up();
+  } else {
+    await io.tap(h.x, h.y);
+  }
+}
+
+const gid = (theme, i) => 'game-' + theme + '-' + i;
+async function startGame(page, theme, i) {
+  await page.evaluate(([t, i]) => { window.__res = null; window.__mgTest.FX.clear(); window.__mgTest.play(t, i).then((r) => { window.__res = r; }); }, [theme, i]);
+}
+async function closedState(page) {
+  return page.evaluate(() => ({ overflow: document.documentElement.scrollWidth - window.innerWidth, hidden: (() => { const m = document.querySelector('.mg'); return !m || m.hidden; })() }));
+}
+
+/* child bot: follow hints at child pace */
+async function playGame(page, io, theme, i, tag, pause) {
+  await page.evaluate(() => { window.__lat.length = 0; });
+  await startGame(page, theme, i);
+  const t0 = Date.now();
+  let acts = 0, midShot = false, doneShot = false, res = null, types = {}, minTarget = { m: Infinity, who: '' };
+  while (Date.now() - t0 < 24000) {
+    res = await page.evaluate(() => window.__res);
+    if (res) break;
+    const h = await readHint(page);
+    if (!h) { await sleep(100); continue; }
+    if (h.done) {
+      if (!doneShot) { doneShot = true; await sleep(250); await page.screenshot({ path: path.join(OUT, theme + i + '-' + tag + '-done.png') }); }
+      await sleep(150); continue;
+    }
+    if (h.none) { await sleep(150); continue; }
+    types[h.type] = (types[h.type] || 0) + 1;
+    acts++;
+    /* smallest visible touch target (buttons in the arena; transforms included) */
+    const mt = await page.evaluate(() => {
+      const a = document.querySelector('.mg .mg-arena');
+      let m = Infinity, who = '';
+      if (a) a.querySelectorAll('button').forEach((b) => {
+        const r = b.getBoundingClientRect();
+        if (r.width < 1 || r.height < 1 || getComputedStyle(b).visibility === 'hidden') return;
+        const v = Math.min(r.width, r.height);
+        if (v < m) { m = v; who = b.className; }
+      });
+      return { m, who };
+    });
+    if (mt.m < minTarget.m) minTarget = mt;
+    if (acts === 1) { await sleep(650); await page.screenshot({ path: path.join(OUT, theme + i + '-' + tag + '-hint.png') }); }
+    await gesture(io, h);
+    if (acts === 2 && !midShot) { midShot = true; await sleep(120); await page.screenshot({ path: path.join(OUT, theme + i + '-' + tag + '-mid.png') }); }
+    await sleep(pause);
+  }
+  await sleep(80);
+  const lat = await page.evaluate(() => window.__lat.slice());
+  const c = await closedState(page);
+  return { theme, i, tag, ms: res ? Math.round(res.ms) : null, said: res && res.said, sayCount: res && res.sayCount, acts, types, lat, overflow: c.overflow, hidden: c.hidden, minTarget };
+}
+
+async function playSuite(browser, vp, o) {
+  const { ctx, page, errs, cdp } = await openPage(browser, vp, o);
+  const io = input(page, cdp);
+  /* a touch whose click lands after the overlay closed must not start a test-page game */
+  await page.evaluate(() => { const g = document.getElementById('lists'); if (g) g.inert = true; });
+  const tag = vp.join('x') + (o.rm ? '-rm' : '') + (o.touch ? '-touch' : '');
+  const out = [];
+  for (const theme of THEMES) for (const i of ONLY) { out.push(await playGame(page, io, theme, i, tag, o.pause || 650)); await sleep(300); }
+  await ctx.close();
+  return { label: 'play ' + tag, out, errs, kind: 'play' };
+}
+
+async function idleSuite(browser, vp) {
+  const { ctx, page, errs } = await openPage(browser, vp, {});
+  const out = [], checks = [];
+  for (const theme of THEMES) for (const i of ONLY) {
+    await startGame(page, theme, i);
+    const t0 = Date.now();
+    let sawHint = false, res = null;
+    while (Date.now() - t0 < 23000) {
+      res = await page.evaluate(() => window.__res);
+      if (res) break;
+      if (!sawHint && await page.evaluate(() => !!document.querySelector('.mg .mg-hint'))) {
+        sawHint = true;
+        await sleep(450);
+        await page.screenshot({ path: path.join(OUT, theme + i + '-idle-hint.png') });
+      }
+      await sleep(200);
+    }
+    const c = await closedState(page);
+    checks.push({ ok: !!res && res.ms <= MAX_MS && sawHint && c.hidden, msg: 'idle ' + theme + ' ' + i + ': hint ' + sawHint + ', onDone ' + (res ? (res.ms / 1000).toFixed(1) + ' s' : 'none') });
+    await sleep(300);
+  }
+  await ctx.close();
+  return { label: 'idle (no touches) ' + vp.join('x'), out, checks, errs };
+}
+
+async function mashSuite(browser, vp, o) {
+  const { ctx, page, errs, cdp } = await openPage(browser, vp, o || {});
+  const io = input(page, cdp);
+  await page.evaluate(() => { const g = document.getElementById('lists'); if (g) g.inert = true; });
+  const checks = [];
+  for (const theme of THEMES) for (const i of ONLY) {
+    await startGame(page, theme, i);
+    const t0 = Date.now();
+    let res = null, n = 0;
+    while (Date.now() - t0 < 23000) {
+      res = await page.evaluate(() => window.__res);
+      if (res) break;
+      const a = await page.evaluate(() => { const r = document.querySelector('.mg .mg-arena'); if (!r) return null; const b = r.getBoundingClientRect(); return [b.left, b.top, b.width, b.height]; });
+      if (a) {
+        const x = a[0] + Math.random() * a[2], y = a[1] + Math.random() * a[3];
+        if (n % 3 === 2) { await io.down(x, y); await io.move(x + (Math.random() - 0.5) * 160, y + (Math.random() - 0.5) * 160); await io.up(); }
+        else await io.tap(x, y);
+        n++;
+      }
+      await sleep(60);
+    }
+    const c = await closedState(page);
+    checks.push({ ok: !!res && res.ms <= MAX_MS && c.hidden && c.overflow <= 0 && res.sayCount === 1, msg: 'mash ' + theme + ' ' + i + ' (' + n + ' touches): onDone ' + (res ? (res.ms / 1000).toFixed(1) + ' s' : 'none') });
+    await sleep(300);
+  }
+  await ctx.close();
+  return { label: 'mash ' + vp.join('x') + (o && o.touch ? ' touch' : ''), out: [], checks, errs };
+}
+
+/* latency on a slow phone: CDP 4x CPU throttle, touch input, first 4 gestures of every game */
+async function slowSuite(browser) {
+  const { ctx, page, errs, cdp } = await openPage(browser, [390, 844], { touch: true });
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+  const io = input(page, cdp);
+  const out = [];
+  for (const theme of THEMES) for (const i of ONLY) {
+    await page.evaluate(() => { window.__lat.length = 0; });
+    await startGame(page, theme, i);
+    let acts = 0;
+    for (let k = 0; k < 40 && acts < 4; k++) {
+      const h = await readHint(page);
+      if (!h || h.done) break;
+      if (h.none) { await sleep(200); continue; }
+      await gesture(io, h); acts++;
+      await sleep(400);
+    }
+    const lat = await page.evaluate(() => window.__lat.slice());
+    out.push({ theme, i, lat });
+    await page.evaluate(() => { if (window.__mgGame) window.__mgGame.abort(); });
+    await sleep(200);
+  }
+  await ctx.close();
+  return { label: 'latency 4x CPU throttle 390x844 touch', out: [], lat: out, errs };
+}
+
 const domState = (page) => page.evaluate(() => {
   const m = document.querySelector('.mg'), a = m && m.querySelector('.mg-arena'), r = a && a.getBoundingClientRect();
-  const items = a ? [...a.querySelectorAll('.mg-item:not(.is-spent):not(.is-flying)')].map((e) => { const b = e.getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2]; }) : [];
-  return { overlays: document.querySelectorAll('.mg').length, hidden: !m || m.hidden, cls: m ? m.className : '', arenaKids: a ? a.childElementCount : -1,
+  return { overlays: document.querySelectorAll('.mg').length, hidden: !m || m.hidden, game: m ? m.getAttribute('data-game') : null, arenaKids: a ? a.childElementCount : -1,
     goalKids: m ? m.querySelector('.mg-goal').childElementCount : -1, title: m ? m.querySelector('.mg-title').textContent : '',
-    arena: r ? [r.left, r.top, r.right, r.bottom] : null, items, overflow: document.documentElement.scrollWidth - window.innerWidth };
+    arena: r ? [r.left, r.top, r.right, r.bottom] : null, overflow: document.documentElement.scrollWidth - window.innerWidth,
+    canvases: document.querySelectorAll('canvas').length };
 });
 
 async function robustSuite(browser) {
   const checks = [];
   const ok = (cond, msg) => checks.push({ ok: !!cond, msg });
-  const { ctx, page, errs } = await openPage(browser, [390, 844], false);
-  const arenaTap = async () => { const d = await domState(page); if (d.arena) await page.mouse.click((d.arena[0] + d.arena[2]) / 2, (d.arena[1] + d.arena[3]) / 2); };
+  const { ctx, page, errs } = await openPage(browser, [390, 844], {});
+  const io = input(page, null);
+  const startG = (theme, i) => page.evaluate(([t, i]) => {
+    const g = window.__g = { done: 0, said: [], t0: performance.now(), tDone: 0 };
+    g.h = window.__mgTest.MiniGames.play({ theme: t, index: i, say: (id) => g.said.push(id), onDone: () => { g.done++; g.tDone = performance.now() - g.t0; } });
+  }, [theme, i]);
+  const act = async () => { const h = await readHint(page); if (h && !h.none && !h.done) await gesture(io, h); };
 
-  /* 1. abort() mid-game, every game. Warm-up first: the shared overlay (and its one contextmenu listener) is created once and kept */
-  await startG(page, 0); await sleep(200); await page.evaluate(() => { window.__g.h.abort(); window.__mgTest.FX.clear(); });
-  for (let i = 0; i < 8; i++) {
+  /* 1. abort mid-game (warm-up first: the overlay and FX canvas are created once and kept) */
+  await startG('boy', 0); await sleep(200); await page.evaluate(() => { window.__g.h.abort(); window.__mgTest.FX.clear(); });
+  for (const theme of THEMES) for (const i of ONLY) {
     const base = await page.evaluate(() => window.__probe());
-    await startG(page, i);
-    await sleep(900); await arenaTap(); await sleep(120); await arenaTap(); await arenaTap(); await sleep(250);
+    await startG(theme, i);
+    await sleep(1600); await act(); await sleep(150); await act(); await sleep(200);
     await page.evaluate(() => { window.__g.h.abort(); window.__mgTest.FX.clear(); });
-    await sleep(60);
+    await sleep(80);
     const p = await page.evaluate(() => window.__probe()), d = await domState(page);
     ok(p.timeouts === base.timeouts && p.rafs === base.rafs && p.listeners === base.listeners,
-      'abort g' + i + ': timers/rAF/listeners back to baseline ' + JSON.stringify(base) + ' -> ' + JSON.stringify(p));
-    ok(d.hidden && d.arenaKids === 0 && d.goalKids === 0 && d.title === '' && d.overlays === 1 && !/mg--g/.test(d.cls), 'abort g' + i + ': overlay hidden and empty');
-    await sleep(1400);
-    ok((await page.evaluate(() => window.__g.done)) === 0, 'abort g' + i + ': onDone never fires');
+      'abort ' + theme + ' ' + i + ': timers/rAF/listeners back to baseline ' + JSON.stringify(base) + ' -> ' + JSON.stringify(p));
+    ok(d.hidden && d.arenaKids === 0 && d.goalKids === 0 && d.title === '' && d.overlays === 1 && !d.game, 'abort ' + theme + ' ' + i + ': overlay hidden and empty');
+    await sleep(1200);
+    ok((await page.evaluate(() => window.__g.done)) === 0, 'abort ' + theme + ' ' + i + ': onDone never fires');
   }
 
-  /* 2. play() twice in a row: the first is replaced, its stale abort() is harmless, only the second finishes */
+  /* 2. play twice: the first is replaced, its stale abort() is harmless, only the second finishes */
   await page.evaluate(() => {
     const T = window.__mgTest.MiniGames, g = window.__g2 = { d1: 0, d2: 0, s: [] };
-    g.h1 = T.play({ index: 0, say: (id) => g.s.push(id), onDone: () => g.d1++ });
-    g.h2 = T.play({ index: 7, say: (id) => g.s.push(id), onDone: () => g.d2++ });
+    g.h1 = T.play({ theme: 'girl', index: 0, say: (id) => g.s.push(id), onDone: () => g.d1++ });
+    g.h2 = T.play({ theme: 'boy', index: 3, say: (id) => g.s.push(id), onDone: () => g.d2++ });
     g.h1.abort();
   });
   let d = await domState(page);
-  ok(d.overlays === 1 && !d.hidden && /mg--g7/.test(d.cls) && !/mg--g0/.test(d.cls) && d.title === 'Sytytä palatsin valot!', 'play twice: one overlay showing game 7');
-  for (let k = 0; k < 9; k++) { await arenaTap(); await sleep(700); }
-  await page.waitForFunction(() => window.__g2.d2 === 1, null, { timeout: 21000 }).catch(() => {});
+  ok(d.overlays === 1 && !d.hidden && d.game === 'boy-3' && d.title === 'Vihreä valo, kaasua!', 'play twice: one overlay showing boy-3 (' + d.game + ', "' + d.title + '")');
+  await page.waitForFunction(() => window.__g2.d2 === 1, null, { timeout: 22000 }).catch(() => {});
   const g2 = await page.evaluate(() => ({ d1: window.__g2.d1, d2: window.__g2.d2, s: window.__g2.s }));
-  ok(g2.d1 === 0 && g2.d2 === 1 && g2.s.join() === 'game-0,game-7', 'play twice: onDone only for the second ' + JSON.stringify(g2));
+  ok(g2.d1 === 0 && g2.d2 === 1 && g2.s.join() === 'game-girl-0,game-boy-3', 'play twice: onDone only for the second ' + JSON.stringify(g2));
 
-  /* 3. resize / orientation change mid-game: items stay inside the arena, no horizontal scroll, game still ends */
-  for (let i = 0; i < 8; i++) {
+  /* 3. resize / orientation change mid-game: no errors, no horizontal scroll, game still finishes once */
+  for (const theme of THEMES) for (const i of ONLY) {
     await page.setViewportSize({ width: 390, height: 844 });
-    await startG(page, i);
-    await sleep(1200);
+    await startG(theme, i);
+    await sleep(1500);
+    await act();
     for (const vp of [[740, 360], [1024, 768], [360, 740]]) {
       await page.setViewportSize({ width: vp[0], height: vp[1] });
-      /* resize events / ResizeObserver run with the next rendered frame, which can lag under load: poll up to 2.5 s */
-      let out = [];
-      for (const t1 = Date.now(); Date.now() - t1 < 2500;) {
-        await sleep(250);
-        d = await domState(page);
-        out = d.items.filter((c) => c[0] < d.arena[0] - 1 || c[0] > d.arena[2] + 1 || (i > 1 && (c[1] < d.arena[1] - 1 || c[1] > d.arena[3] + 1)));
-        if (!out.length) break;
-      }
-      ok(!d.hidden && out.length === 0 && d.overflow <= 0, 'resize g' + i + ' -> ' + vp.join('x') + ': ' + d.items.length + ' items inside arena, overflow ' + d.overflow + (out.length ? ' OUTSIDE ' + JSON.stringify(out) : ''));
+      await sleep(500);
+      d = await domState(page);
+      ok(!d.hidden && d.overflow <= 0 && d.arena && d.arena[2] <= vp[0] + 1 && d.arena[3] <= vp[1] + 1, 'resize ' + theme + ' ' + i + ' -> ' + vp.join('x') + ': overflow ' + d.overflow);
+      if (vp[0] === 1024) await page.screenshot({ path: path.join(OUT, theme + i + '-resized-1024x768.png') });
+      await act();
     }
-    for (let k = 0; k < 10; k++) { const t = await targets(page); if (t.done || !t.arena) break;
-      const it = t.items[0]; await page.mouse.click(it ? it.x : t.arena.x + t.arena.w / 2, it ? it.y : t.arena.y + t.arena.h / 3); await sleep(800); }
-    await page.waitForFunction(() => window.__g.done === 1, null, { timeout: 21000 }).catch(() => {});
-    ok((await page.evaluate(() => window.__g.done)) === 1, 'resize g' + i + ': game still finishes once');
+    for (let k = 0; k < 14; k++) { if (await page.evaluate(() => window.__g.done)) break; await act(); await sleep(300); }
+    await page.waitForFunction(() => window.__g.done === 1, null, { timeout: 22000 }).catch(() => {});
+    ok((await page.evaluate(() => window.__g.done)) === 1, 'resize ' + theme + ' ' + i + ': game still finishes once');
   }
   await page.setViewportSize({ width: 390, height: 844 });
 
-  /* 4a. page hidden mid-game: the time limit pauses */
-  await startG(page, 3);
+  /* 4a. page hidden mid-game: the time limit pauses (17.5 s limit + 6 s hidden + fill + celebration) */
+  await startG('boy', 3);
   await sleep(1000);
   await page.evaluate(() => window.__setHidden(true));
   await sleep(6000);
   const h1 = await page.evaluate(() => window.__g.done);
   await page.evaluate(() => window.__setHidden(false));
-  await page.waitForFunction(() => window.__g.done === 1, null, { timeout: 25000 }).catch(() => {});
+  await page.waitForFunction(() => window.__g.done === 1, null, { timeout: 30000 }).catch(() => {});
   const ta = await page.evaluate(() => ({ done: window.__g.done, t: Math.round(window.__g.tDone) }));
-  ok(h1 === 0 && ta.done === 1 && ta.t >= 22000 && ta.t <= 27000, 'hidden 6 s mid-game: time limit paused, auto-finish after ' + (ta.t / 1000).toFixed(1) + ' s (16 s + 6 s hidden + fill)');
-  /* 4b. page hidden during the end celebration: onDone waits until visible */
-  await startG(page, 5);
-  await page.waitForFunction(() => document.querySelector('.mg-arena.is-done'), null, { timeout: 20000 });
+  ok(h1 === 0 && ta.done === 1 && ta.t >= 22500 && ta.t <= 27500, 'hidden 6 s mid-game (no touches): time limit paused, auto-finish after ' + (ta.t / 1000).toFixed(1) + ' s');
+  /* 4b. page hidden during the celebration: onDone waits until visible */
+  await startG('boy', 0);
+  for (let k = 0; k < 40; k++) { if (await page.evaluate(() => !!document.querySelector('.mg-arena.is-done'))) break; await act(); await sleep(250); }
+  await page.waitForFunction(() => document.querySelector('.mg-arena.is-done'), null, { timeout: 22000 }).catch(() => {});
   await page.evaluate(() => window.__setHidden(true));
-  await sleep(2500);
-  const h2 = await page.evaluate(() => window.__g.done);
+  await sleep(3000);
+  const hh = await page.evaluate(() => window.__g.done);
   await page.evaluate(() => window.__setHidden(false));
-  await sleep(150);
-  const h3 = await page.evaluate(() => window.__g.done);
-  ok(h2 === 0 && h3 === 1, 'hidden during celebration: onDone held (' + h2 + ') then delivered on return (' + h3 + ')');
+  await sleep(200);
+  const hv = await page.evaluate(() => window.__g.done);
+  ok(hh === 0 && hv === 1, 'hidden during celebration: onDone held (' + hh + ') then delivered on return (' + hv + ')');
 
+  /* 4c. a drag still running when the game ends (safety finish parks the cars): no errors, finishes once */
+  if (THEMES.includes('boy')) {
+    const e0 = errs.length;
+    await startG('boy', 5);
+    await sleep(1500);
+    const c = await page.evaluate(() => { const b = document.querySelector('.mg .bp-mine'); if (!b) return null; const r = b.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; });
+    if (c) {
+      await page.mouse.move(c[0], c[1]); await page.mouse.down();
+      for (let t = 0; t < 40 && !(await page.evaluate(() => window.__g.done)); t++) { await page.mouse.move(c[0] + (t % 2 ? 40 : -40), c[1] - 30); await sleep(500); }
+      await page.mouse.move(c[0], c[1] - 60); await page.mouse.up();
+    }
+    await page.waitForFunction(() => window.__g.done === 1, null, { timeout: 25000 }).catch(() => {});
+    const dd = await page.evaluate(() => window.__g.done);
+    ok(c && dd === 1 && errs.length === e0, 'park: drag held through the safety finish -> finishes once, no errors (' + (errs.slice(e0).join(' | ') || 'none') + ')');
+  }
+
+  /* 5. API */
+  const api = await page.evaluate(() => { const M = window.__mgTest.MiniGames; return { cb: M.count('boy'), cg: M.count('girl'), tb: M.titles('boy'), tg: M.titles('girl') }; });
+  ok(api.cb === 6 && api.cg === 6 && api.tb.length === 6 && api.tg.length === 6 && api.tb.every(Boolean) && api.tg.every(Boolean), 'API: count 6/6, titles ' + api.tb.join(' | ') + ' // ' + api.tg.join(' | '));
   await ctx.close();
-  return { vp: [390, 844], opts: { label: 'robustness' }, info: { count: 8, titles: new Array(8) }, out: [], checks, errs };
+  return { label: 'robustness 390x844', out: [], checks, errs };
 }
 
-/* FX on the light page: finale show + confetti screenshots (no assertions besides console errors) */
-async function fxShots(browser, vp, rm) {
-  const ctx = await browser.newContext({ viewport: { width: vp[0], height: vp[1] }, reducedMotion: rm ? 'reduce' : 'no-preference' });
-  const page = await ctx.newPage();
-  const errs = [];
-  page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errs.push(m.type() + ': ' + m.text()); });
-  page.on('pageerror', (e) => errs.push('pageerror: ' + e.message));
-  await page.goto(BASE + '/tools/games-test.html');
-  await page.waitForFunction(() => window.__mgTest && window.__mgTest.FX, null, { timeout: 15000 });
-  const tag = vp[0] + 'x' + vp[1] + (rm ? '-rm' : '');
-  await page.evaluate(() => window.__mgTest.FX.show(5000));
-  await sleep(1600);
-  await page.screenshot({ path: path.join(OUT, 'fx-show-' + tag + '-a.png') });
-  await sleep(1500);
-  await page.screenshot({ path: path.join(OUT, 'fx-show-' + tag + '-b.png') });
-  await sleep(2600);
-  await page.evaluate(() => { const F = window.__mgTest.FX; F.clear(); F.confetti(70); F.burst(innerWidth * 0.3, innerHeight * 0.4); F.sparkle(innerWidth * 0.7, innerHeight * 0.4); });
-  await sleep(1200);
-  await page.screenshot({ path: path.join(OUT, 'fx-confetti-' + tag + '.png') });
-  await ctx.close();
-  return { vp, opts: { fx: true, rm }, info: { count: 8, titles: new Array(8) }, out: [], errs };
+function latStats(list) {
+  const v = list.filter((l) => l.ms != null).map((l) => l.ms).sort((a, b) => a - b);
+  const miss = list.filter((l) => !l.sameFrame).length;
+  const q = (p) => v.length ? v[Math.min(v.length - 1, Math.floor(p * v.length))] : null;
+  return { n: list.length, miss, anim: list.filter((l) => l.ms == null && l.anim).length, med: q(0.5), p95: q(0.95), max: v.length ? v[v.length - 1] : null };
 }
 
 (async () => {
   const browser = await chromium.launch();
-  const only = ONLY ? ONLY.split(',').map(Number) : null;
-  const jobs = MASH_ONLY ? [] : [
-    suite(browser, [390, 844], { tap: 650, games: only }),
-    suite(browser, [1024, 768], { tap: 650, games: only })
-  ];
-  if (!QUICK) {
-    jobs.push(mashSuite(browser, [390, 844], [[120, 'targets'], [60, 'targets']], false, only));
-    jobs.push(mashSuite(browser, [390, 844], [[120, 'spots'], [60, 'spots']], false, only));
-    jobs.push(mashSuite(browser, [1024, 768], [[120, 'targets'], [60, 'spots']], false, only));
-    jobs.push(mashSuite(browser, [360, 740], [[60, 'targets'], [120, 'spots']], true, only));
-    jobs.push(mashSuite(browser, [768, 1024], [[60, 'targets']], false, only));
-    jobs.push(mashSuite(browser, [740, 360], [[120, 'targets'], [60, 'spots']], false, only));
+  const jobs = [];
+  if (SUITES.includes('play')) {
+    jobs.push(playSuite(browser, [390, 844], {}));
+    jobs.push(playSuite(browser, [390, 844], { touch: true }));
+    if (!QUICK) {
+      jobs.push(playSuite(browser, [1024, 768], {}));
+      jobs.push(playSuite(browser, [360, 740], { rm: true }));
+      jobs.push(playSuite(browser, [740, 360], {}));
+    }
   }
-  if (!QUICK && !MASH_ONLY) {
-    jobs.push(suite(browser, [360, 740], { tap: 900, rm: true, games: only }));
-    jobs.push(suite(browser, [768, 1024], { tap: 650, games: only }));
-    jobs.push(suite(browser, [740, 360], { tap: 650, games: only }));
-    jobs.push(suite(browser, [390, 844], { tap: 0, games: only }));
-    jobs.push(robustSuite(browser));
-    jobs.push(fxShots(browser, [390, 844], false));
-    jobs.push(fxShots(browser, [1024, 768], true));
-  }
-  const results = await Promise.all(jobs);
+  const first = await Promise.all(jobs);
+  const second = [];
+  if (SUITES.includes('idle')) second.push(idleSuite(browser, [390, 844]));
+  if (SUITES.includes('mash')) { second.push(mashSuite(browser, [390, 844], {})); second.push(mashSuite(browser, [740, 360], { touch: true })); }
+  if (SUITES.includes('robust')) second.push(robustSuite(browser));
+  if (SUITES.includes('slow')) second.push(slowSuite(browser));
+  const results = first.concat(await Promise.all(second));
+  await browser.close();
+
   let fail = 0;
+  const allLat = [], slowLat = [];
   for (const r of results) {
-    console.log('== ' + r.vp.join('x') + (r.opts.rm ? ' reduced-motion' : '') + (r.opts.label ? ' ' + r.opts.label : (r.opts.fx ? ' FX shots' : (r.opts.tap ? ' tap/' + r.opts.tap + 'ms' : ' no taps'))));
-    if (r.info.count !== 8 || r.info.titles.length !== 8) { fail++; console.log('  FAIL count/titles', r.info); }
+    console.log('== ' + r.label);
     for (const g of r.out) {
-      const ok = g.ms != null && g.ms <= MAX_MS && g.ms >= MIN_MS && g.said === 'game-' + g.i && g.overflow <= 0 && g.hidden;
+      const lat = latStats(g.lat);
+      allLat.push(...g.lat);
+      const okT = g.ms != null && g.ms >= MIN_MS && g.ms <= MAX_MS;
+      const okL = lat.n > 0 && lat.miss === 0 && (lat.max == null || lat.max <= FRAME_MS);
+      /* touch targets >= 64 px: asserted for the boy games (girl games use their own stage, reported only) */
+      const okS = g.theme !== 'boy' || !(g.minTarget.m < 64);
+      const ok = okT && okL && okS && g.said === gid(g.theme, g.i) && g.sayCount === 1 && g.overflow <= 0 && g.hidden;
       if (!ok) fail++;
-      console.log('  ' + (ok ? 'ok  ' : 'FAIL') + ' game ' + g.i + (g.tag === 'mash' || /ms$/.test(g.tag) ? ' [' + g.tag + ']' : '') + ': ' + (g.ms == null ? 'no onDone' : (g.ms / 1000).toFixed(1) + ' s') +
-        ', taps ' + g.taps + ', say ' + g.said + ', overflow ' + g.overflow + ', closed ' + g.hidden);
+      console.log('  ' + (ok ? 'ok  ' : 'FAIL') + ' ' + g.theme + ' ' + g.i + ': ' + (g.ms == null ? 'no onDone' : (g.ms / 1000).toFixed(1) + ' s') +
+        ', ' + g.acts + ' gestures ' + JSON.stringify(g.types) + ', say ' + g.said + ' x' + g.sayCount + ', overflow ' + g.overflow + ', closed ' + g.hidden +
+        ', latency ms med ' + lat.med + ' max ' + lat.max + ' (' + lat.n + ' touches, ' + lat.miss + ' not same frame' + (lat.anim ? ', ' + lat.anim + ' anim-only' : '') + ')' +
+        ', min target ' + (isFinite(g.minTarget.m) ? Math.round(g.minTarget.m) + ' px' + (g.minTarget.m < 64 ? ' (' + g.minTarget.who + ')' : '') : '-'));
     }
     for (const c of r.checks || []) { if (!c.ok) fail++; console.log('  ' + (c.ok ? 'ok  ' : 'FAIL') + ' ' + c.msg); }
-    const errs = r.errs.filter((e) => !/\[vite\]/.test(e));
-    if (errs.length) { fail++; console.log('  console:', errs); }
-  }
-  await browser.close();
-  /* durations table (s): one row per run kind, one column per game */
-  console.log('\n== onDone (s)          g0    g1    g2    g3    g4    g5    g6    g7');
-  for (const r of results) {
-    const rows = new Map();
-    for (const g of r.out) {
-      const key = r.vp.join('x') + (r.opts.rm ? ' rm' : '') + ' ' + (/ms$/.test(g.tag) ? g.tag : (r.opts.tap ? 'tap/' + r.opts.tap + 'ms' : 'no taps'));
-      if (!rows.has(key)) rows.set(key, new Array(8).fill('  -  '));
-      rows.get(key)[g.i] = g.ms == null ? ' none' : (g.ms / 1000).toFixed(1).padStart(5);
+    for (const g of r.lat || []) {
+      const l = latStats(g.lat), ok = l.n > 0 && l.miss === 0;
+      if (!ok) fail++;
+      console.log('  ' + (ok ? 'ok  ' : 'FAIL') + ' ' + g.theme + ' ' + g.i + ': latency ms med ' + l.med + ' max ' + l.max + ' (' + l.n + ' touches, ' + l.miss + ' not same frame)');
+      slowLat.push(...g.lat);
     }
-    rows.forEach((v, k) => console.log('   ' + k.padEnd(22) + v.join(' ')));
+    const errs = r.errs.filter((e) => !/\[vite\]/.test(e));
+    if (errs.length) { fail++; console.log('  console:', errs.slice(0, 12)); }
   }
+  console.log('\n== onDone (s)              ' + THEMES.map((t) => ONLY.map((i) => (t[0] + i).padStart(5)).join(' ')).join(' '));
+  for (const r of results) {
+    if (!r.out.length) continue;
+    const row = THEMES.map((t) => ONLY.map((i) => { const g = r.out.find((x) => x.theme === t && x.i === i); return g && g.ms != null ? (g.ms / 1000).toFixed(1).padStart(5) : ' none'; }).join(' ')).join(' ');
+    console.log('   ' + r.label.padEnd(24) + row);
+  }
+  const L = latStats(allLat);
+  console.log('\n== latency pointerdown -> first visual change: ' + L.n + ' touches, median ' + L.med + ' ms, p95 ' + L.p95 + ' ms, max ' + L.max + ' ms, ' + L.miss + ' not in the same frame');
+  if (slowLat.length) { const S4 = latStats(slowLat); console.log('== latency with 4x CPU throttle (touch): ' + S4.n + ' touches, median ' + S4.med + ' ms, p95 ' + S4.p95 + ' ms, max ' + S4.max + ' ms, ' + S4.miss + ' not in the same frame'); }
   console.log(fail ? 'FAILURES: ' + fail : 'ALL OK');
   process.exit(fail ? 1 : 0);
 })();

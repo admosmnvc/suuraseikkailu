@@ -3,102 +3,119 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Art preview – Suuraseikkailu</title>
-<!-- Dev tool only (not part of the app build). Serve the project root and open /tools/art-preview.html -->
+<title>Art preview v3 – Suuraseikkailu</title>
+<!-- Dev tool only (not part of the app build). Serve the project root and open /tools/art-preview.html
+     ?only=cover shows the split cover full-screen (its composition follows the viewport orientation). -->
 <link rel="stylesheet" href="../node_modules/@fontsource/fredoka/latin-600.css">
-<link rel="stylesheet" href="../node_modules/@fontsource/nunito/latin-400.css">
 <link rel="stylesheet" href="../node_modules/@fontsource/amiri-quran/arabic-400.css">
-<link rel="stylesheet" href="../src/styles/tokens.css">
 <style>
+  :root{--ink:#24324F}
   *{box-sizing:border-box}
-  body{margin:0;font-family:var(--f-body);color:var(--ink);background:linear-gradient(180deg,var(--snow),var(--frost) 60%,#EDE7FF);min-height:100vh}
-  main{max-width:1180px;margin:0 auto;padding:16px}
-  h1,h2{font-family:var(--f-display);font-weight:600;margin:24px 0 10px}
-  h1{font-size:28px}
-  h2{font-size:20px;color:var(--sapphire-deep)}
-  .row{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
-  .cell{display:grid;justify-items:center;gap:4px;font-size:11px;color:var(--ink-faint)}
-  .box{display:block}
-  .panel{background:rgba(255,255,255,.55);border:1px solid var(--silver);border-radius:22px;padding:14px;margin-bottom:12px}
-  .hero{position:relative;height:200px;border-radius:22px;overflow:hidden;background:linear-gradient(180deg,#F6FBFF,#E4F3FF 70%,#EAE4FF)}
-  .hero .sil{position:absolute;inset:auto 0 0 0;height:150px}
-  .hero.phone{width:360px;height:180px}
-  .hero.phone .sil{height:120px}
-  .btn{width:72px;height:72px;border-radius:50%;display:grid;place-items:center;color:#fff;background:radial-gradient(circle at 35% 28%,#8FB4FF,#2F6FE0 60%,#1E4FB0);box-shadow:var(--shadow-bubble)}
-  .btn .icon{width:34px;height:34px}
-  .ar{font-family:var(--f-arabic);font-size:2.2rem;line-height:2.1;direction:rtl;text-align:right;background:#fff;border-radius:22px;padding:8px 18px;border:1px solid var(--silver)}
-  .ar .ayah{margin-inline-start:.2em}
-  .mask{border-radius:22%;overflow:hidden;box-shadow:var(--shadow-soft)}
-  .dark{background:#23306B;color:#fff}
+  html,body{margin:0}
+  body{font-family:Fredoka,system-ui,sans-serif;color:var(--ink);background:#FFF8F1}
+  main{max-width:1240px;margin:0 auto;padding:16px}
+  h1{font-size:28px;margin:8px 0 4px}
+  h2{font-size:17px;margin:0 0 10px;color:#5A6488}
+  section{margin:0 0 18px;padding:16px;border-radius:24px;background:#fff;box-shadow:0 8px 24px rgba(36,50,79,.08)}
+  .row{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+  .cell{display:grid;justify-items:center;gap:4px;font-size:11px;color:#6A7394}
+  .box>svg{display:block;width:100%;height:100%}
+  .girl{background:#FFF1F5}.boy{background:#EEF6FF}
+  .icons .ic{display:grid;place-items:center;width:64px;height:64px;border-radius:20px;background:linear-gradient(#FF9DB4,#FF7A9A);color:#fff;box-shadow:0 6px 14px rgba(255,122,154,.35)}
+  .icons.boy .ic{background:linear-gradient(#7CC4FF,#5AB4FF);box-shadow:0 6px 14px rgba(90,180,255,.35)}
+  .icons .ic .icon{width:32px;height:32px}
+  .icons .sm{color:var(--ink);font-size:24px}
+  .burst-box{position:relative;width:170px;height:170px;display:grid;place-items:center}
+  .burst-box .art{position:absolute;inset:0}
+  .burst-box b{position:relative;font-size:30px;color:var(--ink)}
+  .bubble-box{position:relative;width:220px;height:160px}
+  .bubble-box .art{position:absolute;inset:0}
+  .bubble-box b{position:absolute;left:0;right:0;top:50px;text-align:center;font-size:28px}
+  .bg{position:relative;height:200px;border-radius:20px;overflow:hidden}
+  .bg.girl{background:linear-gradient(#FFE9EF,#FFF8F1)}.bg.boy{background:linear-gradient(#DDEEFF,#F5FAFF)}
+  .bg .art{position:absolute;inset:auto 0 0 0;height:170px}
+  .bg.phone{width:360px;height:180px}
+  .bg.phone .art{height:150px}
+  .ar{font-family:'Amiri Quran',serif;font-size:2.2rem;line-height:2.1;direction:rtl;text-align:right;background:#fff;border-radius:22px;padding:8px 18px;box-shadow:0 6px 20px rgba(36,50,79,.08)}
+  .mask{border-radius:22%;overflow:hidden}
+  .circ{border-radius:50%;overflow:hidden}
+  body.only main{display:none}
+  #coverOnly{display:none;position:fixed;inset:0}
+  body.only #coverOnly{display:block}
+  #coverOnly .btn{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:18px 34px;font:600 28px Fredoka,sans-serif;color:#fff;background:linear-gradient(#FF9DB4,#FF7A9A);border-radius:999px;box-shadow:0 10px 24px rgba(255,122,154,.4);white-space:nowrap}
 </style>
 </head>
 <body>
+<div id="coverOnly"><div id="coverHost" style="position:absolute;inset:0"></div><div class="btn">Aloita Suuraseikkailu</div></div>
 <main id="m"></main>
 <script type="module">
 import ART from '../src/art.js';
-import DATA from '../src/content/data.js';
 
-const m = document.getElementById('m');
-const h = (tag, html, cls) => `<${tag}${cls ? ` class="${cls}"` : ''}>${html}</${tag}>`;
-const cell = (art, w, hgt, label) => `<div class="cell"><div class="box" style="width:${w}px;height:${hgt || w}px">${art}</div>${label || ''}</div>`;
-const ICONS = 'home play star speech gear close check replay back sound mic stop trash crown gem snowflake sparkle'.split(' ');
-let out = '<h1>Suuraseikkailu – art preview</h1>';
+const q = new URLSearchParams(location.search);
+if (q.get('only') === 'cover') {
+  document.body.classList.add('only');
+  document.getElementById('coverHost').innerHTML = ART.cover();
+  if (q.get('nobtn')) document.querySelector('#coverOnly .btn').remove();
+  window.__artReady = true;
+} else {
+  const m = document.getElementById('m');
+  const box = (html, w, h, label, cls) => '<div class="cell"><div class="box ' + (cls || '') + '" style="width:' + w + 'px;height:' + h + 'px">' + html + '</div>' + (label != null ? '<span>' + label + '</span>' : '') + '</div>';
+  const sec = (id, title, body, cls) => '<section id="' + id + '" class="' + (cls || '') + '"><h2>' + title + '</h2>' + body + '</section>';
+  let h = '<h1>Suuraseikkailu v3 – soft premium art</h1>';
 
-out += h('h2', 'Palace silhouette (desktop + phone width)');
-out += `<div class="hero" id="hero"><div class="sil">${ART.palaceSilhouette()}</div></div><div style="height:12px"></div>`;
-out += `<div class="hero phone"><div class="sil">${ART.palaceSilhouette()}</div></div>`;
+  const names = ART.ICON_NAMES;
+  ['girl', 'boy'].forEach((t) => {
+    h += sec('icons-' + t, 'Icons (' + t + ')', '<div class="row icons ' + t + '">' + names.map((n) => '<div class="cell"><div class="ic">' + ART.icon(n) + '</div><span>' + n + '</span></div>').join('') + '</div>' +
+      '<div class="row icons" style="margin-top:10px">' + names.map((n) => '<span class="sm">' + ART.icon(n) + '</span>').join('') + '</div>', t);
+  });
 
-out += h('h2', 'Icons (24 ink, 48 sapphire, 72 bubble button)');
-out += '<div class="panel" id="icons">' +
-  `<div class="row">${ICONS.map(n => `<div class="cell"><div style="font-size:24px;color:var(--ink)">${ART.icon(n)}</div>${n}</div>`).join('')}</div>` +
-  `<div class="row" style="margin-top:12px">${ICONS.map(n => `<div style="font-size:48px;color:var(--sapphire)">${ART.icon(n)}</div>`).join('')}</div>` +
-  `<div class="row" style="margin-top:12px">${ICONS.slice(0, 9).map(n => `<div class="btn">${ART.icon(n)}</div>`).join('')}</div>` +
-  '</div>';
+  h += sec('avatars', 'Avatars', '<div class="row">' + ['girl', 'boy'].map((t) => [140, 88, 56].map((s) => box(ART.avatar(t), s, s, t + ' ' + s)).join('')).join('') + '</div>');
 
-out += h('h2', 'Small pieces at 24 / 64 / 160');
-const smalls = [
-  ['crystal', () => ART.crystal()], ['snowflake', () => ART.snowflake()], ['bubble', () => ART.bubble()],
-  ['gem', () => ART.gem()], ['gem rose', () => ART.gem('#FF9FD6')], ['gem sapphire', () => ART.gem('#2F6FE0')], ['gem glacier', () => ART.gem('#7FD3F2')],
-  ['tiara', () => ART.tiara()], ['tiara turq', () => ART.tiara('#33C3D6')], ['tiara sapph', () => ART.tiara('#4A86FF')]
-];
-out += '<div class="panel" id="smalls">' + [24, 64, 160].map(s => `<div class="row" style="margin-bottom:10px">${smalls.map(([n, fn]) => cell(fn(), s, s, s === 24 ? n : '')).join('')}</div>`).join('') + '</div>';
+  ['girl', 'boy'].forEach((t) => {
+    let r = '';
+    for (let d = 0; d <= 18; d++) r += box(ART.progress(t, { total: 18, done: d }), 180, 150, d + '/18');
+    h += sec('progress-' + t, 'Progress ' + t + ' (total 18)', '<div class="row">' + r + '</div>', t);
+    let r2 = '';
+    [[1, 0], [2, 1], [4, 2], [5, 5], [7, 3], [7, 7], [12, 6], [18, 9], [20, 10], [24, 12], [24, 24]].forEach((p) => { r2 += box(ART.progress(t, { total: p[0], done: p[1] }), 240, 200, p[1] + '/' + p[0]); });
+    h += sec('progressN-' + t, 'Progress ' + t + ' other totals', '<div class="row">' + r2 + '</div>', t);
+    h += sec('progressBig-' + t, 'Progress ' + t + ' big', '<div class="row">' + box(ART.progress(t, { total: 18, done: 11 }), 480, 400, '11/18') + box(ART.progress(t, { total: 18, done: 18 }), 480, 400, '18/18 complete') + '</div>', t);
+  });
 
-out += h('h2', 'Crowns: slots 1..8, filled 0 / some / all');
-out += '<div class="panel" id="crowns">';
-for (let n = 1; n <= 8; n++) {
-  out += `<div class="row" style="margin-bottom:6px">${[0, Math.ceil(n / 2), n].map(k => cell(ART.crown({ slots: n, filled: k }), 150, 112, `${k}/${n}`)).join('')}</div>`;
+  ['girl', 'boy'].forEach((t) => {
+    let r = '';
+    [2, 4, 5, 7].forEach((n) => { for (let k = 0; k <= n; k++) r += box(ART.reward(t, { slots: n, filled: k }), 160, 120, k + '/' + n); });
+    h += sec('reward-' + t, 'Reward ' + t, '<div class="row">' + r + '</div>', t);
+    h += sec('rewardBig-' + t, 'Reward ' + t + ' big', '<div class="row">' + box(ART.reward(t, { slots: 7, filled: 4 }), 400, 300, '4/7') + box(ART.reward(t, { slots: 4, filled: 4 }), 400, 300, '4/4') + '</div>', t);
+  });
+
+  const ids = ['shahada', 'fatiha', 'ikhlas', 'kawthar', 'bonus'];
+  h += sec('stickers', 'Stickers', ['girl', 'boy'].map((t) => '<div class="row" style="margin-bottom:10px">' +
+    ids.map((i) => box(ART.sticker(t, i, true), 130, 130, t + ' ' + i)).join('') +
+    ids.map((i) => box(ART.sticker(t, i, false), 130, 130, 'ghost')).join('') + '</div>').join('') +
+    '<div class="row">' + ids.map((i) => box(ART.sticker('girl', i, true), 64, 64, '64')).join('') + ids.map((i) => box(ART.sticker('boy', i, true), 64, 64, '64')).join('') + '</div>');
+
+  h += sec('bursts', 'Praise badge (burst) + bubble', '<div class="row">' +
+    [['#FFD36E', 'Hienoa!'], ['#FF7A9A', 'Upeaa!'], ['#B9A4FF', 'Jee!'], ['#8EE3C8', 'Super!'], ['#5AB4FF', 'Hienoa!'], ['#FF9A3C', 'Upeaa!']].map((b) => '<div class="burst-box">' + ART.burst(b[0]) + '<b>' + b[1] + '</b></div>').join('') +
+    '<div class="bubble-box">' + ART.bubble() + '<b>Sanoin!</b></div></div>');
+
+  h += sec('levels', 'Level icons', '<div class="row">' + ['easy', 'medium', 'hard'].map((l) => box(ART.levelIcon(l), 150, 90, l)).join('') + ['easy', 'medium', 'hard'].map((l) => box(ART.levelIcon(l), 72, 44, l)).join('') + ['easy', 'medium', 'hard'].map((l) => box(ART.levelIcon(l), 47, 28, '28px')).join('') + '</div>');
+
+  h += sec('backgrounds', 'Backgrounds', '<div class="bg girl">' + ART.background('girl') + '</div><div style="height:10px"></div><div class="bg boy">' + ART.background('boy') + '</div>' +
+    '<div class="row" style="margin-top:10px"><div class="bg phone girl">' + ART.background('girl') + '</div><div class="bg phone boy">' + ART.background('boy') + '</div></div>');
+
+  h += sec('ayah', 'Ayah markers (calm)', '<p class="ar">بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ' + ART.ayah(1) + '</p><p class="ar" data-theme="boy">ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ' + ART.ayah(2) + ' ' + ART.ayah(12) + ' ' + ART.ayah(123) + '</p>');
+
+  h += sec('motifs', 'Motifs (ART.motif)', '<div class="row">' + ['pony', 'pony-head', 'pony-crown', 'bunny', 'tiara', 'crown', 'castle', 'gem', 'heart', 'car', 'rocket', 'trophy', 'helmet', 'flag'].map((n) => box(ART.motif(n), 100, 100, n) ).join('') + '</div>' +
+    '<div class="row">' + ['pony-head', 'bunny', 'car', 'rocket'].map((n) => box(ART.motif(n, '', false), 70, 70, 'ghost')).join('') + '</div>');
+
+  h += sec('appicon', 'App icon', '<div class="row">' + box(ART.appIcon(), 256, 256, 'square') + box(ART.appIcon(), 256, 256, 'rounded', 'mask') + box(ART.appIcon(), 256, 256, 'maskable circle 80%', 'circ') + box(ART.appIcon(), 64, 64, '64') + '</div>');
+
+  h += sec('legacy', 'v2 wrappers', '<div class="row">' + box(ART.crown({ slots: 5, filled: 3 }), 160, 120, 'crown()') + box(ART.palace({ windows: 7, lit: 3 }), 160, 130, 'palace()') +
+    box(ART.gem('#8EE3C8'), 60, 60, 'gem()') + box(ART.crystal(), 60, 60, 'crystal()') + box(ART.tiara('#FF7A9A'), 60, 60, 'tiara()') + box(ART.snowflake(), 40, 40, 'snowflake()') + box(ART.sticker('fatiha', true), 80, 80, 'sticker(id,e)') + '</div>');
+
+  m.innerHTML = h;
+  window.__artReady = true;
 }
-out += `<div class="row">${cell(ART.crown({ slots: 5, filled: 3 }), 300, 225, '300px 3/5')}${cell(ART.crown({ slots: 7, filled: 7, colors: ['#33C3D6', '#9A7BFF', '#FF8BC8', '#4A86FF'] }), 300, 225, 'custom colors 7/7')}${cell(ART.crown({ slots: 4, filled: 2 }), 48, 36, '48px')}</div>`;
-out += '</div>';
-
-out += h('h2', 'Palace: windows 18, lit 0 / 6 / 12 / 18 (300px)');
-out += '<div class="panel" id="palaces">' + `<div class="row">${[0, 6, 12, 18].map(k => cell(ART.palace({ windows: 18, lit: k }), 300, 234, `18 windows, ${k} lit`)).join('')}</div>` + '</div>';
-out += h('h2', 'Palace window counts 1..24');
-out += '<div class="panel" id="palaceCounts">' + `<div class="row">${[1, 2, 3, 4, 5, 6, 7, 9, 12, 16, 20, 24].map(n => cell(ART.palace({ windows: n, lit: Math.ceil(n / 2) }), 200, 156, `${Math.ceil(n / 2)}/${n}`)).join('')}${cell(ART.palace({ windows: 7, lit: 3 }), 64, 50, '64px')}</div>` + '</div>';
-
-out += h('h2', 'Stickers earned / not earned (64, 160)');
-const SIDS = ['shahada', 'fatiha', 'ikhlas', 'kawthar', 'palace'];
-out += '<div class="panel" id="stickers">' +
-  `<div class="row">${SIDS.map(s => cell(ART.sticker(s, true), 160, 160, s)).join('')}</div>` +
-  `<div class="row" style="margin-top:8px">${SIDS.map(s => cell(ART.sticker(s, false), 160, 160, s + ' (ghost)')).join('')}</div>` +
-  `<div class="row" style="margin-top:8px">${SIDS.map(s => cell(ART.sticker(s, true), 64) + cell(ART.sticker(s, false), 64)).join('')}</div>` +
-  '</div>';
-
-out += h('h2', 'Verse markers inline after Arabic');
-const fat = DATA.sections.find(s => s.id === 'fatiha');
-out += '<div class="panel" id="ayah">' + fat.lines.slice(0, 4).map(l => `<div class="ar">${l.ar} ${ART.ayah(l.n)}</div>`).join('<div style="height:8px"></div>') +
-  `<div class="row" style="margin-top:10px">${[1, 7, 12, 99, 286].map(n => `<div style="font-size:48px">${ART.ayah(n)}</div>`).join('')}</div></div>`;
-
-out += h('h2', 'App icon 512 / 96 / 48 (rounded mask)');
-out += '<div class="panel" id="appicon"><div class="row">' + cell(ART.appIcon(), 512) + `<div class="cell"><div class="mask" style="width:96px;height:96px">${ART.appIcon().replace('width="512" height="512"', 'width="96" height="96"')}</div>96</div>` +
-  `<div class="cell"><div class="mask" style="width:48px;height:48px">${ART.appIcon().replace('width="512" height="512"', 'width="48" height="48"')}</div>48</div>` +
-  `<div class="cell"><div style="width:180px;height:180px;border-radius:50%;overflow:hidden">${ART.appIcon().replace('width="512" height="512"', 'width="180" height="180"')}</div>maskable circle</div>` +
-  '</div></div>';
-
-
-m.innerHTML = out;
-window.ART = ART;
-window.__artReady = true;
 </script>
 </body>
 </html>

@@ -350,51 +350,31 @@
    }
   },
   {
-   "id": "game-0",
+   "id": "cover",
    "lang": "fi",
-   "file": "audio/fi/game-0.mp3",
-   "text": "Puhkaise ilmapallot!",
-   "sayText": "Puhkaise ilmapallot!",
+   "file": "audio/fi/cover.mp3",
+   "text": "Tervetuloa Suuraseikkailuun!",
+   "sayText": "Tervetuloa Suuraseikkailuun!",
    "voice": "fi-FI-NooraNeural",
    "rate": "+3%",
    "pitch": "+15Hz",
-   "duration_s": 1.463,
-   "lufs": -18.4,
-   "true_peak_dbtp": -6.6,
-   "max_volume_db": -6.6,
-   "normalization": "linear",
-   "key": "5ab4d26e11e1a778",
-   "asr": {
-    "model": "large-v3-turbo",
-    "text": "Puhkaise ilmapallot."
-   }
-  },
-  {
-   "id": "game-1",
-   "lang": "fi",
-   "file": "audio/fi/game-1.mp3",
-   "text": "Napauta lumihiutaleita!",
-   "sayText": "Napauta lumihiutaleita!",
-   "voice": "fi-FI-NooraNeural",
-   "rate": "+3%",
-   "pitch": "+15Hz",
-   "duration_s": 1.724,
+   "duration_s": 1.959,
    "lufs": -18.4,
    "true_peak_dbtp": -6.3,
    "max_volume_db": -6.3,
    "normalization": "linear",
-   "key": "9e9aa48aac5e4d85",
+   "key": "15f81ed5103685e8",
    "asr": {
     "model": "large-v3-turbo",
-    "text": "Napauta lumihiutaleita."
+    "text": "Tervetuloa suuraseikkailuun!"
    }
   },
   {
-   "id": "game-2",
+   "id": "who",
    "lang": "fi",
-   "file": "audio/fi/game-2.mp3",
-   "text": "Poksauta kuplat!",
-   "sayText": "Poksauta kuplat!",
+   "file": "audio/fi/who.mp3",
+   "text": "Kuka pelaa tänään?",
+   "sayText": "Kuka pelaa tänään?",
    "voice": "fi-FI-NooraNeural",
    "rate": "+3%",
    "pitch": "+15Hz",
@@ -403,110 +383,390 @@
    "true_peak_dbtp": -6.7,
    "max_volume_db": -6.7,
    "normalization": "linear",
-   "key": "a13b0491b7682207",
+   "key": "9e9242df468c0330",
    "asr": {
     "model": "large-v3-turbo",
-    "text": "Poksautakuplat."
+    "text": "Kuka pelaa tänään?"
    }
   },
   {
-   "id": "game-3",
+   "id": "ask-theme",
    "lang": "fi",
-   "file": "audio/fi/game-3.mp3",
-   "text": "Sytytä kristallilyhdyt!",
-   "sayText": "Sytytä kristallilyhdyt!",
+   "file": "audio/fi/ask-theme.mp3",
+   "text": "Valitse: tyttö vai poika?",
+   "sayText": "Valitse: tyttö vai poika?",
    "voice": "fi-FI-NooraNeural",
    "rate": "+3%",
    "pitch": "+15Hz",
-   "duration_s": 1.515,
-   "lufs": -18.3,
-   "true_peak_dbtp": -7.5,
-   "max_volume_db": -7.5,
-   "normalization": "linear",
-   "key": "9555e7f835523994",
-   "asr": {
-    "model": "large-v3-turbo",
-    "text": "Sytytä kristallilyhdyt."
-   }
-  },
-  {
-   "id": "game-4",
-   "lang": "fi",
-   "file": "audio/fi/game-4.mp3",
-   "text": "Kerää hedelmät koriin!",
-   "sayText": "Kerää hedelmät koriin!",
-   "voice": "fi-FI-NooraNeural",
-   "rate": "+3%",
-   "pitch": "+15Hz",
-   "duration_s": 1.593,
+   "duration_s": 1.776,
    "lufs": -18.4,
-   "true_peak_dbtp": -7.8,
-   "max_volume_db": -7.9,
+   "true_peak_dbtp": -6.5,
+   "max_volume_db": -6.6,
    "normalization": "linear",
-   "key": "8043039540668855",
+   "key": "16788510060c4a09",
    "asr": {
     "model": "large-v3-turbo",
-    "text": "Kerää hedelmät koriin."
+    "text": "Valitse tyttö vai poika."
    }
   },
   {
-   "id": "game-5",
+   "id": "pick-level",
    "lang": "fi",
-   "file": "audio/fi/game-5.mp3",
-   "text": "Napauta taivasta!",
-   "sayText": "Napauta taivasta!",
+   "file": "audio/fi/pick-level.mp3",
+   "text": "Valitse taso!",
+   "sayText": "Valitse taso!",
    "voice": "fi-FI-NooraNeural",
    "rate": "+3%",
    "pitch": "+15Hz",
-   "duration_s": 1.411,
+   "duration_s": 1.097,
+   "lufs": -18.4,
+   "true_peak_dbtp": -6.8,
+   "max_volume_db": -6.8,
+   "normalization": "linear",
+   "key": "6354f43ed2564d02",
+   "asr": {
+    "model": "large-v3-turbo",
+    "text": "Valitse taso."
+   }
+  },
+  {
+   "id": "level-easy",
+   "lang": "fi",
+   "file": "audio/fi/level-easy.mp3",
+   "text": "Helppo! Sana kerrallaan.",
+   "sayText": "Helppo! Sana kerrallaan.",
+   "voice": "fi-FI-NooraNeural",
+   "rate": "+3%",
+   "pitch": "+15Hz",
+   "duration_s": 2.612,
+   "lufs": -18.4,
+   "true_peak_dbtp": -6.1,
+   "max_volume_db": -6.1,
+   "normalization": "linear",
+   "key": "acac31d119378586",
+   "asr": {
+    "model": "large-v3-turbo",
+    "text": "Helppo. Sana kerrallaan."
+   }
+  },
+  {
+   "id": "level-medium",
+   "lang": "fi",
+   "file": "audio/fi/level-medium.mp3",
+   "text": "Keskitaso! Kaksi sanaa kerrallaan.",
+   "sayText": "Keskitaso! Kaksi sanaa kerrallaan.",
+   "voice": "fi-FI-NooraNeural",
+   "rate": "+3%",
+   "pitch": "+15Hz",
+   "duration_s": 3.161,
+   "lufs": -18.5,
+   "true_peak_dbtp": -6.6,
+   "max_volume_db": -6.7,
+   "normalization": "linear",
+   "key": "143b194844c22121",
+   "asr": {
+    "model": "large-v3-turbo",
+    "text": "Keskitaso. Kaksi sanaa kerrallaan."
+   }
+  },
+  {
+   "id": "level-hard",
+   "lang": "fi",
+   "file": "audio/fi/level-hard.mp3",
+   "text": "Vaikea! Koko rivi kerrallaan.",
+   "sayText": "Vaikea! Koko rivi kerrallaan.",
+   "voice": "fi-FI-NooraNeural",
+   "rate": "+3%",
+   "pitch": "+15Hz",
+   "duration_s": 2.9,
+   "lufs": -18.4,
+   "true_peak_dbtp": -6.0,
+   "max_volume_db": -6.0,
+   "normalization": "linear",
+   "key": "3986628585ebea1d",
+   "asr": {
+    "model": "large-v3-turbo",
+    "text": "Vaikea koko rivi kerrallaan."
+   }
+  },
+  {
+   "id": "rocket-part",
+   "lang": "fi",
+   "file": "audio/fi/rocket-part.mp3",
+   "text": "Raketti sai uuden osan!",
+   "sayText": "Raketti sai uuden osan!",
+   "voice": "fi-FI-NooraNeural",
+   "rate": "+3%",
+   "pitch": "+15Hz",
+   "duration_s": 1.829,
+   "lufs": -18.4,
+   "true_peak_dbtp": -7.4,
+   "max_volume_db": -7.4,
+   "normalization": "linear",
+   "key": "1386537abcd52449",
+   "asr": {
+    "model": "large-v3-turbo",
+    "text": "Raketti sai uuden osan."
+   }
+  },
+  {
+   "id": "rocket-launch",
+   "lang": "fi",
+   "file": "audio/fi/rocket-launch.mp3",
+   "text": "Kolme, kaksi, yksi... Raketti lähtee!",
+   "sayText": "Kolme, kaksi, yksi... Raketti lähtee!",
+   "voice": "fi-FI-NooraNeural",
+   "rate": "+3%",
+   "pitch": "+15Hz",
+   "duration_s": 3.814,
+   "lufs": -18.3,
+   "true_peak_dbtp": -6.1,
+   "max_volume_db": -6.1,
+   "normalization": "linear",
+   "key": "a421d779e1fb30f4",
+   "asr": {
+    "model": "large-v3-turbo",
+    "text": "3, 2, 1. Raketti lähtee."
+   }
+  },
+  {
+   "id": "game-boy-0",
+   "lang": "fi",
+   "file": "audio/fi/game-boy-0.mp3",
+   "text": "Vaihda auton renkaat!",
+   "sayText": "Vaihda auton renkaat!",
+   "voice": "fi-FI-NooraNeural",
+   "rate": "+3%",
+   "pitch": "+15Hz",
+   "duration_s": 1.672,
    "lufs": -18.4,
    "true_peak_dbtp": -7.6,
    "max_volume_db": -7.6,
    "normalization": "linear",
-   "key": "6119b6329e2d6446",
+   "key": "cd3fa7c03ae95971",
    "asr": {
     "model": "large-v3-turbo",
-    "text": "Napauta taivasta!"
+    "text": "Vaihda auton renkaat."
    }
   },
   {
-   "id": "game-6",
+   "id": "game-boy-1",
    "lang": "fi",
-   "file": "audio/fi/game-6.mp3",
-   "text": "Koristele kruunu!",
-   "sayText": "Koristele kruunu!",
+   "file": "audio/fi/game-boy-1.mp3",
+   "text": "Pese auto puhtaaksi!",
+   "sayText": "Pese auto puhtaaksi!",
    "voice": "fi-FI-NooraNeural",
    "rate": "+3%",
    "pitch": "+15Hz",
-   "duration_s": 1.202,
+   "duration_s": 1.62,
    "lufs": -18.4,
-   "true_peak_dbtp": -6.3,
-   "max_volume_db": -6.3,
+   "true_peak_dbtp": -6.2,
+   "max_volume_db": -6.2,
    "normalization": "linear",
-   "key": "9531d7ef7b305734",
+   "key": "53fb821613e3c36e",
    "asr": {
     "model": "large-v3-turbo",
-    "text": "Koristele kruunu."
+    "text": "Pese auto puhtaaksi."
    }
   },
   {
-   "id": "game-7",
+   "id": "game-boy-2",
    "lang": "fi",
-   "file": "audio/fi/game-7.mp3",
-   "text": "Sytytä palatsin valot!",
-   "sayText": "Sytytä palatsin valot!",
+   "file": "audio/fi/game-boy-2.mp3",
+   "text": "Tankkaa auto täyteen!",
+   "sayText": "Tankkaa auto täyteen!",
    "voice": "fi-FI-NooraNeural",
    "rate": "+3%",
    "pitch": "+15Hz",
-   "duration_s": 1.541,
+   "duration_s": 1.62,
    "lufs": -18.4,
-   "true_peak_dbtp": -7.5,
-   "max_volume_db": -7.5,
+   "true_peak_dbtp": -6.1,
+   "max_volume_db": -6.1,
    "normalization": "linear",
-   "key": "36f2a02c44d47d7d",
+   "key": "db5fa47630e49557",
    "asr": {
     "model": "large-v3-turbo",
-    "text": "Sytytä palatsin valot."
+    "text": "Tankkaa auto täyteen."
+   }
+  },
+  {
+   "id": "game-boy-3",
+   "lang": "fi",
+   "file": "audio/fi/game-boy-3.mp3",
+   "text": "Vihreä valo, kaasua!",
+   "sayText": "Vihreä valo, kaasua!",
+   "voice": "fi-FI-NooraNeural",
+   "rate": "+3%",
+   "pitch": "+15Hz",
+   "duration_s": 1.75,
+   "lufs": -18.4,
+   "true_peak_dbtp": -8.3,
+   "max_volume_db": -8.3,
+   "normalization": "linear",
+   "key": "560c904f1ff38047",
+   "asr": {
+    "model": "large-v3-turbo",
+    "text": "Vihreä valo, kaasua."
+   }
+  },
+  {
+   "id": "game-boy-4",
+   "lang": "fi",
+   "file": "audio/fi/game-boy-4.mp3",
+   "text": "Aja kilpaa ja kerää tähdet!",
+   "sayText": "Aja kilpaa ja kerää tähdet!",
+   "voice": "fi-FI-NooraNeural",
+   "rate": "+3%",
+   "pitch": "+15Hz",
+   "duration_s": 1.959,
+   "lufs": -18.4,
+   "true_peak_dbtp": -6.9,
+   "max_volume_db": -6.9,
+   "normalization": "linear",
+   "key": "d32a8a6e520eab85",
+   "asr": {
+    "model": "large-v3-turbo",
+    "text": "Aja kilpaa ja kerää tähdet."
+   }
+  },
+  {
+   "id": "game-boy-5",
+   "lang": "fi",
+   "file": "audio/fi/game-boy-5.mp3",
+   "text": "Pysäköi auto ruutuun!",
+   "sayText": "Pysäköi auto ruutuun!",
+   "voice": "fi-FI-NooraNeural",
+   "rate": "+3%",
+   "pitch": "+15Hz",
+   "duration_s": 1.62,
+   "lufs": -18.4,
+   "true_peak_dbtp": -6.1,
+   "max_volume_db": -6.1,
+   "normalization": "linear",
+   "key": "5cc6498698d4070b",
+   "asr": {
+    "model": "large-v3-turbo",
+    "text": "Pysäköi auto ruutuun."
+   }
+  },
+  {
+   "id": "game-girl-0",
+   "lang": "fi",
+   "file": "audio/fi/game-girl-0.mp3",
+   "text": "Harjaa hevosen harja!",
+   "sayText": "Harjaa hevosen harja!",
+   "voice": "fi-FI-NooraNeural",
+   "rate": "+3%",
+   "pitch": "+15Hz",
+   "duration_s": 1.672,
+   "lufs": -18.4,
+   "true_peak_dbtp": -7.8,
+   "max_volume_db": -7.8,
+   "normalization": "linear",
+   "key": "8589b61dd9a249ae",
+   "asr": {
+    "model": "large-v3-turbo",
+    "text": "Harjaa hevosen harja."
+   }
+  },
+  {
+   "id": "game-girl-1",
+   "lang": "fi",
+   "file": "audio/fi/game-girl-1.mp3",
+   "text": "Ruoki eläimet!",
+   "sayText": "Ruoki eläimet!",
+   "voice": "fi-FI-NooraNeural",
+   "rate": "+3%",
+   "pitch": "+15Hz",
+   "duration_s": 1.228,
+   "lufs": -18.4,
+   "true_peak_dbtp": -7.6,
+   "max_volume_db": -7.6,
+   "normalization": "linear",
+   "key": "80a59f7d096a22bc",
+   "asr": {
+    "model": "large-v3-turbo",
+    "text": "Ruokieläimet"
+   }
+  },
+  {
+   "id": "game-girl-2",
+   "lang": "fi",
+   "file": "audio/fi/game-girl-2.mp3",
+   "text": "Kylvetä koiranpentu!",
+   "sayText": "Kylvetä koiranpentu!",
+   "voice": "fi-FI-NooraNeural",
+   "rate": "+3%",
+   "pitch": "+15Hz",
+   "duration_s": 1.332,
+   "lufs": -18.4,
+   "true_peak_dbtp": -6.7,
+   "max_volume_db": -6.7,
+   "normalization": "linear",
+   "key": "7b5042ad7031c712",
+   "asr": {
+    "model": "large-v3-turbo",
+    "text": "Kylvetä koiranpentu."
+   }
+  },
+  {
+   "id": "game-girl-3",
+   "lang": "fi",
+   "file": "audio/fi/game-girl-3.mp3",
+   "text": "Koristele kakku!",
+   "sayText": "Koristele kakku!",
+   "voice": "fi-FI-NooraNeural",
+   "rate": "+3%",
+   "pitch": "+15Hz",
+   "duration_s": 1.254,
+   "lufs": -18.4,
+   "true_peak_dbtp": -7.9,
+   "max_volume_db": -7.9,
+   "normalization": "linear",
+   "key": "5a1fcf143402ef79",
+   "asr": {
+    "model": "large-v3-turbo",
+    "text": "Koristele kakku."
+   }
+  },
+  {
+   "id": "game-girl-4",
+   "lang": "fi",
+   "file": "audio/fi/game-girl-4.mp3",
+   "text": "Kasvata kukkaniitty!",
+   "sayText": "Kasvata kukkaniitty!",
+   "voice": "fi-FI-NooraNeural",
+   "rate": "+3%",
+   "pitch": "+15Hz",
+   "duration_s": 1.437,
+   "lufs": -18.4,
+   "true_peak_dbtp": -5.6,
+   "max_volume_db": -5.7,
+   "normalization": "linear",
+   "key": "c6dcb692bc8f5681",
+   "asr": {
+    "model": "large-v3-turbo",
+    "text": "Kasvata kukkaniitty."
+   }
+  },
+  {
+   "id": "game-girl-5",
+   "lang": "fi",
+   "file": "audio/fi/game-girl-5.mp3",
+   "text": "Sytytä linnan valot!",
+   "sayText": "Sytytä linnan valot!",
+   "voice": "fi-FI-NooraNeural",
+   "rate": "+3%",
+   "pitch": "+15Hz",
+   "duration_s": 1.384,
+   "lufs": -18.4,
+   "true_peak_dbtp": -7.2,
+   "max_volume_db": -7.3,
+   "normalization": "linear",
+   "key": "6603431256f5e961",
+   "asr": {
+    "model": "large-v3-turbo",
+    "text": "Sytytä linnan valot."
    }
   },
   {
@@ -527,6 +787,286 @@
    "asr": {
     "model": "large-v3-turbo",
     "text": "Hei! Tämä on Suomen puheääni."
+   }
+  },
+  {
+   "id": "shahada-c-1-easy-1",
+   "lang": "ar",
+   "file": "audio/shahada-c-1-easy-1.mp3",
+   "text": "أَشْهَدُ",
+   "sayText": "أَشْهَدُ",
+   "voice": "ar-SA-ZariyahNeural",
+   "rate": "-25%",
+   "pitch": "+8Hz",
+   "duration_s": 0.888,
+   "lufs": -18.3,
+   "true_peak_dbtp": -5.5,
+   "max_volume_db": -5.6,
+   "normalization": "linear",
+   "key": "1bc2e8690a1d37ea",
+   "asr": {
+    "model": "large-v3-turbo",
+    "text": "أشهد"
+   }
+  },
+  {
+   "id": "shahada-c-1-easy-2",
+   "lang": "ar",
+   "file": "audio/shahada-c-1-easy-2.mp3",
+   "text": "أَنْ لا",
+   "sayText": "أَنْ لا",
+   "voice": "ar-SA-ZariyahNeural",
+   "rate": "-25%",
+   "pitch": "+8Hz",
+   "duration_s": 0.862,
+   "lufs": -18.4,
+   "true_peak_dbtp": -9.9,
+   "max_volume_db": -9.9,
+   "normalization": "linear",
+   "key": "f7d02965132d046f",
+   "asr": {
+    "model": "large-v3-turbo",
+    "text": "أنا لأ"
+   }
+  },
+  {
+   "id": "shahada-c-1-easy-3",
+   "lang": "ar",
+   "file": "audio/shahada-c-1-easy-3.mp3",
+   "text": "إِلَهَ",
+   "sayText": "إِلَهَ",
+   "voice": "ar-SA-ZariyahNeural",
+   "rate": "-25%",
+   "pitch": "+8Hz",
+   "duration_s": 0.758,
+   "lufs": -18.4,
+   "true_peak_dbtp": -7.9,
+   "max_volume_db": -7.9,
+   "normalization": "linear",
+   "key": "1c7c66542b2fda21",
+   "asr": {
+    "model": "large-v3-turbo",
+    "text": "إلعا"
+   }
+  },
+  {
+   "id": "shahada-c-1-easy-4",
+   "lang": "ar",
+   "file": "audio/shahada-c-1-easy-4.mp3",
+   "text": "إِلَّا اللَّه",
+   "sayText": "إِلَّا اللَّه",
+   "voice": "ar-SA-ZariyahNeural",
+   "rate": "-25%",
+   "pitch": "+8Hz",
+   "duration_s": 0.94,
+   "lufs": -18.4,
+   "true_peak_dbtp": -9.2,
+   "max_volume_db": -9.2,
+   "normalization": "linear",
+   "key": "d3d6c8b091c15c90",
+   "asr": {
+    "model": "large-v3-turbo",
+    "text": "إلا الله"
+   }
+  },
+  {
+   "id": "shahada-c-1-medium-1",
+   "lang": "ar",
+   "file": "audio/shahada-c-1-medium-1.mp3",
+   "text": "أَشْهَدُ أَنْ لا",
+   "sayText": "أَشْهَدُ أَنْ لا",
+   "voice": "ar-SA-ZariyahNeural",
+   "rate": "-25%",
+   "pitch": "+8Hz",
+   "duration_s": 1.358,
+   "lufs": -18.4,
+   "true_peak_dbtp": -7.0,
+   "max_volume_db": -7.1,
+   "normalization": "linear",
+   "key": "0ce78b632ee0abd4",
+   "asr": {
+    "model": "large-v3-turbo",
+    "text": "أشهد أن لا"
+   }
+  },
+  {
+   "id": "shahada-c-1-medium-2",
+   "lang": "ar",
+   "file": "audio/shahada-c-1-medium-2.mp3",
+   "text": "إِلَهَ إِلَّا اللَّه",
+   "sayText": "إِلَهَ إِلَّا اللَّه",
+   "voice": "ar-SA-ZariyahNeural",
+   "rate": "-25%",
+   "pitch": "+8Hz",
+   "duration_s": 1.567,
+   "lufs": -18.4,
+   "true_peak_dbtp": -6.8,
+   "max_volume_db": -6.9,
+   "normalization": "linear",
+   "key": "608f4b2bd37ac328",
+   "asr": {
+    "model": "large-v3-turbo",
+    "text": "إِلَهَا إِلَّا اللَّهِ"
+   }
+  },
+  {
+   "id": "shahada-c-2-easy-1",
+   "lang": "ar",
+   "file": "audio/shahada-c-2-easy-1.mp3",
+   "text": "وَأَشْهَدُ",
+   "sayText": "وَأَشْهَدُ",
+   "voice": "ar-SA-ZariyahNeural",
+   "rate": "-25%",
+   "pitch": "+8Hz",
+   "duration_s": 1.045,
+   "lufs": -18.3,
+   "true_peak_dbtp": -6.8,
+   "max_volume_db": -6.8,
+   "normalization": "linear",
+   "key": "57bc4daf2426cac4",
+   "asr": {
+    "model": "large-v3-turbo",
+    "text": "وأشهد"
+   }
+  },
+  {
+   "id": "shahada-c-2-easy-2",
+   "lang": "ar",
+   "file": "audio/shahada-c-2-easy-2.mp3",
+   "text": "أَنَّ",
+   "sayText": "أَنَّ",
+   "voice": "ar-SA-ZariyahNeural",
+   "rate": "-25%",
+   "pitch": "+8Hz",
+   "duration_s": 0.679,
+   "lufs": -18.4,
+   "true_peak_dbtp": -6.5,
+   "max_volume_db": -6.5,
+   "normalization": "linear",
+   "key": "5c3da8671bc6ee17",
+   "asr": {
+    "model": "large-v3-turbo",
+    "text": "ن"
+   }
+  },
+  {
+   "id": "shahada-c-2-easy-3",
+   "lang": "ar",
+   "file": "audio/shahada-c-2-easy-3.mp3",
+   "text": "مُحَمَّدًا",
+   "sayText": "مُحَمَّدًا",
+   "voice": "ar-SA-ZariyahNeural",
+   "rate": "-25%",
+   "pitch": "+8Hz",
+   "duration_s": 1.28,
+   "lufs": -18.4,
+   "true_peak_dbtp": -8.1,
+   "max_volume_db": -8.1,
+   "normalization": "linear",
+   "key": "5c9458e6ef1534df",
+   "asr": {
+    "model": "large-v3-turbo",
+    "text": "محمداً"
+   }
+  },
+  {
+   "id": "shahada-c-2-easy-4",
+   "lang": "ar",
+   "file": "audio/shahada-c-2-easy-4.mp3",
+   "text": "عَبْدُهُ",
+   "sayText": "عَبْدُهُ",
+   "voice": "ar-SA-ZariyahNeural",
+   "rate": "-25%",
+   "pitch": "+8Hz",
+   "duration_s": 0.81,
+   "lufs": -18.4,
+   "true_peak_dbtp": -7.1,
+   "max_volume_db": -7.1,
+   "normalization": "linear",
+   "key": "87fe39fbc398ad5e",
+   "asr": {
+    "model": "large-v3-turbo",
+    "text": "عبدو"
+   }
+  },
+  {
+   "id": "shahada-c-2-easy-5",
+   "lang": "ar",
+   "file": "audio/shahada-c-2-easy-5.mp3",
+   "text": "وَرَسُولُه",
+   "sayText": "وَرَسُولُه",
+   "voice": "ar-SA-ZariyahNeural",
+   "rate": "-25%",
+   "pitch": "+8Hz",
+   "duration_s": 1.202,
+   "lufs": -18.4,
+   "true_peak_dbtp": -7.8,
+   "max_volume_db": -7.9,
+   "normalization": "linear",
+   "key": "d299267426fcfa50",
+   "asr": {
+    "model": "large-v3-turbo",
+    "text": "ورسوله"
+   }
+  },
+  {
+   "id": "shahada-c-2-medium-1",
+   "lang": "ar",
+   "file": "audio/shahada-c-2-medium-1.mp3",
+   "text": "وَأَشْهَدُ أَنَّ",
+   "sayText": "وَأَشْهَدُ أَنَّ",
+   "voice": "ar-SA-ZariyahNeural",
+   "rate": "-25%",
+   "pitch": "+8Hz",
+   "duration_s": 1.489,
+   "lufs": -18.4,
+   "true_peak_dbtp": -7.0,
+   "max_volume_db": -7.0,
+   "normalization": "linear",
+   "key": "c8fa8f6d9b46a820",
+   "asr": {
+    "model": "large-v3-turbo",
+    "text": "وأشهد أن"
+   }
+  },
+  {
+   "id": "shahada-c-2-medium-2",
+   "lang": "ar",
+   "file": "audio/shahada-c-2-medium-2.mp3",
+   "text": "مُحَمَّدًا عَبْدُهُ",
+   "sayText": "مُحَمَّدًا عَبْدُهُ",
+   "voice": "ar-SA-ZariyahNeural",
+   "rate": "-25%",
+   "pitch": "+8Hz",
+   "duration_s": 1.62,
+   "lufs": -18.4,
+   "true_peak_dbtp": -8.0,
+   "max_volume_db": -8.0,
+   "normalization": "linear",
+   "key": "f271a0ff22d4c901",
+   "asr": {
+    "model": "large-v3-turbo",
+    "text": "محمدا عبده"
+   }
+  },
+  {
+   "id": "shahada-c-2-medium-3",
+   "lang": "ar",
+   "file": "audio/shahada-c-2-medium-3.mp3",
+   "text": "وَرَسُولُه",
+   "sayText": "وَرَسُولُه",
+   "voice": "ar-SA-ZariyahNeural",
+   "rate": "-25%",
+   "pitch": "+8Hz",
+   "duration_s": 1.202,
+   "lufs": -18.4,
+   "true_peak_dbtp": -7.8,
+   "max_volume_db": -7.9,
+   "normalization": "linear",
+   "key": "d299267426fcfa50",
+   "asr": {
+    "model": "large-v3-turbo",
+    "text": "ورسوله"
    }
   },
   {
