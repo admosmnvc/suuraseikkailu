@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Minipelit testi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&family=Lilita+One&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --night:#141838; --sky-top:#1A2152; --sky-mid:#251E5A; --sky-bottom:#3A2366;
+    --surface:#262A64; --surface-2:#30357A; --surface-3:#3B4190; --line:rgba(255,255,255,.12);
+    --ink:#FFF8EA; --ink-soft:#CBC6EE; --ink-faint:#9590CB;
+    --gold:#FFC93C; --gold-hi:#FFE08A; --gold-deep:#C98A00; --gold-ink:#3A2600;
+    --emerald:#22B07D; --amethyst:#8E5BEA; --saffron:#F2992E; --river:#2FA8E0;
+    --f-display: "Lilita One", ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif;
+    --f-body: "Andika", ui-rounded, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; }
+  body {
+    min-height: 100vh;
+    background: var(--night);
+    color: var(--ink);
+    font-family: var(--f-body);
+    padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
+    box-sizing: border-box;
+  }
+  h1 { font-family: var(--f-display); font-weight: 400; font-size: 1.8rem; margin: 0 0 4px; }
+  p { color: var(--ink-soft); margin: 0 0 16px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; max-width: 720px; }
+  .grid button {
+    min-height: 64px; padding: 10px 12px; border-radius: 16px; border: 1px solid var(--line);
+    background: var(--surface-2); color: var(--ink); font: 700 1rem/1.2 var(--f-body); cursor: pointer;
+  }
+  .grid button.fx { background: var(--surface); color: var(--gold-hi); }
+  .grid button:active { transform: scale(.97); }
+  #log { margin-top: 16px; color: var(--ink-faint); font-size: .9rem; min-height: 1.4em; }
+  label { display: inline-flex; gap: 8px; align-items: center; margin: 0 0 14px; color: var(--ink-soft); }
+</style>
+<link rel="stylesheet" href="games.css">
+</head>
+<body>
+  <h1>Minipelit</h1>
+  <p>Testisivu: jokainen nappi avaa yhden pelin.</p>
+  <label><input type="checkbox" id="snd" checked> Äänet päällä</label>
+  <div class="grid" id="grid"></div>
+  <div id="log" aria-live="polite"></div>
+  <script src="games.js"></script>
+  <script>
+    (function () {
+      var grid = document.getElementById('grid');
+      var log = document.getElementById('log');
+      var game = null;
+      function msg(t) { log.textContent = t; }
+      document.getElementById('snd').addEventListener('change', function (e) { SFX.setEnabled(e.target.checked); });
+      MiniGames.titles.forEach(function (title, i) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = (i + 1) + '. ' + title;
+        b.addEventListener('click', function () {
+          SFX.unlock();
+          var t0 = Date.now();
+          game = MiniGames.play({
+            index: i,
+            say: function (t) { msg('say: ' + t); },
+            onDone: function () { msg('onDone: peli ' + i + ' valmis (' + ((Date.now() - t0) / 1000).toFixed(1) + ' s)'); }
+          });
+        });
+        grid.appendChild(b);
+      });
+      [['FX.confetti()', function () { FX.confetti(); }],
+       ['FX.show(5000)', function () { FX.show(5000); }],
+       ['FX.burst()', function () { FX.burst(innerWidth / 2, innerHeight / 2); SFX.pop(); }],
+       ['FX.clear()', function () { FX.clear(); }]].forEach(function (d) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'fx';
+        b.textContent = d[0];
+        b.addEventListener('click', function () { SFX.unlock(); d[1](); });
+        grid.appendChild(b);
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && game) { game.abort(); game = null; msg('abort()'); }
+      });
+    })();
+  </script>
+</body>
+</html>

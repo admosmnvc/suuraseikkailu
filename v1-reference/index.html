@@ -1,0 +1,1255 @@
+<title>Suuraseikkailu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri+Quran&family=Andika:wght@400;700&family=Lilita+One&display=swap">
+<style>
+/* Layout concept: one evening-sky world — mihrab-arch section tiles and a sticker shelf at home; while learning, a stack of line cards under a sticky title bar with a fixed bar of two chunky toy buttons. */
+:root{
+  color-scheme: dark;
+  --night:#141838; --sky-top:#1A2152; --sky-mid:#251E5A; --sky-bottom:#3A2366;
+  --surface:#262A64; --surface-2:#30357A; --surface-3:#3B4190; --line:rgba(255,255,255,.12);
+  --ink:#FFF8EA; --ink-soft:#CBC6EE; --ink-faint:#9590CB;
+  --gold:#FFC93C; --gold-hi:#FFE08A; --gold-deep:#C98A00; --gold-ink:#3A2600;
+  --emerald:#22B07D; --amethyst:#8E5BEA; --saffron:#F2992E; --river:#2FA8E0;
+  --f-display: "Lilita One", ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif;
+  --f-body: "Andika", ui-rounded, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-arabic: "Amiri Quran", "Amiri", "Scheherazade New", "Noto Naskh Arabic", "Geeza Pro", serif;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;min-height:100vh;min-height:100dvh;background:var(--night);color:var(--ink);font-family:var(--f-body);font-size:1.05rem;line-height:1.5;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+h1,h2,h3{margin:0;font-family:var(--f-display);font-weight:400;line-height:1.12;letter-spacing:.01em;text-wrap:balance}
+p{margin:0}
+button,input{font:inherit;color:inherit}
+button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+:focus-visible{outline:3px solid var(--gold-hi);outline-offset:3px}
+[hidden]{display:none!important}
+.vh{position:absolute!important;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+[data-icon]{display:inline-flex;flex:none}
+[data-icon] svg{display:block}
+
+/* ---------- evening sky ---------- */
+.sky{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;background:radial-gradient(130% 55% at 50% -8%,rgba(142,91,234,.42) 0%,rgba(142,91,234,.12) 46%,transparent 72%),linear-gradient(180deg,var(--sky-top) 0%,var(--sky-mid) 52%,var(--sky-bottom) 100%)}
+.sky-pattern{position:absolute;inset:0;background-image:var(--pattern);background-size:72px 72px;opacity:.08;-webkit-mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.55) 58%,transparent 92%);mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.55) 58%,transparent 92%)}
+.sky-stars{position:absolute;inset:0}
+.sky-stars i{position:absolute;display:block;width:2px;height:2px;border-radius:50%;background:var(--ink);opacity:.7;box-shadow:0 0 6px 1px rgba(255,248,234,.45);animation:twinkle 3.6s ease-in-out infinite}
+.sky-stars i.gold{background:var(--gold-hi);box-shadow:0 0 8px 1px rgba(255,224,138,.5)}
+@keyframes twinkle{0%,100%{opacity:.22}50%{opacity:.95}}
+.sky-skyline{position:absolute;left:0;right:0;bottom:0;height:110px;opacity:.9}
+.sky-skyline svg{display:block;width:100%;height:100%}
+
+/* ---------- app shell ---------- */
+.app{position:relative;z-index:1;min-height:100vh;min-height:100dvh}
+.wrap{max-width:760px;margin-inline:auto;padding-inline:16px;padding-block:16px 40px}
+
+/* ---------- home ---------- */
+.home-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand-emblem{flex:none;display:block;width:40px;height:40px}
+.brand-emblem svg{display:block;width:100%;height:100%}
+.brand h1{min-width:0;font-size:clamp(1.6rem,7vw,2.1rem);line-height:1;color:var(--ink);text-shadow:0 3px 0 rgba(10,12,40,.35);overflow-wrap:anywhere}
+.star-pill{flex:none;display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:6px 14px 6px 10px;border-radius:999px;background:rgba(13,15,42,.45);box-shadow:inset 0 0 0 1.5px rgba(255,201,60,.35);color:var(--gold-hi);font-family:var(--f-display);font-size:1.3rem;line-height:1;font-variant-numeric:tabular-nums}
+.star-pill svg{width:26px;height:26px;color:var(--gold)}
+.star-pill.bump{animation:bump .5s cubic-bezier(.3,1.6,.5,1)}
+@keyframes bump{0%,100%{transform:scale(1)}40%{transform:scale(1.18)}}
+.greet{display:grid;gap:4px;padding-block:26px 18px}
+.greet h2{font-size:1.6rem;overflow-wrap:anywhere}
+.greet p{font-size:1.05rem;color:var(--ink-soft)}
+
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px}
+.tile{--c:var(--amethyst);--c-deep:#4E2F86;position:relative;isolation:isolate;overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;min-height:230px;padding:54px 10px 18px;border:0;border-radius:50% 50% 22px 22px/110px 110px 22px 22px;background:var(--c);color:#fff;text-align:center;cursor:pointer;box-shadow:0 7px 0 var(--c-deep),inset 0 0 0 3px rgba(255,255,255,.14),inset 0 3px 0 rgba(255,255,255,.3);transition:transform .12s ease,box-shadow .12s ease;-webkit-user-select:none;user-select:none}
+@supports (background:color-mix(in srgb,red 50%,blue)){
+  .tile{background:linear-gradient(180deg,color-mix(in srgb,var(--c) 76%,#fff) 0%,var(--c) 44%,color-mix(in srgb,var(--c) 80%,#000) 100%)}
+}
+.tile::before{content:"";position:absolute;inset:0;z-index:-1;background-image:var(--pattern);background-size:72px 72px;background-position:center top;opacity:.4;mix-blend-mode:soft-light;pointer-events:none}
+.tile::after{content:"";position:absolute;inset:7px;border-radius:50% 50% 16px 16px/103px 103px 16px 16px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.22);pointer-events:none}
+.tile:active{transform:translateY(4px);box-shadow:0 3px 0 var(--c-deep),inset 0 0 0 3px rgba(255,255,255,.14),inset 0 3px 0 rgba(255,255,255,.3)}
+.tile-medal{position:absolute;top:10px;left:50%;width:44px;transform:translateX(-50%)}
+.tile-medal svg{display:block;width:100%;height:auto}
+.tile-ar{font-family:var(--f-arabic);font-size:2rem;line-height:1.55;direction:rtl;text-shadow:0 2px 0 rgba(0,0,0,.18)}
+.tile-name{font-family:var(--f-display);font-size:1.3rem;line-height:1.1;text-shadow:0 2px 0 var(--c-deep)}
+.tile-sub{font-size:.85rem;line-height:1.3;opacity:.95;text-shadow:0 1px 0 var(--c-deep)}
+.tile-prog{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 8px;margin-top:auto;padding-top:10px}
+.pips{display:flex;flex-wrap:wrap;justify-content:center;gap:4px}
+.pip{display:block;width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.3)}
+.pip.on{background:var(--gold-hi);box-shadow:0 0 6px rgba(255,224,138,.8)}
+.tile-count{font-size:.85rem;font-weight:700;font-variant-numeric:tabular-nums;text-shadow:0 1px 0 var(--c-deep)}
+@media (hover:hover){.tile:hover{filter:brightness(1.06)}}
+
+.shelf{display:grid;gap:12px;margin-top:28px;padding:16px 14px 18px;border-radius:26px;background:rgba(38,42,100,.84);box-shadow:inset 0 0 0 1px var(--line)}
+.shelf h2{font-size:1.3rem;padding-inline:4px}
+.shelf-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.sticker{display:grid;justify-items:center;align-content:start;gap:6px;text-align:center;font-size:.8rem;line-height:1.25;color:var(--ink-faint)}
+.sticker.earned{color:var(--ink)}
+.medal-box{display:block;width:64px;max-width:100%}
+.medal-box svg{display:block;width:100%;height:auto}
+
+.parent-wrap{display:flex;justify-content:center;margin-top:28px}
+.parent-btn{display:inline-flex;align-items:center;gap:12px;min-height:56px;padding:8px 20px 8px 8px;border:0;border-radius:999px;background:rgba(38,42,100,.85);box-shadow:inset 0 0 0 1px var(--line),0 4px 0 rgba(10,12,40,.5);color:var(--ink-soft);text-align:left;cursor:pointer;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.hold{position:relative;flex:none;display:grid;place-items:center;width:40px;height:40px}
+.hold-ring{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.hold-ring circle{fill:none;stroke-width:3.5}
+.hold-track{stroke:rgba(255,255,255,.14)}
+.hold-fill{stroke:var(--gold);stroke-linecap:round;stroke-dasharray:107;stroke-dashoffset:107;transition:stroke-dashoffset .15s ease-out}
+.parent-btn.holding .hold-fill{stroke-dashoffset:0;transition:stroke-dashoffset .8s linear}
+.hold-icon svg{width:22px;height:22px;color:var(--ink)}
+.parent-text{display:grid;line-height:1.2}
+.parent-title{font-family:var(--f-display);font-size:1.1rem;color:var(--ink)}
+.parent-hint{font-size:.85rem;color:var(--ink-faint)}
+
+.toast{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));z-index:57;width:max-content;max-width:calc(100vw - 32px);padding:12px 18px;border-radius:18px;background:var(--surface-3);color:var(--ink);font-size:.95rem;text-align:center;box-shadow:0 12px 30px rgba(0,0,0,.4),inset 0 0 0 1px var(--line);opacity:0;transform:translate(-50%,10px);transition:opacity .2s ease,transform .2s ease;pointer-events:none}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* ---------- learn ---------- */
+.learn,.actionbar{--c:var(--amethyst);--c-deep:#4E2F86;--c-glow:rgba(142,91,234,.45)}
+.learn-top{position:sticky;top:env(safe-area-inset-top,0px);z-index:2;padding:12px 16px 26px;background:linear-gradient(180deg,var(--sky-top) 0%,var(--sky-top) 58%,rgba(26,33,82,0) 100%)}
+.learn-top::before{content:"";position:absolute;left:0;right:0;bottom:100%;height:env(safe-area-inset-top,0px);background:var(--sky-top)}
+.learn-top-in{display:flex;align-items:center;gap:12px;max-width:728px;margin-inline:auto}
+.round-btn{flex:none;display:grid;place-items:center;width:52px;height:52px;padding:0;border:0;border-radius:50%;background:var(--surface-2);color:var(--ink);cursor:pointer;box-shadow:0 4px 0 rgba(10,12,40,.6),inset 0 0 0 1.5px var(--line);transition:transform .12s ease,box-shadow .12s ease}
+.round-btn svg{width:26px;height:26px}
+.round-btn:active{transform:translateY(4px);box-shadow:0 0 0 rgba(10,12,40,.6),inset 0 0 0 1.5px var(--line)}
+.learn-title{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:baseline;column-gap:10px}
+.learn-title h1{font-size:1.6rem;color:var(--ink);text-shadow:0 2px 0 var(--c-deep);overflow-wrap:anywhere}
+.learn-ar{font-family:var(--f-arabic);font-size:1.45rem;line-height:1.4;color:var(--gold-hi);direction:rtl}
+
+.learn-body{display:grid;gap:18px;padding-top:2px;padding-bottom:calc(130px + env(safe-area-inset-bottom,0px))}
+.steps{display:flex;flex-wrap:wrap;justify-content:center;gap:4px}
+.step{display:grid;place-items:center;width:42px;height:48px;padding:0;border:0;background:none;cursor:pointer;color:var(--ink)}
+.step-dot{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:rgba(13,15,42,.42);box-shadow:inset 0 0 0 2px rgba(255,255,255,.22);font-family:var(--f-display);font-size:1rem;line-height:1;font-variant-numeric:tabular-nums;transition:transform .15s ease}
+.step.done .step-dot{background:var(--c);box-shadow:inset 0 0 0 2px rgba(255,255,255,.28),0 2px 0 var(--c-deep);text-shadow:0 1px 0 var(--c-deep)}
+.step.current .step-dot{box-shadow:0 0 0 3px var(--gold),0 0 14px rgba(255,201,60,.5);transform:scale(1.08)}
+.step:disabled{cursor:default}
+.step:disabled .step-dot{opacity:.38}
+.step:not(:disabled):active .step-dot{transform:scale(.92)}
+
+.instr{display:grid;gap:4px;text-align:center}
+.instr h2{font-size:1.6rem;color:var(--ink)}
+.instr p{font-size:.95rem;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+.note{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:18px;background:rgba(48,53,122,.75);box-shadow:inset 0 0 0 1px var(--line);font-size:.95rem;line-height:1.45;color:var(--ink-soft)}
+.note svg{flex:none;width:22px;height:22px;margin-top:1px;color:var(--gold-hi)}
+
+.cards{display:flex;flex-direction:column;gap:14px;margin:0;padding:0;list-style:none}
+.card{position:relative;display:grid;gap:8px;padding:14px 18px 16px;border-radius:24px;background:var(--surface);box-shadow:inset 0 0 0 1px var(--line),0 6px 18px rgba(8,10,32,.28);transition:box-shadow .25s ease,transform .25s ease;scroll-margin-block:110px 140px}
+.card.active{box-shadow:0 0 0 3px var(--c),0 0 26px 4px var(--c-glow),inset 0 0 0 1px var(--line);transform:scale(1.015)}
+.card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:24px}
+.card-num{font-size:.85rem;font-weight:700;color:var(--ink-faint)}
+.badge-new{padding:3px 10px 2px;border-radius:999px;background:var(--gold);color:var(--gold-ink);font-family:var(--f-display);font-size:.85rem;letter-spacing:.06em;line-height:1.3;box-shadow:0 2px 0 var(--gold-deep)}
+.ar{font-family:var(--f-arabic);font-size:clamp(1.7rem,7vw,2.4rem);line-height:2.1;text-align:right;color:var(--ink);overflow-wrap:break-word}
+.ar .ayah{margin-inline-start:.2em}
+.tr{font-size:1.05rem;font-weight:700;line-height:1.4;color:var(--gold-hi)}
+.no-translit .tr{display:none}
+.fi{margin-inline:-6px;padding:2px 6px;border-radius:10px;font-size:.95rem;line-height:1.45;color:var(--ink-soft);transition:background-color .3s ease,color .3s ease}
+.fi.hl{background:rgba(255,224,138,.16);color:var(--ink)}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.chip{display:inline-flex;align-items:center;gap:8px;min-height:48px;padding:0 16px 0 12px;border:0;border-radius:999px;background:var(--surface-2);color:var(--ink);font-size:.95rem;font-weight:700;line-height:1.2;cursor:pointer;box-shadow:inset 0 0 0 1px var(--line),0 3px 0 rgba(10,12,40,.45);transition:transform .12s ease,box-shadow .12s ease}
+.chip svg{width:20px;height:20px;color:var(--gold-hi)}
+.chip:active{transform:translateY(3px);box-shadow:inset 0 0 0 1px var(--line),0 0 0 rgba(10,12,40,.45)}
+
+/* ---------- action bar ---------- */
+.actionbar{position:fixed;left:0;right:0;bottom:0;z-index:10;padding:12px 16px calc(14px + env(safe-area-inset-bottom,0px));background:linear-gradient(180deg,rgba(20,24,56,0) 0%,rgba(20,24,56,.82) 38%,rgba(20,24,56,.95) 100%)}
+.actionbar-in{display:flex;justify-content:center;gap:12px;max-width:728px;margin-inline:auto}
+.big{flex:1;max-width:340px;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:64px;padding:8px 12px;border:0;border-radius:22px;font-family:var(--f-display);font-size:clamp(1.1rem,5.2vw,1.35rem);line-height:1.05;cursor:pointer;transition:transform .12s ease,box-shadow .12s ease;-webkit-user-select:none;user-select:none}
+.big [data-icon] svg{flex:none;width:28px;height:28px}
+.big-listen{background:var(--c);color:#fff;text-shadow:0 2px 0 var(--c-deep);box-shadow:0 6px 0 var(--c-deep),inset 0 2px 0 rgba(255,255,255,.28),inset 0 0 0 2px rgba(255,255,255,.12)}
+.big-listen:active{transform:translateY(4px);box-shadow:0 2px 0 var(--c-deep),inset 0 2px 0 rgba(255,255,255,.28),inset 0 0 0 2px rgba(255,255,255,.12)}
+.big-gold{background:var(--gold);color:var(--gold-ink);box-shadow:0 6px 0 var(--gold-deep),inset 0 2px 0 rgba(255,255,255,.5)}
+.big-gold:active{transform:translateY(4px);box-shadow:0 2px 0 var(--gold-deep),inset 0 2px 0 rgba(255,255,255,.5)}
+.big-gold.nudge{animation:nudge 1.6s ease-in-out infinite}
+@keyframes nudge{0%,100%{transform:translateY(0) scale(1)}45%{transform:translateY(-3px) scale(1.04);box-shadow:0 9px 0 var(--gold-deep),inset 0 2px 0 rgba(255,255,255,.5),0 0 0 6px rgba(255,201,60,.22),0 0 26px rgba(255,201,60,.45)}}
+.eq{display:none;flex:none;align-items:flex-end;gap:3px;width:24px;height:24px}
+.eq i{display:block;flex:1;height:40%;border-radius:2px;background:currentColor;animation:eq .8s ease-in-out infinite alternate}
+.eq i:nth-child(2){animation-delay:-.45s;height:85%}
+.eq i:nth-child(3){animation-delay:-.2s;height:60%}
+@keyframes eq{from{transform:scaleY(.3)}to{transform:scaleY(1)}}
+.eq i{transform-origin:bottom}
+.big-listen.playing .eq{display:flex}
+.big-listen.playing .ico-play{display:none}
+
+/* ---------- overlays ---------- */
+.overlay{position:fixed;inset:0;z-index:50;display:flex;overflow-y:auto;overscroll-behavior:contain;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px));background:rgba(10,12,34,.66);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.ov-card{position:relative;margin:auto;width:100%;max-width:420px;display:grid;justify-items:center;gap:10px;padding:22px 22px 24px;border-radius:32px;text-align:center;background:linear-gradient(180deg,var(--surface-2) 0%,var(--surface) 100%);box-shadow:0 24px 60px rgba(0,0,0,.45),inset 0 0 0 1px var(--line),inset 0 2px 0 rgba(255,255,255,.08);animation:pop .45s cubic-bezier(.2,1.4,.45,1) both}
+@keyframes pop{from{opacity:0;transform:scale(.86) translateY(14px)}to{opacity:1;transform:none}}
+.ov-art{display:block;width:170px;max-width:60vw;margin-top:-6px}
+.ov-art svg{display:block;width:100%;height:auto}
+.ov-medal{animation:medal .7s .1s cubic-bezier(.2,1.5,.4,1) both}
+@keyframes medal{from{opacity:0;transform:scale(.3) rotate(-14deg)}to{opacity:1;transform:none}}
+.ov-card h2{font-size:2.1rem;color:var(--gold-hi);text-shadow:0 3px 0 rgba(10,12,40,.45)}
+.ov-text{font-size:1.3rem;line-height:1.35;color:var(--ink);overflow-wrap:anywhere;text-wrap:balance}
+.ov-plus{display:inline-flex;align-items:center;gap:6px;padding:6px 14px 6px 10px;border-radius:999px;background:rgba(255,201,60,.14);box-shadow:inset 0 0 0 1.5px rgba(255,201,60,.4);color:var(--gold-hi);font-family:var(--f-display);font-size:1.1rem;line-height:1}
+.ov-plus svg{width:22px;height:22px;color:var(--gold)}
+.ov-next{font-size:.95rem;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+.ov-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;width:100%;margin-top:8px}
+.ov-actions .big{flex:1 1 140px;max-width:none}
+.big-plain{background:var(--surface-3);color:var(--ink);box-shadow:0 6px 0 #232769,inset 0 2px 0 rgba(255,255,255,.14),inset 0 0 0 1.5px var(--line)}
+.big-plain:active{transform:translateY(4px);box-shadow:0 2px 0 #232769,inset 0 2px 0 rgba(255,255,255,.14),inset 0 0 0 1.5px var(--line)}
+
+/* ---------- parent settings ---------- */
+.overlay-settings{z-index:55}
+.sheet{margin:auto;width:100%;max-width:520px;max-height:88vh;max-height:88dvh;overflow-y:auto;overscroll-behavior:contain;border-radius:26px;background:var(--surface);box-shadow:0 24px 60px rgba(0,0,0,.5),inset 0 0 0 1px var(--line);animation:pop .3s ease-out both}
+.sheet-head{position:sticky;top:0;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 14px 12px 20px;background:var(--surface);border-bottom:1px solid var(--line)}
+.sheet-head h2{font-size:1.6rem}
+.sheet-body{display:grid;gap:18px;padding:16px 20px 22px}
+.field{display:grid;gap:8px}
+.field-label{font-weight:700;font-size:.95rem;color:var(--ink-soft)}
+.text-input{width:100%;min-height:52px;padding:10px 14px;border:0;border-radius:14px;background:var(--night);color:var(--ink);font-size:1.05rem;box-shadow:inset 0 0 0 1.5px var(--line)}
+.text-input::placeholder{color:var(--ink-faint)}
+.text-input:focus-visible{outline:3px solid var(--gold-hi);outline-offset:2px}
+.group{display:grid;border-radius:18px;background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--line);overflow:hidden}
+.switch-row{position:relative;display:flex;align-items:center;justify-content:space-between;gap:14px;min-height:60px;padding:8px 16px;cursor:pointer}
+.switch-row + .switch-row{border-top:1px solid var(--line)}
+.switch-text{display:grid;gap:2px;font-size:1.05rem;line-height:1.3}
+.switch-text small{font-size:.85rem;color:var(--ink-faint)}
+.switch-input{position:absolute;width:52px;height:32px;right:16px;top:50%;margin:-16px 0 0;opacity:0;cursor:pointer}
+.track{flex:none;position:relative;width:52px;height:32px;border-radius:999px;background:var(--surface-3);box-shadow:inset 0 0 0 1.5px var(--line);transition:background-color .2s ease}
+.track::after{content:"";position:absolute;top:4px;left:4px;width:24px;height:24px;border-radius:50%;background:var(--ink-soft);box-shadow:0 2px 3px rgba(0,0,0,.3);transition:transform .2s ease,background-color .2s ease}
+.switch-input:checked + .track{background:var(--emerald)}
+.switch-input:checked + .track::after{transform:translateX(20px);background:#fff}
+.switch-input:focus-visible + .track{outline:3px solid var(--gold-hi);outline-offset:3px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:5px;border-radius:18px;background:var(--night);box-shadow:inset 0 0 0 1px var(--line)}
+.seg button{min-height:52px;padding:6px 10px;border:0;border-radius:14px;background:transparent;color:var(--ink-soft);font-size:.95rem;font-weight:700;line-height:1.25;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--surface-3);color:var(--ink);box-shadow:0 3px 0 #232769,inset 0 0 0 1.5px rgba(255,224,138,.4)}
+.voice-list{display:grid;gap:6px;margin:0;padding:12px 16px;border-radius:18px;background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--line);list-style:none;font-size:.95rem;line-height:1.4;color:var(--ink-soft)}
+.voice-list b{color:var(--ink)}
+.voice-list .yes{color:var(--emerald)}
+.voice-list .no{color:var(--saffron)}
+.tips{border-radius:18px;background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--line)}
+.tips summary{display:list-item;min-height:52px;padding:14px 16px;font-weight:700;cursor:pointer;list-style-position:inside}
+.tips ul{display:grid;gap:6px;margin:0;padding:0 16px 14px 34px;font-size:.95rem;line-height:1.45;color:var(--ink-soft)}
+.tips b{color:var(--gold-hi)}
+.reset{display:grid;gap:10px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:8px 18px;border:0;border-radius:16px;font-weight:700;font-size:1rem;cursor:pointer;transition:transform .12s ease,box-shadow .12s ease}
+.btn:active{transform:translateY(3px)}
+.btn-ghost{background:transparent;color:var(--ink-soft);box-shadow:inset 0 0 0 1.5px var(--line)}
+.btn-danger{background:var(--saffron);color:var(--gold-ink);box-shadow:0 4px 0 #9A5A12}
+.btn-danger:active{box-shadow:0 1px 0 #9A5A12}
+.btn-soft{background:var(--surface-3);color:var(--ink);box-shadow:0 4px 0 #232769}
+.confirm{display:grid;gap:10px;padding:14px;border-radius:18px;background:rgba(242,153,46,.12);box-shadow:inset 0 0 0 1.5px rgba(242,153,46,.45)}
+.confirm p{font-weight:700}
+.confirm-row{display:flex;flex-wrap:wrap;gap:10px}
+.confirm-row .btn{flex:1 1 120px}
+.credits{font-size:.8rem;line-height:1.5;color:var(--ink-faint)}
+.btn svg{width:20px;height:20px}
+.chip-ico{display:inline-flex;flex:none}
+.sheet:focus{outline:none}
+html.ov-open{overflow:hidden}
+
+@media (min-width:640px){
+  .tile{min-height:250px}
+  .medal-box{width:76px}
+}
+@media (prefers-reduced-motion:reduce){
+  [data-ui],[data-ui] *,[data-ui] *::before,[data-ui] *::after{animation-duration:.001ms!important;animation-iteration-count:1!important;animation-delay:0s!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
+  .sky-stars i{animation:none}
+  .card.active{transform:none}
+  .big-gold.nudge{animation:none;box-shadow:0 6px 0 var(--gold-deep),inset 0 2px 0 rgba(255,255,255,.5),0 0 0 5px rgba(255,201,60,.4)}
+  .eq i{animation:none;transform:none}
+  .parent-btn.holding .hold-fill{transition-duration:.8s!important}
+}
+</style>
+<style>/*@GAMES_CSS@*/</style>
+
+<div class="sky" aria-hidden="true">
+  <div class="sky-pattern"></div>
+  <div class="sky-stars" id="skyStars"></div>
+  <div class="sky-skyline" id="skySkyline"></div>
+</div>
+
+<div class="app" id="app" data-ui>
+  <main class="wrap home" id="home">
+    <header class="home-head">
+      <div class="brand">
+        <span class="brand-emblem" id="brandEmblem" aria-hidden="true"></span>
+        <h1>Suuraseikkailu</h1>
+      </div>
+      <div class="star-pill" id="homeStars" role="img" aria-label="Tähtiä: 0"><span data-icon="star" aria-hidden="true"></span><span class="star-num" aria-hidden="true">0</span></div>
+    </header>
+
+    <section class="greet" aria-labelledby="greeting">
+      <h2 id="greeting">Hei!</h2>
+      <p>Valitse, mitä opetellaan.</p>
+    </section>
+
+    <div class="tiles" id="tiles"></div>
+
+    <section class="shelf" aria-labelledby="shelfTitle">
+      <h2 id="shelfTitle">Tarrat</h2>
+      <div class="shelf-row" id="shelf"></div>
+    </section>
+
+    <div class="parent-wrap">
+      <button type="button" class="parent-btn" id="parentBtn">
+        <span class="hold" aria-hidden="true">
+          <svg class="hold-ring" viewBox="0 0 40 40" focusable="false"><circle class="hold-track" cx="20" cy="20" r="17"/><circle class="hold-fill" cx="20" cy="20" r="17"/></svg>
+          <span class="hold-icon" data-icon="gear"></span>
+        </span>
+        <span class="parent-text"><span class="parent-title">Vanhemmille</span><span class="parent-hint">pidä painettuna</span></span>
+      </button>
+    </div>
+  </main>
+
+  <div class="learn" id="learn" hidden>
+    <header class="learn-top">
+      <div class="learn-top-in">
+        <button type="button" class="round-btn" id="homeBtn" aria-label="Kotiin"><span data-icon="home" aria-hidden="true"></span></button>
+        <div class="learn-title">
+          <h1 id="learnName">Suura</h1>
+          <span class="learn-ar" id="learnAr" lang="ar" dir="rtl"></span>
+        </div>
+        <div class="star-pill" id="learnStars" role="img" aria-label="Tähtiä: 0"><span data-icon="star" aria-hidden="true"></span><span class="star-num" aria-hidden="true">0</span></div>
+      </div>
+    </header>
+
+    <main class="wrap learn-body" id="learnBody">
+      <nav class="steps" id="steps" aria-label="Vaiheet"></nav>
+      <div class="instr">
+        <h2 id="instrTitle">Kuuntele ja sano perässä</h2>
+        <p id="instrSub">Vaihe 1/1</p>
+      </div>
+      <p class="note" id="ttsNote" hidden><span data-icon="sound" aria-hidden="true"></span><span id="ttsNoteText"></span></p>
+      <ol class="cards" id="cards"></ol>
+    </main>
+  </div>
+</div>
+
+<div class="actionbar" id="actionbar" data-ui hidden>
+  <div class="actionbar-in">
+    <button type="button" class="big big-listen" id="listenBtn">
+      <span class="ico-play" data-icon="play" aria-hidden="true"></span>
+      <span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span id="listenLabel">Kuuntele</span>
+    </button>
+    <button type="button" class="big big-gold" id="saidBtn">
+      <span data-icon="star" aria-hidden="true"></span>
+      <span>Sanoin!</span>
+    </button>
+  </div>
+</div>
+
+<div class="overlay" id="reward" data-ui hidden>
+  <div class="ov-card" role="dialog" aria-modal="true" aria-labelledby="rewardTitle" aria-describedby="rewardText">
+    <div class="ov-art" id="rewardArt" aria-hidden="true"></div>
+    <h2 id="rewardTitle">Mashaallah!</h2>
+    <p class="ov-text" id="rewardText"></p>
+    <p class="ov-plus"><span data-icon="star" aria-hidden="true"></span><span>+1 tähti</span></p>
+    <p class="ov-next" id="rewardNext"></p>
+    <div class="ov-actions">
+      <button type="button" class="big big-gold" id="rewardGo"><span>Jatka</span></button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="finale" data-ui hidden>
+  <div class="ov-card" role="dialog" aria-modal="true" aria-labelledby="finaleTitle" aria-describedby="finaleText">
+    <div class="ov-art ov-medal" id="finaleArt" aria-hidden="true"></div>
+    <h2 id="finaleTitle">Mashaallah!</h2>
+    <p class="ov-text" id="finaleText"></p>
+    <p class="ov-plus"><span data-icon="star" aria-hidden="true"></span><span id="finalePlus">+3 tähteä</span></p>
+    <div class="ov-actions">
+      <button type="button" class="big big-plain" id="finaleHome"><span data-icon="home" aria-hidden="true"></span><span>Kotiin</span></button>
+      <button type="button" class="big big-gold" id="finaleAgain"><span data-icon="replay" aria-hidden="true"></span><span>Uudestaan</span></button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay overlay-settings" id="settings" data-ui hidden>
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" tabindex="-1">
+    <div class="sheet-head">
+      <h2 id="settingsTitle">Vanhemmille</h2>
+      <button type="button" class="round-btn" id="settingsClose" aria-label="Sulje"><span data-icon="close" aria-hidden="true"></span></button>
+    </div>
+    <div class="sheet-body">
+      <div class="field">
+        <label class="field-label" for="childName">Lapsen nimi</label>
+        <input class="text-input" id="childName" name="childName" type="text" maxlength="24" placeholder="esim. Amina" autocomplete="off" autocapitalize="words" spellcheck="false" enterkeyhint="done">
+      </div>
+
+      <div class="group">
+        <label class="switch-row" for="optSpeech">
+          <span class="switch-text">Suomenkielinen puhe<small>Ohjeet, kehut ja merkitykset ääneen</small></span>
+          <input class="switch-input" type="checkbox" id="optSpeech" name="optSpeech" role="switch">
+          <span class="track" aria-hidden="true"></span>
+        </label>
+        <label class="switch-row" for="optSlow">
+          <span class="switch-text">Hidas resitaatio<small>Tallenne soi hitaammin</small></span>
+          <input class="switch-input" type="checkbox" id="optSlow" name="optSlow" role="switch">
+          <span class="track" aria-hidden="true"></span>
+        </label>
+        <label class="switch-row" for="optTranslit">
+          <span class="switch-text">Näytä ääntämisapu<small>Rivit latinalaisin kirjaimin</small></span>
+          <input class="switch-input" type="checkbox" id="optTranslit" name="optTranslit" role="switch">
+          <span class="track" aria-hidden="true"></span>
+        </label>
+        <label class="switch-row" for="optSfx">
+          <span class="switch-text">Ääniefektit<small>Lyhyet äänet peleissä ja palkinnoissa</small></span>
+          <input class="switch-input" type="checkbox" id="optSfx" name="optSfx" role="switch">
+          <span class="track" aria-hidden="true"></span>
+        </label>
+      </div>
+
+      <div class="field">
+        <span class="field-label" id="everyLabel">Minipeli</span>
+        <div class="seg" role="group" aria-labelledby="everyLabel">
+          <button type="button" id="every1" aria-pressed="true">Joka vaiheen jälkeen</button>
+          <button type="button" id="every2" aria-pressed="false">Joka toisen vaiheen jälkeen</button>
+        </div>
+      </div>
+
+      <ul class="voice-list">
+        <li>Suomenkielinen puheääni: <b id="voiceFiStatus">ei löytynyt tästä laitteesta</b></li>
+        <li>Arabiankielinen puheääni (Shahada): <b id="voiceArStatus">ei löytynyt tästä laitteesta</b></li>
+      </ul>
+
+      <details class="tips" id="tips">
+        <summary>Ääntämisvinkit</summary>
+        <ul>
+          <li><b>‘</b> = kurkusta tuleva äänne (<span lang="ar">ع</span>)</li>
+          <li><b>dh</b> = kuin englannin sanassa ”this” (<span lang="ar">ذ</span>)</li>
+          <li><b>gh</b> = kurkussa sorahtava r (<span lang="ar">غ</span>)</li>
+          <li><b>q</b> = syvältä kurkusta lausuttu k (<span lang="ar">ق</span>)</li>
+          <li><b>aa, ii, uu</b> = kaksoisvokaali on pitkä vokaali</li>
+          <li><b>viiva</b> yhdistää sanat, jotka lausutaan yhteen</li>
+        </ul>
+      </details>
+
+      <div class="reset">
+        <button type="button" class="btn btn-ghost" id="resetBtn"><span data-icon="replay" aria-hidden="true"></span><span>Aloita alusta</span></button>
+        <div class="confirm" id="resetConfirm" role="group" aria-labelledby="resetQ" hidden>
+          <p id="resetQ">Nollataanko kaikki tähdet ja edistyminen?</p>
+          <div class="confirm-row">
+            <button type="button" class="btn btn-danger" id="resetYes">Kyllä, nollaa</button>
+            <button type="button" class="btn btn-soft" id="resetNo">Peru</button>
+          </div>
+        </div>
+      </div>
+
+      <p class="credits" id="credits"></p>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" data-ui role="status" aria-live="polite"></div>
+
+<script>/*@ART_JS@*/</script>
+<script>/*@GAMES_JS@*/</script>
+<script>/*@DATA_JS@*/</script>
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- module access with safe fallbacks ---------- */
+  function art(fn) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    try {
+      var A = window.ART;
+      if (A && typeof A[fn] === 'function') return A[fn].apply(A, args) || '';
+    } catch (e) { console.warn('ART.' + fn, e); }
+    if (fn === 'ayah') return '<span class="ayah">(' + arabicDigits(args[0]) + ')</span>';
+    if (fn === 'arabicDigits') return arabicDigits(args[0]);
+    return '';
+  }
+  function arabicDigits(n) {
+    return String(n == null ? '' : n).replace(/[0-9]/g, function (d) { return String.fromCharCode(0x0660 + Number(d)); });
+  }
+  function sfx(name) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    try { var S = window.SFX; if (S && typeof S[name] === 'function') S[name].apply(S, args); } catch (e) { console.warn('SFX.' + name, e); }
+  }
+  function fx(name) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    try { var F = window.FX; if (F && typeof F[name] === 'function') F[name].apply(F, args); } catch (e) { console.warn('FX.' + name, e); }
+  }
+
+  var DATA = (window.SUURA_DATA && Array.isArray(window.SUURA_DATA.sections)) ? window.SUURA_DATA : { sections: [], credits: '' };
+  var SECTIONS = DATA.sections.filter(function (s) { return s && s.id && Array.isArray(s.lines) && s.lines.length; });
+  function byId(id) { return SECTIONS.find(function (s) { return s.id === id; }) || null; }
+
+  /* ---------- state ---------- */
+  var KEY = 'suuraseikkailu-v1';
+  function defaults() {
+    return { progress: { shahada: 0, fatiha: 0, ikhlas: 0, kawthar: 0 }, done: {}, stars: 0, name: '', speech: true, slow: false, translit: true, sfx: true, every: 1, game: 0 };
+  }
+  function int(v) { return (typeof v === 'number' && isFinite(v)) ? Math.max(0, Math.floor(v)) : null; }
+  function load() {
+    var s = defaults(), raw = null;
+    SECTIONS.forEach(function (sec) { if (!(sec.id in s.progress)) s.progress[sec.id] = 0; });
+    try { raw = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { raw = null; }
+    if (!raw || typeof raw !== 'object') return s;
+    if (raw.progress && typeof raw.progress === 'object') {
+      Object.keys(s.progress).forEach(function (k) { var v = int(raw.progress[k]); if (v !== null) s.progress[k] = v; });
+    }
+    if (raw.done && typeof raw.done === 'object') {
+      Object.keys(s.progress).forEach(function (k) { if (raw.done[k] === true) s.done[k] = true; });
+    }
+    if (int(raw.stars) !== null) s.stars = int(raw.stars);
+    if (typeof raw.name === 'string') s.name = raw.name.slice(0, 24);
+    ['speech', 'slow', 'translit', 'sfx'].forEach(function (k) { if (typeof raw[k] === 'boolean') s[k] = raw[k]; });
+    if (raw.every === 1 || raw.every === 2) s.every = raw.every;
+    if (int(raw.game) !== null) s.game = int(raw.game);
+    return s;
+  }
+  var state = load();
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* storage unavailable: keep going in memory */ } }
+  function prog(sec) { return Math.min(sec.lines.length, Math.max(0, state.progress[sec.id] || 0)); }
+
+  /* ---------- small helpers ---------- */
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
+  }
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  var mqReduce = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+  function reduced() { return !!(mqReduce && mqReduce.matches); }
+  function hexRgb(h) {
+    var m = /^#?([0-9a-f]{6})$/i.exec(h || '');
+    if (!m) return [142, 91, 234];
+    var n = parseInt(m[1], 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  function applyColor(el, hex) {
+    var c = hexRgb(hex), f = 0.42;
+    el.style.setProperty('--c', 'rgb(' + c.join(',') + ')');
+    el.style.setProperty('--c-deep', 'rgb(' + c.map(function (v) { return Math.round(v * (1 - f)); }).join(',') + ')');
+    el.style.setProperty('--c-glow', 'rgba(' + c.join(',') + ',.45)');
+  }
+  function fillIcons(root) {
+    (root || document).querySelectorAll('[data-icon]').forEach(function (el) {
+      if (!el.firstElementChild) el.innerHTML = art('icon', el.getAttribute('data-icon'), 'icon');
+    });
+  }
+  function bumpEl(el) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+
+  var toastTimer = 0;
+  function toast(msg) {
+    var t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove('show'); }, 2800);
+  }
+
+  /* ---------- sky ---------- */
+  function buildSky() {
+    var pat = art('patternURL');
+    if (pat) document.documentElement.style.setProperty('--pattern', pat);
+    var box = $('skyStars');
+    if (box && !box.childElementCount) {
+      var seed = 11;
+      var rnd = function () { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+      for (var i = 0; i < 30; i++) {
+        var dot = document.createElement('i');
+        var size = (1.4 + rnd() * 1.9).toFixed(1) + 'px';
+        if (i % 6 === 0) dot.className = 'gold';
+        dot.style.left = (rnd() * 100).toFixed(2) + '%';
+        dot.style.top = (rnd() * 74).toFixed(2) + '%';
+        dot.style.width = size;
+        dot.style.height = size;
+        dot.style.animationDelay = (-rnd() * 4).toFixed(2) + 's';
+        dot.style.animationDuration = (2.8 + rnd() * 2.8).toFixed(2) + 's';
+        box.appendChild(dot);
+      }
+    }
+    var sk = $('skySkyline');
+    if (sk && !sk.firstElementChild) sk.innerHTML = art('skyline');
+    var em = $('brandEmblem');
+    if (em && !em.firstElementChild) em.innerHTML = art('emblem');
+  }
+
+  /* ---------- speech ---------- */
+  var synth = ('speechSynthesis' in window) ? window.speechSynthesis : null;
+  var hasUtter = typeof window.SpeechSynthesisUtterance === 'function';
+  var voiceFi = null, voiceAr = null, realSpeech = false, liveUtters = [];
+  function langOf(v) { return String(v && v.lang || '').toLowerCase().replace('_', '-'); }
+  function pickVoices() {
+    if (!synth) { updateVoiceStatus(); return; }
+    var list = [];
+    try { list = synth.getVoices() || []; } catch (e) { list = []; }
+    var fi = list.filter(function (v) { return langOf(v).indexOf('fi') === 0; });
+    var ar = list.filter(function (v) { return langOf(v).indexOf('ar') === 0; });
+    voiceFi = fi.find(function (v) { return v.localService; }) || fi[0] || null;
+    voiceAr = ar.find(function (v) { return langOf(v) === 'ar-sa'; }) || ar[0] || null;
+    updateVoiceStatus();
+    if (screen === 'learn') updateTtsNote();
+  }
+  function cancelSpeech() {
+    if (!synth || !realSpeech) return;
+    try { if (synth.speaking || synth.pending) synth.cancel(); } catch (e) { /* ignore */ }
+  }
+  // Resolves on end/error or after a safety timeout. Never speaks with a voice of the wrong language.
+  function speak(text, lang, opts) {
+    opts = opts || {};
+    return new Promise(function (resolve) {
+      var voice = lang === 'fi' ? voiceFi : voiceAr;
+      if (!synth || !hasUtter || !voice || !text) { resolve(false); return; }
+      var settled = false, timer = 0, u = null;
+      var finish = function (ok) {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        var i = liveUtters.indexOf(u);
+        if (i > -1) liveUtters.splice(i, 1);
+        resolve(ok);
+      };
+      try {
+        u = new SpeechSynthesisUtterance(text);
+        u.voice = voice;
+        u.lang = voice.lang;
+        u.rate = opts.rate || 1;
+        u.pitch = 1;
+        u.volume = 1;
+        u.onend = function () { finish(true); };
+        u.onerror = function () { finish(false); };
+        liveUtters.push(u); // keep a reference so the browser does not drop the callbacks
+        realSpeech = true;
+        synth.speak(u);
+      } catch (e) { finish(false); return; }
+      timer = setTimeout(function () { finish(true); }, 2500 + 110 * text.length);
+    });
+  }
+  function speakFi(text) {
+    if (!state.speech || !voiceFi) return Promise.resolve(false);
+    return speak(text, 'fi');
+  }
+
+  /* ---------- recitation audio ---------- */
+  var audio = new Audio();
+  audio.setAttribute('playsinline', '');
+  audio.preload = 'auto';
+  var warmed = new Map();
+  var audioDone = null;
+  function warmSection(sec) {
+    sec.lines.forEach(function (l) {
+      if (!l.audio || warmed.has(l.audio)) return;
+      try { var a = new Audio(l.audio); a.preload = 'auto'; warmed.set(l.audio, a); } catch (e) { /* ignore */ }
+    });
+  }
+  function applyRate() {
+    var r = state.slow ? 0.8 : 1;
+    try {
+      audio.preservesPitch = true;
+      audio.webkitPreservesPitch = true;
+      audio.mozPreservesPitch = true;
+      audio.defaultPlaybackRate = r;
+      audio.playbackRate = r;
+    } catch (e) { /* ignore */ }
+  }
+  function playFile(src) {
+    return new Promise(function (resolve) {
+      var settled = false, guard = 0;
+      var arm = function (ms) { clearTimeout(guard); guard = setTimeout(function () { done(false); }, ms); };
+      var onEnd = function () { done(true); };
+      var onErr = function () { done(false); };
+      var onPlay = function () { applyRate(); };
+      var onPlaying = function () {
+        var d = audio.duration;
+        if (isFinite(d) && d > 0) arm(d * 1000 / (state.slow ? 0.8 : 1) + 4000);
+      };
+      function done(ok) {
+        if (settled) return;
+        settled = true;
+        clearTimeout(guard);
+        audio.removeEventListener('ended', onEnd);
+        audio.removeEventListener('error', onErr);
+        audio.removeEventListener('play', onPlay);
+        audio.removeEventListener('playing', onPlaying);
+        if (audioDone === done) audioDone = null;
+        resolve(ok);
+      }
+      audioDone = done;
+      audio.addEventListener('ended', onEnd);
+      audio.addEventListener('error', onErr);
+      audio.addEventListener('play', onPlay);
+      audio.addEventListener('playing', onPlaying);
+      arm(30000);
+      try {
+        if (audio.getAttribute('src') !== src || audio.error) audio.src = src;
+        else audio.currentTime = 0;
+        applyRate();
+        var p = audio.play();
+        if (p && typeof p.catch === 'function') p.catch(function () { done(false); });
+      } catch (e) { done(false); }
+    });
+  }
+  function playLine(line) {
+    if (line.audio) return playFile(line.audio);
+    if (line.tts && voiceAr) return speak(line.tts, 'ar', { rate: 0.75 });
+    return wait(4000); // no recording and no Arabic voice: highlight the line so the parent can read it
+  }
+
+  var playToken = 0;
+  function stopAll() {
+    playToken++;
+    try { audio.pause(); } catch (e) { /* ignore */ }
+    if (audioDone) audioDone(false);
+    cancelSpeech();
+    setPlaying(false);
+    setActive(-1);
+  }
+  // Starts synchronously: the first play()/speak() happens inside the caller's tap handler (iOS).
+  function playChain() {
+    if (!cur) return;
+    stopAll();
+    var token = playToken, sec = cur, k = step;
+    setPlaying(true);
+    setNudge(false);
+    runChain(token, sec, k);
+  }
+  async function runChain(token, sec, k) {
+    for (var i = 0; i < k; i++) {
+      if (token !== playToken) return;
+      if (i > 0) {
+        await wait(250);
+        if (token !== playToken) return;
+      }
+      setActive(i);
+      await playLine(sec.lines[i]);
+    }
+    if (token !== playToken) return;
+    setActive(-1);
+    setPlaying(false);
+    await speakFi(k === 1 ? 'Nyt sinun vuorosi! Sano perässä.' : 'Nyt sinun vuorosi! Sano kaikki alusta asti.');
+    if (token !== playToken) return;
+    setNudge(true);
+  }
+  async function playSingle(i) {
+    if (!cur) return;
+    stopAll();
+    var token = playToken, line = cur.lines[i];
+    if (!line) return;
+    setActive(i);
+    await playLine(line);
+    if (token === playToken) setActive(-1);
+  }
+  async function explain(i) {
+    if (!cur) return;
+    var line = cur.lines[i], el = $('fi-' + i);
+    if (!line || !el) return;
+    stopAll();
+    el.classList.add('hl');
+    await Promise.all([speakFi(line.fi), wait(2200)]);
+    el.classList.remove('hl');
+  }
+
+  /* ---------- wake lock ---------- */
+  var wakeLock = null, wantWake = false;
+  async function requestWake() {
+    wantWake = true;
+    if (wakeLock || !navigator.wakeLock || typeof navigator.wakeLock.request !== 'function') return;
+    try {
+      var wl = await navigator.wakeLock.request('screen');
+      if (!wantWake) { wl.release().catch(function () {}); return; }
+      wakeLock = wl;
+      wl.addEventListener('release', function () { if (wakeLock === wl) wakeLock = null; });
+    } catch (e) { /* not allowed here: fine */ }
+  }
+  function releaseWake() {
+    wantWake = false;
+    var wl = wakeLock;
+    wakeLock = null;
+    if (wl) { try { wl.release().catch(function () {}); } catch (e) { /* ignore */ } }
+  }
+
+  /* ---------- view state ---------- */
+  var screen = 'home';
+  var cur = null;      // open section
+  var step = 1;        // current step k (1..N)
+  var flow = false;    // "Sanoin!" flow running (game / reward pending)
+  var flowToken = 0, flowAt = 0, timers = [], game = null, rewardK = 1;
+  var PRAISE = ['Hienoa', 'Mahtavaa', 'Upeaa', 'Loistavaa', 'Hyvin sanottu'];
+
+  function later(ms, fn) {
+    var t = flowToken;
+    var id = setTimeout(function () {
+      timers = timers.filter(function (x) { return x !== id; });
+      if (t === flowToken) fn();
+    }, ms);
+    timers.push(id);
+  }
+  function cancelFlow() {
+    flowToken++;
+    timers.forEach(clearTimeout);
+    timers = [];
+    flow = false;
+    var g = game;
+    game = null;
+    if (g && typeof g.abort === 'function') { try { g.abort(); } catch (e) { console.warn('MiniGames abort', e); } }
+  }
+  function isDone(sec) { return state.done[sec.id] === true; }
+  function isReview() { return !!(cur && isDone(cur) && step === cur.lines.length); }
+
+  /* ---------- overlays ---------- */
+  var lastFocus = null;
+  function anyOverlay() { return ['reward', 'finale', 'settings'].some(function (id) { return !$(id).hidden; }); }
+  function openOverlay(el, focusEl) {
+    if (!anyOverlay()) lastFocus = document.activeElement;
+    el.hidden = false;
+    document.documentElement.classList.add('ov-open');
+    if (focusEl) { try { focusEl.focus({ preventScroll: true }); } catch (e) { focusEl.focus(); } }
+  }
+  function closeOverlay(el) {
+    if (el.hidden) return;
+    el.hidden = true;
+    if (!anyOverlay()) document.documentElement.classList.remove('ov-open');
+  }
+  function closeFlowOverlays() { closeOverlay($('reward')); closeOverlay($('finale')); }
+
+  /* ---------- counters ---------- */
+  function updateStars(bump) {
+    ['homeStars', 'learnStars'].forEach(function (id) {
+      var el = $(id);
+      el.setAttribute('aria-label', 'Tähtiä: ' + state.stars);
+      el.querySelector('.star-num').textContent = String(state.stars);
+      if (bump && !reduced() && el.offsetParent) bumpEl(el);
+    });
+  }
+
+  /* ---------- home ---------- */
+  function renderHome() {
+    $('greeting').textContent = state.name ? 'Hei, ' + state.name + '!' : 'Hei!';
+    updateStars(false);
+    var tiles = $('tiles');
+    tiles.textContent = '';
+    SECTIONS.forEach(function (sec) {
+      var N = sec.lines.length, p = prog(sec), done = isDone(sec), pips = '';
+      for (var i = 0; i < N; i++) pips += '<i class="pip' + (i < p ? ' on' : '') + '"></i>';
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'tile' + (done ? ' done' : '');
+      b.id = 'tile-' + sec.id;
+      b.dataset.id = sec.id;
+      b.setAttribute('aria-label', sec.name + ', ' + sec.sub + ', ' + p + '/' + N + (done ? ', valmis' : ''));
+      applyColor(b, sec.color);
+      b.innerHTML =
+        (done ? '<span class="tile-medal" aria-hidden="true">' + art('medal', sec.id, true) + '</span>' : '') +
+        '<span class="tile-ar" lang="ar" dir="rtl">' + esc(sec.ar) + '</span>' +
+        '<span class="tile-name">' + esc(sec.name) + '</span>' +
+        '<span class="tile-sub">' + esc(sec.sub) + '</span>' +
+        '<span class="tile-prog" aria-hidden="true"><span class="pips">' + pips + '</span><span class="tile-count">' + p + '/' + N + '</span></span>';
+      tiles.appendChild(b);
+    });
+    var shelf = $('shelf');
+    shelf.innerHTML = SECTIONS.map(function (sec) {
+      var earned = isDone(sec);
+      return '<div class="sticker' + (earned ? ' earned' : '') + '">' +
+        '<span class="medal-box" aria-hidden="true">' + art('medal', sec.id, earned) + '</span>' +
+        '<span>' + esc(sec.name) + '<span class="vh">' + (earned ? ': tarra ansaittu' : ': tarra vielä ansaitsematta') + '</span></span></div>';
+    }).join('');
+  }
+
+  /* ---------- learn ---------- */
+  function setPlaying(on) {
+    var b = $('listenBtn');
+    b.classList.toggle('playing', on);
+    $('listenLabel').textContent = on ? 'Kuuntelee…' : 'Kuuntele';
+  }
+  function setNudge(on) { $('saidBtn').classList.toggle('nudge', !!on); }
+  function setActive(i) {
+    var cards = $('cards').children;
+    for (var j = 0; j < cards.length; j++) cards[j].classList.toggle('active', j === i);
+    if (i >= 0 && cards[i]) {
+      try { cards[i].scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'center' }); } catch (e) { cards[i].scrollIntoView(); }
+    }
+  }
+  function updateTtsNote() {
+    var note = $('ttsNote');
+    if (!cur || !cur.lines.some(function (l) { return !l.audio; })) { note.hidden = true; return; }
+    $('ttsNoteText').textContent = voiceAr
+      ? 'Shahadan lausuu puhelimen arabiankielinen puheääni.'
+      : 'Tähän ei ole resitoijan tallennetta, eikä puhelimessa ole arabiankielistä puheääntä. Lue rivit lapselle ääneen.';
+    note.hidden = false;
+  }
+  function renderLearn() {
+    var sec = cur;
+    if (!sec) return;
+    var N = sec.lines.length, p = prog(sec), done = isDone(sec), k = step, review = isReview();
+    var learn = $('learn');
+    applyColor(learn, sec.color);
+    applyColor($('actionbar'), sec.color);
+    learn.classList.toggle('no-translit', !state.translit);
+    $('learnName').textContent = sec.name;
+    $('learnAr').textContent = sec.ar;
+    updateStars(false);
+
+    var steps = '';
+    for (var i = 1; i <= N; i++) {
+      var open = done || i <= p + 1;
+      steps += '<button type="button" class="step' + (i <= p ? ' done' : '') + (i === k ? ' current' : '') + '" id="step-' + i + '" data-k="' + i + '"' +
+        (open ? '' : ' disabled') + (i === k ? ' aria-current="step"' : '') +
+        ' aria-label="Vaihe ' + i + (i <= p ? ', tehty' : '') + '"><span class="step-dot" aria-hidden="true">' + i + '</span></button>';
+    }
+    $('steps').innerHTML = steps;
+
+    $('instrTitle').textContent = review ? 'Sano koko ' + sec.name : (k === 1 ? 'Kuuntele ja sano perässä' : 'Sano rivit 1–' + k);
+    $('instrSub').textContent = 'Vaihe ' + k + '/' + N;
+    updateTtsNote();
+
+    var html = '';
+    for (var j = 0; j < k; j++) {
+      var line = sec.lines[j];
+      var ayah = (sec.quran && line.n > 0) ? ' ' + art('ayah', line.n) : '';
+      html += '<li class="card" id="card-' + j + '">' +
+        '<div class="card-head"><span class="card-num">Rivi ' + (j + 1) + '</span>' +
+        (j === k - 1 && !review ? '<span class="badge-new">UUSI</span>' : '') + '</div>' +
+        '<div class="ar" dir="rtl" lang="ar">' + esc(line.ar) + ayah + '</div>' +
+        (line.tr ? '<p class="tr">' + esc(line.tr) + '</p>' : '') +
+        '<p class="fi" id="fi-' + j + '" lang="fi">' + esc(line.fi) + '</p>' +
+        '<div class="tools">' +
+        '<button type="button" class="chip" id="lineplay-' + j + '" data-act="one" data-i="' + j + '">' + art('icon', 'play') + '<span>Kuuntele tämä</span></button>' +
+        '<button type="button" class="chip" id="linemean-' + j + '" data-act="mean" data-i="' + j + '">' + art('icon', 'speech') + '<span>Mitä tämä tarkoittaa?</span></button>' +
+        '</div></li>';
+    }
+    $('cards').innerHTML = html;
+  }
+
+  function showScreen(name) {
+    screen = name;
+    $('home').hidden = name !== 'home';
+    $('learn').hidden = name !== 'learn';
+    $('actionbar').hidden = name !== 'learn';
+    try { window.scrollTo(0, 0); } catch (e) { /* ignore */ }
+  }
+
+  // Must stay synchronous up to playChain(): it runs inside the tap handler (iOS audio rule).
+  function openSection(sec, k, autoplay) {
+    stopAll();
+    cancelFlow();
+    closeFlowOverlays();
+    setNudge(false);
+    cur = sec;
+    step = Math.max(1, Math.min(sec.lines.length, Math.floor(Number(k)) || 1));
+    warmSection(sec);
+    renderLearn();
+    showScreen('learn');
+    requestWake();
+    if (autoplay) playChain();
+  }
+  function goHome() {
+    stopAll();
+    cancelFlow();
+    closeFlowOverlays();
+    fx('clear');
+    setNudge(false);
+    cur = null;
+    releaseWake();
+    renderHome();
+    showScreen('home');
+  }
+
+  /* ---------- "Sanoin!" flow ---------- */
+  function onSaid() {
+    if (!cur || flow) return;
+    var sec = cur, k = step, N = sec.lines.length;
+    stopAll();
+    setNudge(false);
+    state.progress[sec.id] = Math.max(prog(sec), k);
+    save();
+    sfx('success');
+    fx('confetti', 40);
+    flow = true;
+    flowAt = Date.now();
+    renderLearn();
+    if (k >= N) { later(500, function () { showFinale(sec); }); return; }
+    var wantGame = state.every === 1 || k % 2 === 0;
+    var MG = window.MiniGames;
+    if (wantGame && MG && typeof MG.play === 'function') {
+      later(450, function () {
+        var t = flowToken, idx = state.game++;
+        save();
+        try {
+          game = MG.play({
+            index: idx,
+            say: function (text) { return speakFi(text); },
+            onDone: function () {
+              if (t !== flowToken) return;
+              game = null;
+              showReward(sec, k);
+            }
+          });
+        } catch (e) {
+          console.warn('MiniGames.play', e);
+          game = null;
+          showReward(sec, k);
+        }
+      });
+    } else {
+      later(500, function () { showReward(sec, k); });
+    }
+  }
+  function showReward(sec, k) {
+    flow = false;
+    if (screen !== 'learn' || cur !== sec) return;
+    state.stars += 1;
+    save();
+    var text = PRAISE[Math.floor(Math.random() * PRAISE.length)] + (state.name ? ', ' + state.name : '') + '!';
+    $('rewardArt').innerHTML = art('rewardStar');
+    $('rewardText').textContent = text;
+    $('rewardNext').textContent = 'Seuraavaksi: rivit 1–' + (k + 1);
+    rewardK = k;
+    openOverlay($('reward'), $('rewardGo'));
+    updateStars(true);
+    speakFi(text);
+  }
+  function showFinale(sec) {
+    flow = false;
+    if (screen !== 'learn' || cur !== sec) return;
+    var first = !isDone(sec);
+    state.done[sec.id] = true;
+    state.stars += first ? 3 : 1;
+    save();
+    $('finaleArt').innerHTML = art('medal', sec.id, true);
+    $('finaleText').textContent = 'Osaat koko ' + sec.acc + '!';
+    $('finalePlus').textContent = first ? '+3 tähteä' : '+1 tähti';
+    renderLearn();
+    openOverlay($('finale'), $('finaleAgain'));
+    updateStars(true);
+    fx('show', 5000);
+    speakFi('Mahtavaa! Osaat koko ' + sec.acc + '!');
+  }
+
+  /* ---------- settings ---------- */
+  function updateVoiceStatus() {
+    [['voiceFiStatus', voiceFi], ['voiceArStatus', voiceAr]].forEach(function (pair) {
+      var el = $(pair[0]);
+      if (!el) return;
+      el.textContent = pair[1] ? 'löytyi' : 'ei löytynyt tästä laitteesta';
+      el.className = pair[1] ? 'yes' : 'no';
+    });
+  }
+  function syncSettings() {
+    $('childName').value = state.name;
+    $('optSpeech').checked = state.speech;
+    $('optSlow').checked = state.slow;
+    $('optTranslit').checked = state.translit;
+    $('optSfx').checked = state.sfx;
+    $('every1').setAttribute('aria-pressed', String(state.every === 1));
+    $('every2').setAttribute('aria-pressed', String(state.every === 2));
+  }
+  function openSettings() {
+    clearTimeout(toastTimer);
+    $('toast').classList.remove('show');
+    syncSettings();
+    hideResetConfirm(false);
+    pickVoices();
+    $('sheet').scrollTop = 0;
+    openOverlay($('settings'), $('sheet'));
+  }
+  function closeSettings() {
+    if ($('settings').hidden) return;
+    closeOverlay($('settings'));
+    var pb = $('parentBtn');
+    if (screen === 'home' && pb) { try { pb.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+  }
+  function hideResetConfirm(focusBtn) {
+    $('resetConfirm').hidden = true;
+    $('resetBtn').hidden = false;
+    if (focusBtn) $('resetBtn').focus();
+  }
+
+  /* ---------- wiring ---------- */
+  function flowBusy() { return flow && Date.now() - flowAt < 1500; }
+  // A tap on the learning UI interrupts a stale flow, but not one that has just started.
+  function interrupt() {
+    if (flowBusy()) return false;
+    cancelFlow();
+    return true;
+  }
+
+  function initParentButton() {
+    var btn = $('parentBtn'), timer = 0, opened = false, sx = 0, sy = 0, pid = null;
+    function clearHold() { clearTimeout(timer); timer = 0; btn.classList.remove('holding'); }
+    btn.addEventListener('pointerdown', function (e) {
+      if (e.button > 0) return;
+      opened = false;
+      pid = e.pointerId; sx = e.clientX; sy = e.clientY;
+      clearHold();
+      void btn.offsetWidth; // restart the ring fill
+      btn.classList.add('holding');
+      timer = setTimeout(function () {
+        timer = 0;
+        opened = true;
+        btn.classList.remove('holding');
+        sfx('tap');
+        openSettings();
+      }, 800);
+    });
+    btn.addEventListener('pointermove', function (e) {
+      if (timer && e.pointerId === pid && Math.abs(e.clientX - sx) + Math.abs(e.clientY - sy) > 16) clearHold();
+    });
+    btn.addEventListener('pointerup', function (e) {
+      if (e.pointerId !== pid) return;
+      var short = !!timer;
+      clearHold();
+      if (short && !opened) toast('Pidä painettuna, niin asetukset aukeavat.');
+    });
+    btn.addEventListener('pointercancel', clearHold);
+    btn.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse') clearHold(); });
+    btn.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    // Keyboard (Enter/Space) and assistive tech produce a click with detail 0: open directly.
+    btn.addEventListener('click', function (e) { if (e.detail === 0) openSettings(); });
+  }
+
+  function initSettings() {
+    var sEl = $('settings'), downOnBackdrop = false;
+    sEl.addEventListener('pointerdown', function (e) { downOnBackdrop = e.target === sEl; });
+    sEl.addEventListener('click', function (e) {
+      if (e.target === sEl && downOnBackdrop) closeSettings();
+      downOnBackdrop = false;
+    });
+    $('settingsClose').addEventListener('click', closeSettings);
+    $('childName').addEventListener('input', function (e) {
+      state.name = String(e.target.value || '').replace(/\s+/g, ' ').trim().slice(0, 24);
+      save();
+      $('greeting').textContent = state.name ? 'Hei, ' + state.name + '!' : 'Hei!';
+    });
+    $('optSpeech').addEventListener('change', function (e) { state.speech = e.target.checked; save(); });
+    $('optSlow').addEventListener('change', function (e) { state.slow = e.target.checked; save(); applyRate(); });
+    $('optTranslit').addEventListener('change', function (e) {
+      state.translit = e.target.checked;
+      save();
+      $('learn').classList.toggle('no-translit', !state.translit);
+    });
+    $('optSfx').addEventListener('change', function (e) { state.sfx = e.target.checked; save(); sfx('setEnabled', state.sfx); });
+    [1, 2].forEach(function (n) {
+      $('every' + n).addEventListener('click', function () {
+        state.every = n;
+        save();
+        syncSettings();
+      });
+    });
+    $('resetBtn').addEventListener('click', function () {
+      $('resetBtn').hidden = true;
+      $('resetConfirm').hidden = false;
+      $('resetNo').focus();
+    });
+    $('resetNo').addEventListener('click', function () { hideResetConfirm(true); });
+    $('resetYes').addEventListener('click', function () {
+      var d = defaults();
+      SECTIONS.forEach(function (sec) { d.progress[sec.id] = 0; });
+      state.progress = d.progress;
+      state.done = {};
+      state.stars = 0;
+      state.game = 0;
+      save();
+      hideResetConfirm(true);
+      renderHome();
+      toast('Tähdet ja edistyminen nollattiin.');
+    });
+    $('credits').textContent = DATA.credits || '';
+  }
+
+  function initLearn() {
+    $('homeBtn').addEventListener('click', goHome);
+    $('listenBtn').addEventListener('click', function () {
+      if (!interrupt()) return;
+      playChain(); // restarts from line 1 when already playing
+    });
+    $('saidBtn').addEventListener('click', onSaid);
+    $('steps').addEventListener('click', function (e) {
+      var b = e.target.closest('.step');
+      if (!b || b.disabled || !cur || !interrupt()) return;
+      step = Math.max(1, Math.min(cur.lines.length, Number(b.dataset.k) || 1));
+      setNudge(false);
+      renderLearn();
+      playChain();
+      if (e.detail === 0) { var nb = $('step-' + step); if (nb) nb.focus({ preventScroll: true }); }
+    });
+    $('cards').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-act]');
+      if (!b || !cur || !interrupt()) return;
+      var i = Number(b.dataset.i);
+      if (b.dataset.act === 'one') playSingle(i);
+      else explain(i);
+    });
+    $('tiles').addEventListener('click', function (e) {
+      var b = e.target.closest('.tile');
+      var sec = b ? byId(b.dataset.id) : null;
+      if (!sec) return;
+      var N = sec.lines.length;
+      openSection(sec, isDone(sec) ? N : Math.min(N, prog(sec) + 1), true);
+    });
+    $('rewardGo').addEventListener('click', function () {
+      closeOverlay($('reward'));
+      if (!cur) { goHome(); return; }
+      cancelFlow();
+      step = Math.min(cur.lines.length, rewardK + 1);
+      setNudge(false);
+      renderLearn();
+      playChain();
+      try { $('saidBtn').focus({ preventScroll: true }); } catch (err) { /* ignore */ }
+    });
+    $('finaleHome').addEventListener('click', function () {
+      closeOverlay($('finale'));
+      goHome();
+    });
+    $('finaleAgain').addEventListener('click', function () {
+      var sec = cur;
+      closeOverlay($('finale'));
+      fx('clear');
+      if (sec) openSection(sec, 1, true);
+      else goHome();
+    });
+  }
+
+  var unlocked = false;
+  function unlockOnce() {
+    if (unlocked) return;
+    unlocked = true;
+    sfx('unlock');
+    if (synth && hasUtter) {
+      try {
+        var u = new SpeechSynthesisUtterance(' ');
+        u.volume = 0;
+        synth.speak(u);
+      } catch (e) { /* ignore */ }
+    }
+  }
+
+  var booted = false;
+  function init() {
+    try { document.documentElement.lang = 'fi'; } catch (e) { /* ignore */ }
+    buildSky();
+    fillIcons(document);
+    sfx('setEnabled', state.sfx);
+    syncSettings();
+    initParentButton();
+    initSettings();
+    initLearn();
+    document.addEventListener('pointerdown', unlockOnce, { capture: true, once: true });
+    document.addEventListener('keydown', unlockOnce, { capture: true, once: true });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !$('settings').hidden) { e.preventDefault(); closeSettings(); }
+    });
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) { if (screen === 'learn') { stopAll(); } }
+      else if (screen === 'learn' && wantWake) { requestWake(); }
+    });
+    pickVoices();
+    if (synth) {
+      try {
+        if (typeof synth.addEventListener === 'function') synth.addEventListener('voiceschanged', pickVoices);
+        else synth.onvoiceschanged = pickVoices;
+      } catch (e) { /* ignore */ }
+      setTimeout(pickVoices, 700);
+      setTimeout(pickVoices, 2500);
+    }
+  }
+
+  function start(data) {
+    data = data || {};
+    if (!booted) { booted = true; init(); }
+    var sec = data.screen === 'learn' ? byId(data.sec) : null;
+    if (sec) {
+      openSection(sec, data.step, false);
+    } else {
+      renderHome();
+      showScreen('home');
+    }
+  }
+
+  try { window.claude?.hot?.snapshot?.(() => ({ screen: screen, sec: cur ? cur.id : null, step: step })); } catch (e) { /* ignore */ }
+  try {
+    window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+  } catch (e) {
+    console.error('Suuraseikkailu start', e);
+    if (!booted) start({});
+  }
+})();
+</script>

@@ -1,0 +1,273 @@
+/* games.css - Suuraseikkailu mini-games overlay (z-index 40).
+   Uses the shared design tokens defined on :root by the main page. */
+
+.mg {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  overflow: hidden;
+  color: var(--ink);
+  font-family: var(--f-body);
+  background:
+    radial-gradient(130% 55% at 50% -6%, rgba(142, 91, 234, .42) 0%, rgba(142, 91, 234, 0) 64%),
+    radial-gradient(80% 36% at 50% 0%, rgba(255, 201, 60, .12) 0%, rgba(255, 201, 60, 0) 70%),
+    linear-gradient(180deg, var(--sky-top) 0%, var(--sky-mid) 55%, var(--sky-bottom) 100%);
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: contain;
+  isolation: isolate;
+}
+.mg[hidden] { display: none !important; }
+.mg *, .mg *::before, .mg *::after { box-sizing: border-box; }
+
+/* a few soft, static star dots */
+.mg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: .85;
+  background-image:
+    radial-gradient(2px 2px at 7% 14%, rgba(255, 248, 234, .9), transparent),
+    radial-gradient(1.5px 1.5px at 19% 38%, rgba(255, 248, 234, .65), transparent),
+    radial-gradient(2.2px 2.2px at 31% 9%, rgba(255, 224, 138, .85), transparent),
+    radial-gradient(1.4px 1.4px at 44% 27%, rgba(255, 248, 234, .6), transparent),
+    radial-gradient(1.8px 1.8px at 58% 12%, rgba(255, 248, 234, .8), transparent),
+    radial-gradient(1.4px 1.4px at 69% 33%, rgba(203, 198, 238, .7), transparent),
+    radial-gradient(2.2px 2.2px at 83% 7%, rgba(255, 248, 234, .9), transparent),
+    radial-gradient(1.6px 1.6px at 92% 26%, rgba(255, 224, 138, .7), transparent),
+    radial-gradient(1.4px 1.4px at 12% 61%, rgba(255, 248, 234, .5), transparent),
+    radial-gradient(1.8px 1.8px at 37% 52%, rgba(203, 198, 238, .55), transparent),
+    radial-gradient(1.4px 1.4px at 63% 58%, rgba(255, 248, 234, .5), transparent),
+    radial-gradient(1.8px 1.8px at 88% 49%, rgba(255, 248, 234, .6), transparent),
+    radial-gradient(1.4px 1.4px at 24% 80%, rgba(203, 198, 238, .45), transparent),
+    radial-gradient(1.6px 1.6px at 76% 76%, rgba(255, 248, 234, .45), transparent);
+}
+
+/* game 5: darker night sky */
+.mg.mg--g5 {
+  background:
+    radial-gradient(120% 50% at 50% -8%, rgba(47, 168, 224, .14) 0%, rgba(47, 168, 224, 0) 62%),
+    linear-gradient(180deg, #0B0E26 0%, var(--night) 48%, var(--sky-top) 100%);
+}
+
+/* ---------- header ---------- */
+.mg .mg-head {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 auto;
+  padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 6px;
+  text-align: center;
+  pointer-events: none;
+}
+.mg .mg-title {
+  margin: 0 auto;
+  max-width: 24ch;
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: clamp(1.6rem, 6vw, 2.3rem);
+  line-height: 1.08;
+  letter-spacing: .01em;
+  text-wrap: balance;
+  color: var(--ink);
+  text-shadow: 0 2px 0 rgba(20, 24, 56, .55), 0 0 22px rgba(255, 201, 60, .22);
+}
+.mg .mg-goal {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 3px;
+  margin-top: 8px;
+  color: var(--gold);
+}
+.mg .mg-gstar {
+  display: block;
+  width: clamp(20px, 5.4vw, 28px);
+  height: clamp(20px, 5.4vw, 28px);
+  opacity: .25;
+  transition: opacity .2s ease;
+}
+.mg .mg-gstar svg { display: block; width: 100%; height: 100%; }
+.mg .mg-gstar.on {
+  opacity: 1;
+  filter: drop-shadow(0 0 5px rgba(255, 201, 60, .7));
+  animation: mg-starpop .42s cubic-bezier(.3, 1.7, .5, 1) both;
+}
+
+/* ---------- play area ---------- */
+.mg .mg-arena {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.mg .mg-arena.is-done { pointer-events: none; }
+
+/* tappable items: reset any host button styles */
+.mg .mg-item {
+  all: unset;
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  box-sizing: border-box;
+  cursor: pointer;
+  will-change: transform;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.mg .mg-item:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; border-radius: 14px; }
+.mg .mg-item > svg,
+.mg .mg-item > .mg-skin {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.mg .mg-in > svg,
+.mg .mg-in > .mg-skin { animation: mg-in .42s cubic-bezier(.3, 1.6, .5, 1) both; }
+.mg .is-gone > svg,
+.mg .is-gone > .mg-skin { animation: mg-out .22s ease-out forwards; }
+
+/* 0 balloons: sway pivots around the balloon body */
+.mg .mg-balloon { transform-origin: 50% 31%; }
+
+/* 1 stars */
+.mg .mg-star > svg { filter: drop-shadow(0 0 9px rgba(255, 201, 60, .8)); }
+
+/* 2 soap bubbles */
+.mg .mg-bubble > .mg-skin {
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, .95) 0 5%, rgba(255, 255, 255, .35) 9%, rgba(255, 255, 255, 0) 18%),
+    radial-gradient(circle at 70% 76%, rgba(255, 255, 255, .4) 0 2.5%, rgba(255, 255, 255, 0) 8%),
+    radial-gradient(circle closest-side at 50% 50%, rgba(255, 255, 255, 0) 60%, rgba(110, 230, 255, .24) 73%, rgba(255, 130, 220, .4) 87%, rgba(255, 255, 255, .8) 97%, rgba(255, 255, 255, 0) 100%),
+    radial-gradient(circle closest-side at 50% 50%, rgba(170, 225, 255, .07), rgba(170, 225, 255, .07));
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255, 255, 255, .42),
+    inset -5px -7px 14px rgba(255, 140, 220, .22),
+    inset 6px 6px 14px rgba(120, 230, 255, .22);
+}
+
+/* 3 lanterns (fanous) */
+.mg .mg-lantern {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 50% 0;
+  will-change: transform;
+  pointer-events: none;
+}
+.mg .mg-string {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: linear-gradient(rgba(255, 248, 234, .1), rgba(255, 248, 234, .5));
+}
+.mg .mg-lamp { will-change: auto; pointer-events: auto; }
+.mg .lt-metal { fill: #5E5689; transition: fill .45s ease; }
+.mg .lt-ring { stroke: #5E5689; transition: stroke .45s ease; }
+.mg .lt-frame { stroke: #49427A; transition: stroke .45s ease; }
+.mg .lt-glass { fill: #30296A; }
+.mg .lt-glass-lit { opacity: 0; transition: opacity .45s ease; }
+.mg .lt-halo { opacity: 0; transition: opacity .45s ease; }
+.mg .lt-flame, .mg .lt-core { opacity: .14; transition: opacity .3s ease; }
+.mg .lt-fire g { transform-box: fill-box; transform-origin: 50% 100%; }
+.mg .lit .lt-metal { fill: #EDB43A; }
+.mg .lit .lt-ring { stroke: #EDB43A; }
+.mg .lit .lt-frame { stroke: #C98A00; }
+.mg .lit .lt-glass-lit { opacity: .96; }
+.mg .lit .lt-halo { opacity: .9; }
+.mg .lit .lt-flame, .mg .lit .lt-core { opacity: 1; }
+.mg .lit .lt-fire g { animation: mg-flicker .46s ease-in-out infinite alternate; animation-delay: var(--fd, 0s); }
+.mg .mg-lamp.lit > svg { filter: drop-shadow(0 0 12px var(--lg, #FFC93C)) drop-shadow(0 0 3px rgba(255, 230, 160, .7)); }
+
+/* 5 night sky: skyline silhouette at the bottom (ground band extends it to the edges) */
+.mg .mg-skyline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: block;
+  width: 100%;
+  height: clamp(64px, 18vw, 130px);
+  pointer-events: none;
+  background: linear-gradient(to top, #0A0C26 0, #0A0C26 22.5%, rgba(10, 12, 38, 0) 22.5%);
+}
+
+/* 4 fruits + basket */
+.mg .mg-fruit > svg { filter: drop-shadow(0 4px 5px rgba(10, 8, 40, .35)); }
+.mg .mg-basket {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 50% 100%;
+  pointer-events: none;
+}
+.mg .mg-basket > svg,
+.mg .mg-pile {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  display: block;
+}
+.mg .mg-pile i {
+  position: absolute;
+  display: block;
+  width: 25%;
+  height: 33.333%;
+  animation: mg-in .32s cubic-bezier(.3, 1.6, .5, 1) both;
+}
+.mg .mg-pile i svg { display: block; width: 100%; height: 100%; overflow: visible; }
+
+@keyframes mg-in {
+  from { transform: scale(0); opacity: 0; }
+  60% { opacity: 1; }
+  to { transform: scale(1); opacity: 1; }
+}
+@keyframes mg-out {
+  from { transform: scale(1); opacity: 1; }
+  to { transform: scale(1.45); opacity: 0; }
+}
+@keyframes mg-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes mg-fadeout { from { opacity: 1; } to { opacity: 0; } }
+@keyframes mg-starpop {
+  0% { transform: scale(.4); }
+  60% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+@keyframes mg-flicker {
+  0% { transform: scale(1, 1); }
+  35% { transform: scale(.9, 1.08); }
+  70% { transform: scale(1.06, .95); }
+  100% { transform: scale(.96, 1.05); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mg .mg-in > svg,
+  .mg .mg-in > .mg-skin,
+  .mg .mg-pile i { animation: mg-fade .2s ease-out both; }
+  .mg .is-gone > svg,
+  .mg .is-gone > .mg-skin { animation: mg-fadeout .16s ease-out forwards; }
+  .mg .mg-gstar.on { animation: none; }
+  .mg .lit .lt-fire g { animation: none; }
+}

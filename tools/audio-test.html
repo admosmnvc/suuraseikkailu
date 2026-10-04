@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Dev tool for the audio modules (not part of the app build).
+     Serve the PROJECT ROOT with any static server and open /tools/audio-test.html
+     (node tools/audio-test.cjs does that and runs the automated checks).
+     The base points at public/ so relative clip paths (audio/...) resolve like in the app. -->
+<base href="../public/">
+<title>Äänitesti</title>
+<style>
+  :root { --bg: #F6FBFF; --card: #E4F3FF; --ink: #23306B; --btn: #2F6FE0; --line: #BFE6FF; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 16px; background: var(--bg); color: var(--ink); font: 16px/1.4 system-ui, sans-serif; }
+  h1 { font-size: 1.3rem; margin: 0 0 12px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  button { min-height: 48px; padding: 0 16px; border: 0; border-radius: 24px; background: var(--btn); color: #fff; font: inherit; font-weight: 600; }
+  button.alt { background: var(--card); color: var(--ink); box-shadow: inset 0 0 0 2px var(--line); }
+  #diag, #log { background: #fff; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--line); padding: 10px 12px; }
+  #diag { margin: 0 0 12px; list-style: none; }
+  #log { height: 40vh; overflow: auto; font: 12px/1.35 ui-monospace, monospace; white-space: pre-wrap; margin: 0; }
+</style>
+</head>
+<body>
+<h1>Suuraseikkailu – äänitesti</h1>
+<div class="row">
+  <button id="bUnlock">Avaa ääni</button>
+  <button id="bChain">Al-Fatiha 1–7</button>
+  <button id="bStop" class="alt">Pysäytä</button>
+  <button id="bSlow" class="alt">Hidas: pois</button>
+</div>
+<div class="row">
+  <button id="tRec" class="alt">Testaa resitaatio</button>
+  <button id="tSfx" class="alt">Testaa efekti</button>
+  <button id="tFi" class="alt">Testaa suomi</button>
+  <button id="tAr" class="alt">Testaa arabia</button>
+</div>
+<div class="row">
+  <button id="bRecStart" class="alt">Nauhoita Shahada 1</button>
+  <button id="bRecStop" class="alt">Tallenna</button>
+  <button id="bRecDel" class="alt">Poista äänitys</button>
+</div>
+<div class="row" id="sfxRow"></div>
+<ul id="diag"></ul>
+<pre id="log"></pre>
+
+<script type="module">
+/* ---------- instrumentation (installed before the audio modules load) ---------- */
+const t0 = performance.now();
+const ms = () => Math.round(performance.now() - t0);
+const log = [];
+const urlSrc = new Map();       /* blob: URL -> original path, to name what the element plays */
+const blobSrc = new WeakMap();
+let sounding = 0, maxSounding = 0;
+const params = new URLSearchParams(location.search);
+const logEl = document.getElementById('log');
+
+function note(ev, detail) {
+  const e = { t: ms(), ev, detail: detail == null ? '' : String(detail) };
+  log.push(e);
+  logEl.textContent += e.t + ' ' + ev + ' ' + e.detail + '\n';
+  logEl.scrollTop = logEl.scrollHeight;
+}
+function name(url) {
+  if (!url) return '';
+  if (url.startsWith('data:')) return 'silent-wav';
+  const p = urlSrc.get(url) || url;
+  return p.replace(location.origin, '');
+}
+function snd(delta, what) {
+  sounding += delta;
+  maxSounding = Math.max(maxSounding, sounding);
+  note(delta > 0 ? 'sound+' : 'sound-', what + ' n=' + sounding);
+}
+
+const origBlob = Response.prototype.blob;
+Response.prototype.blob = async function () { const b = await origBlob.call(this); blobSrc.set(b, this.url); return b; };
+const origCreate = URL.createObjectURL;
+URL.createObjectURL = function (obj) {
+  const u = origCreate.call(URL, obj);
+  urlSrc.set(u, blobSrc.get(obj) || ('blob(' + (obj && obj.type) + ')'));
+  return u;
+};
+
+/* the shared element: log its life cycle; count it as sounding between 'playing' and pause/ended */
+const seen = new WeakSet();
+const origPlay = HTMLMediaElement.prototype.play;
+window.__rejectPlay = false;
+HTMLMediaElement.prototype.play = function () {
+  if (!window.__el) window.__el = this; /* the first element played is the engine's shared one (bless) */
+  if (!seen.has(this)) {
+    seen.add(this);
+    const el = this;
+    let on = false;
+    el.addEventListener('playing', () => {
+      note('playing', name(el.currentSrc) + ' rate=' + el.playbackRate + ' pitch=' + el.preservesPitch);
+      if (!el.currentSrc.startsWith('data:') && !on) { on = true; snd(1, 'el'); }
+    });
+    const off = (ev) => () => { note(ev, name(el.currentSrc)); if (on) { on = false; snd(-1, 'el'); } };
+    el.addEventListener('ended', off('ended'));
+    el.addEventListener('pause', off('pause'));
+    el.addEventListener('error', () => note('error', name(el.currentSrc) + ' ' + (el.error && el.error.code)));
+    el.addEventListener('waiting', () => note('waiting', name(el.currentSrc))); /* buffer stall: a later 'playing' is a resume */
+  }
+  note('play()', name(this.src));
+  if (window.__rejectPlay) return Promise.reject(new DOMException('test: play blocked', 'NotAllowedError'));
+  return origPlay.call(this);
+};
+
+/* Web Audio: remember where nodes connect; mirror everything that reaches the speakers into a tap */
+const origConnect = AudioNode.prototype.connect;
+AudioNode.prototype.connect = function (dest) {
+  this.__dest = dest;
+  const r = origConnect.apply(this, arguments);
+  if (dest instanceof AudioDestinationNode) {
+    const c = dest.context;
+    if (!c.__tap) { c.__tap = c.createAnalyser(); c.__tap.fftSize = 32768; } /* level meter of the speakers */
+    origConnect.call(this, c.__tap);
+  }
+  return r;
+};
+const origStart = AudioBufferSourceNode.prototype.start;
+AudioBufferSourceNode.prototype.start = function () {
+  const ctx = window.T && window.T.context;
+  if (ctx && this.__dest && this.__dest === ctx.voiceBus()) {
+    const d = this.buffer ? this.buffer.duration.toFixed(2) : '?';
+    note('wa-start', 'dur=' + d);
+    snd(1, 'wa');
+    this.addEventListener('ended', () => { note('wa-ended', 'dur=' + d); snd(-1, 'wa'); });
+  }
+  return origStart.apply(this, arguments);
+};
+/* oscillator frequencies (to check that clinks do not form scale runs) */
+window.__oscFreqs = [];
+const origCreateOsc = BaseAudioContext.prototype.createOscillator;
+BaseAudioContext.prototype.createOscillator = function () {
+  const o = origCreateOsc.call(this);
+  o.frequency.__osc = true;
+  window.__oscCount = (window.__oscCount || 0) + 1;
+  return o;
+};
+const origSetValue = AudioParam.prototype.setValueAtTime;
+AudioParam.prototype.setValueAtTime = function (v, t) {
+  if (this.__osc) window.__oscFreqs.push(v);
+  return origSetValue.call(this, v, t);
+};
+
+/* Optional fake device speech (?tts=fake, or ?tts=fake-fi for a Finnish voice only):
+   headless browsers have no voices, this makes the speech fallback testable. */
+if (params.get('tts') && params.get('tts').startsWith('fake')) {
+  /* fake-late: no Finnish/Arabic voice at first; window.__addVoice() adds one later WITHOUT a voiceschanged event */
+  const voices = params.get('tts') === 'fake-late' ? [] : [{ name: 'FakeSatu', lang: 'fi-FI', localService: true, default: false, voiceURI: 'fi' }];
+  if (params.get('tts') === 'fake') voices.push({ name: 'FakeMaged', lang: 'ar-SA', localService: true, default: false, voiceURI: 'ar' });
+  window.__addVoice = (v) => voices.push(v);
+  /* window.__ttsStuckOnce = true: the next utterance keeps "speaking" and never fires end (lost 'end' event) */
+  window.__ttsStuckOnce = false;
+  voices.push({ name: 'FakeEnglish', lang: 'en-US', localService: true, default: true, voiceURI: 'en' });
+  let cur = null, timer = 0;
+  const fake = {
+    speaking: false, pending: false, paused: false,
+    getVoices: () => voices.slice(),
+    speak(u) {
+      if (u.volume === 0) { setTimeout(() => u.onend && u.onend(), 5); return; }
+      cur = u; this.speaking = true;
+      note('tts-start', u.lang + ' "' + u.text + '" rate=' + u.rate + ' voice=' + (u.voice && u.voice.name));
+      snd(1, 'tts');
+      if (window.__ttsStuckOnce) { window.__ttsStuckOnce = false; return; }
+      timer = setTimeout(() => { cur = null; fake.speaking = false; note('tts-end', u.lang); snd(-1, 'tts'); u.onend && u.onend(); }, 400 + 20 * u.text.length);
+    },
+    cancel() {
+      if (!cur) return;
+      clearTimeout(timer);
+      const u = cur; cur = null; this.speaking = false;
+      note('tts-cancel', u.lang); snd(-1, 'tts');
+      u.onerror && u.onerror({ error: 'interrupted' });
+    },
+    resume() {}, pause() {},
+    addEventListener() {}, removeEventListener() {}
+  };
+  Object.defineProperty(window, 'speechSynthesis', { value: fake, configurable: true });
+  /* the real class only accepts real SpeechSynthesisVoice objects as .voice */
+  window.SpeechSynthesisUtterance = class { constructor(text) { this.text = text; this.lang = ''; this.voice = null; this.rate = 1; this.pitch = 1; this.volume = 1; } };
+}
+
+/* ?idb=hang: indexedDB.open never answers (WebKit bug 226547, iOS 14.6: first open after launch hangs) */
+if (params.get('idb') === 'hang') {
+  const hung = () => ({ result: null, error: null, onsuccess: null, onerror: null, onupgradeneeded: null, onblocked: null });
+  try { Object.defineProperty(IDBFactory.prototype, 'open', { value: hung, configurable: true, writable: true }); } catch (e) { /* ignore */ }
+}
+
+/* ---------- load the real modules ---------- */
+const engine = await import('../src/audio/engine.js');
+const recorder = await import('../src/audio/recorder.js');
+const context = await import('../src/audio/context.js');
+const tts = await import('../src/audio/tts.js');
+const { SFX } = await import('../src/audio/sfx.js');
+const DATA = (await import('../src/content/data.js')).default;
+const fatiha = DATA.sections.find((s) => s.id === 'fatiha');
+const shahada = DATA.sections.find((s) => s.id === 'shahada');
+
+engine.onLockChange((v) => note('lock', v));
+window.T = {
+  engine, recorder, context, tts, SFX, DATA, fatiha, shahada, log, note, name,
+  get sounding() { return sounding; }, get maxSounding() { return maxSounding; },
+  resetMax() { maxSounding = sounding; },
+  chain(k = 7, gapMs = 250) {
+    return engine.playSequence(fatiha.lines.slice(0, k).map((_, i) => engine.line(fatiha, i)), { gapMs, onItem: (i) => note('item', i) });
+  }
+};
+
+/* ---------- manual UI ---------- */
+const diag = document.getElementById('diag');
+function showDiag() {
+  const d = engine.diagnostics();
+  diag.innerHTML = '';
+  [d.mp3, d.context, d.shahada, d.fiVoice, d.arVoice, d.session, d.lastError || 'Ei virheitä', 'Lukittu: ' + (d.locked ? 'kyllä' : 'ei'),
+    'Äänitykset: ' + (d.recordings.join(', ') || '–')].forEach((s) => {
+    const li = document.createElement('li'); li.textContent = s; diag.appendChild(li);
+  });
+}
+setInterval(showDiag, 1000); showDiag();
+const $ = (id) => document.getElementById(id);
+const tap = (id, fn) => $(id).addEventListener('click', fn);
+tap('bUnlock', () => { engine.unlock(); note('unlock()', ''); });
+tap('bChain', () => { engine.unlock(); T.chain().then((ok) => note('chain-done', ok)); });
+tap('bStop', () => { engine.stop(); note('stop()', ''); });
+let slow = false;
+tap('bSlow', () => { slow = !slow; engine.setSlow(slow); $('bSlow').textContent = 'Hidas: ' + (slow ? 'päällä' : 'pois'); });
+[['tRec', 'recitation'], ['tSfx', 'sfx'], ['tFi', 'fi'], ['tAr', 'ar']].forEach(([id, kind]) =>
+  tap(id, () => engine.test(kind).then((r) => note('test ' + kind, (r.ok ? 'OK ' : 'EI ') + r.detail))));
+tap('bRecStart', () => recorder.start({ onAutoStop: () => note('rec', 'autostop') }).then(() => note('rec', 'start'), (e) => note('rec-error', e.name + ': ' + e.message)));
+tap('bRecStop', () => recorder.stopAndSave('shahada-1').then((b) => note('rec', 'saved ' + (b ? b.size + ' B ' + b.type : 'nothing')), (e) => note('rec-error', e.name)));
+tap('bRecDel', () => recorder.remove('shahada-1').then(() => note('rec', 'removed')));
+['pop', 'ding', 'chime', 'plop', 'whoosh', 'boom', 'sparkle', 'success', 'tap'].forEach((n, k) => {
+  const b = document.createElement('button');
+  b.className = 'alt'; b.textContent = n;
+  let i = 0;
+  b.addEventListener('click', () => { SFX.unlock(); SFX[n](i++); });
+  $('sfxRow').appendChild(b);
+});
+/* ?autoplay: try to play before any tap (must be refused under a user-gesture autoplay policy) */
+if (params.has('autoplay')) {
+  const ua = !!(navigator.userActivation && navigator.userActivation.hasBeenActive);
+  const ok = await engine.play({ kind: 'voice', src: 'audio/112002.mp3', text: '', lang: 'fi' });
+  window.__autoplay = { userActivation: ua, ok, locked: engine.isLocked(), ctx: context.state(), lastError: engine.diagnostics().lastError };
+}
+window.__ready = true;
+note('ready', '');
+console.info('audio-test ready'); /* lets the runner wait without page.evaluate (which counts as a user gesture) */
+</script>
+</body>
+</html>

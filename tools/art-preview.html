@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Art preview – Suuraseikkailu</title>
+<!-- Dev tool only (not part of the app build). Serve the project root and open /tools/art-preview.html -->
+<link rel="stylesheet" href="../node_modules/@fontsource/fredoka/latin-600.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/nunito/latin-400.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/amiri-quran/arabic-400.css">
+<link rel="stylesheet" href="../src/styles/tokens.css">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:var(--f-body);color:var(--ink);background:linear-gradient(180deg,var(--snow),var(--frost) 60%,#EDE7FF);min-height:100vh}
+  main{max-width:1180px;margin:0 auto;padding:16px}
+  h1,h2{font-family:var(--f-display);font-weight:600;margin:24px 0 10px}
+  h1{font-size:28px}
+  h2{font-size:20px;color:var(--sapphire-deep)}
+  .row{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
+  .cell{display:grid;justify-items:center;gap:4px;font-size:11px;color:var(--ink-faint)}
+  .box{display:block}
+  .panel{background:rgba(255,255,255,.55);border:1px solid var(--silver);border-radius:22px;padding:14px;margin-bottom:12px}
+  .hero{position:relative;height:200px;border-radius:22px;overflow:hidden;background:linear-gradient(180deg,#F6FBFF,#E4F3FF 70%,#EAE4FF)}
+  .hero .sil{position:absolute;inset:auto 0 0 0;height:150px}
+  .hero.phone{width:360px;height:180px}
+  .hero.phone .sil{height:120px}
+  .btn{width:72px;height:72px;border-radius:50%;display:grid;place-items:center;color:#fff;background:radial-gradient(circle at 35% 28%,#8FB4FF,#2F6FE0 60%,#1E4FB0);box-shadow:var(--shadow-bubble)}
+  .btn .icon{width:34px;height:34px}
+  .ar{font-family:var(--f-arabic);font-size:2.2rem;line-height:2.1;direction:rtl;text-align:right;background:#fff;border-radius:22px;padding:8px 18px;border:1px solid var(--silver)}
+  .ar .ayah{margin-inline-start:.2em}
+  .mask{border-radius:22%;overflow:hidden;box-shadow:var(--shadow-soft)}
+  .dark{background:#23306B;color:#fff}
+</style>
+</head>
+<body>
+<main id="m"></main>
+<script type="module">
+import ART from '../src/art.js';
+import DATA from '../src/content/data.js';
+
+const m = document.getElementById('m');
+const h = (tag, html, cls) => `<${tag}${cls ? ` class="${cls}"` : ''}>${html}</${tag}>`;
+const cell = (art, w, hgt, label) => `<div class="cell"><div class="box" style="width:${w}px;height:${hgt || w}px">${art}</div>${label || ''}</div>`;
+const ICONS = 'home play star speech gear close check replay back sound mic stop trash crown gem snowflake sparkle'.split(' ');
+let out = '<h1>Suuraseikkailu – art preview</h1>';
+
+out += h('h2', 'Palace silhouette (desktop + phone width)');
+out += `<div class="hero" id="hero"><div class="sil">${ART.palaceSilhouette()}</div></div><div style="height:12px"></div>`;
+out += `<div class="hero phone"><div class="sil">${ART.palaceSilhouette()}</div></div>`;
+
+out += h('h2', 'Icons (24 ink, 48 sapphire, 72 bubble button)');
+out += '<div class="panel" id="icons">' +
+  `<div class="row">${ICONS.map(n => `<div class="cell"><div style="font-size:24px;color:var(--ink)">${ART.icon(n)}</div>${n}</div>`).join('')}</div>` +
+  `<div class="row" style="margin-top:12px">${ICONS.map(n => `<div style="font-size:48px;color:var(--sapphire)">${ART.icon(n)}</div>`).join('')}</div>` +
+  `<div class="row" style="margin-top:12px">${ICONS.slice(0, 9).map(n => `<div class="btn">${ART.icon(n)}</div>`).join('')}</div>` +
+  '</div>';
+
+out += h('h2', 'Small pieces at 24 / 64 / 160');
+const smalls = [
+  ['crystal', () => ART.crystal()], ['snowflake', () => ART.snowflake()], ['bubble', () => ART.bubble()],
+  ['gem', () => ART.gem()], ['gem rose', () => ART.gem('#FF9FD6')], ['gem sapphire', () => ART.gem('#2F6FE0')], ['gem glacier', () => ART.gem('#7FD3F2')],
+  ['tiara', () => ART.tiara()], ['tiara turq', () => ART.tiara('#33C3D6')], ['tiara sapph', () => ART.tiara('#4A86FF')]
+];
+out += '<div class="panel" id="smalls">' + [24, 64, 160].map(s => `<div class="row" style="margin-bottom:10px">${smalls.map(([n, fn]) => cell(fn(), s, s, s === 24 ? n : '')).join('')}</div>`).join('') + '</div>';
+
+out += h('h2', 'Crowns: slots 1..8, filled 0 / some / all');
+out += '<div class="panel" id="crowns">';
+for (let n = 1; n <= 8; n++) {
+  out += `<div class="row" style="margin-bottom:6px">${[0, Math.ceil(n / 2), n].map(k => cell(ART.crown({ slots: n, filled: k }), 150, 112, `${k}/${n}`)).join('')}</div>`;
+}
+out += `<div class="row">${cell(ART.crown({ slots: 5, filled: 3 }), 300, 225, '300px 3/5')}${cell(ART.crown({ slots: 7, filled: 7, colors: ['#33C3D6', '#9A7BFF', '#FF8BC8', '#4A86FF'] }), 300, 225, 'custom colors 7/7')}${cell(ART.crown({ slots: 4, filled: 2 }), 48, 36, '48px')}</div>`;
+out += '</div>';
+
+out += h('h2', 'Palace: windows 18, lit 0 / 6 / 12 / 18 (300px)');
+out += '<div class="panel" id="palaces">' + `<div class="row">${[0, 6, 12, 18].map(k => cell(ART.palace({ windows: 18, lit: k }), 300, 234, `18 windows, ${k} lit`)).join('')}</div>` + '</div>';
+out += h('h2', 'Palace window counts 1..24');
+out += '<div class="panel" id="palaceCounts">' + `<div class="row">${[1, 2, 3, 4, 5, 6, 7, 9, 12, 16, 20, 24].map(n => cell(ART.palace({ windows: n, lit: Math.ceil(n / 2) }), 200, 156, `${Math.ceil(n / 2)}/${n}`)).join('')}${cell(ART.palace({ windows: 7, lit: 3 }), 64, 50, '64px')}</div>` + '</div>';
+
+out += h('h2', 'Stickers earned / not earned (64, 160)');
+const SIDS = ['shahada', 'fatiha', 'ikhlas', 'kawthar', 'palace'];
+out += '<div class="panel" id="stickers">' +
+  `<div class="row">${SIDS.map(s => cell(ART.sticker(s, true), 160, 160, s)).join('')}</div>` +
+  `<div class="row" style="margin-top:8px">${SIDS.map(s => cell(ART.sticker(s, false), 160, 160, s + ' (ghost)')).join('')}</div>` +
+  `<div class="row" style="margin-top:8px">${SIDS.map(s => cell(ART.sticker(s, true), 64) + cell(ART.sticker(s, false), 64)).join('')}</div>` +
+  '</div>';
+
+out += h('h2', 'Verse markers inline after Arabic');
+const fat = DATA.sections.find(s => s.id === 'fatiha');
+out += '<div class="panel" id="ayah">' + fat.lines.slice(0, 4).map(l => `<div class="ar">${l.ar} ${ART.ayah(l.n)}</div>`).join('<div style="height:8px"></div>') +
+  `<div class="row" style="margin-top:10px">${[1, 7, 12, 99, 286].map(n => `<div style="font-size:48px">${ART.ayah(n)}</div>`).join('')}</div></div>`;
+
+out += h('h2', 'App icon 512 / 96 / 48 (rounded mask)');
+out += '<div class="panel" id="appicon"><div class="row">' + cell(ART.appIcon(), 512) + `<div class="cell"><div class="mask" style="width:96px;height:96px">${ART.appIcon().replace('width="512" height="512"', 'width="96" height="96"')}</div>96</div>` +
+  `<div class="cell"><div class="mask" style="width:48px;height:48px">${ART.appIcon().replace('width="512" height="512"', 'width="48" height="48"')}</div>48</div>` +
+  `<div class="cell"><div style="width:180px;height:180px;border-radius:50%;overflow:hidden">${ART.appIcon().replace('width="512" height="512"', 'width="180" height="180"')}</div>maskable circle</div>` +
+  '</div></div>';
+
+
+m.innerHTML = out;
+window.ART = ART;
+window.__artReady = true;
+</script>
+</body>
+</html>

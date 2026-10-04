@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Minipelit – testi</title>
+<style>
+  [hidden] { display: none !important; }
+  html, body { margin: 0; }
+  body {
+    min-height: 100vh;
+    background: var(--snow, #F6FBFF);
+    color: var(--ink, #23306B);
+    font-family: var(--f-body, system-ui);
+    padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
+    box-sizing: border-box;
+  }
+  h1 { font-family: var(--f-display, system-ui); font-weight: 700; font-size: 1.8rem; margin: 0 0 4px; }
+  p { color: var(--ink-soft, #3F4C8A); margin: 0 0 16px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; max-width: 760px; }
+  .grid button {
+    min-height: 64px; padding: 10px 12px; border-radius: 18px; border: 2px solid var(--silver, #DCE7F3);
+    background: var(--frost, #E4F3FF); color: var(--ink, #23306B); font: 700 1rem/1.2 var(--f-body, system-ui); cursor: pointer;
+  }
+  .grid button.fx { background: #fff; color: var(--sapphire-deep, #1E4FB0); }
+  .grid button:active { transform: scale(.97); }
+  #log { margin-top: 16px; color: var(--ink-faint, #5A6699); font-size: .95rem; min-height: 1.4em; white-space: pre-line; }
+  label { display: inline-flex; gap: 8px; align-items: center; margin: 0 16px 14px 0; color: var(--ink-soft, #3F4C8A); min-height: 44px; }
+</style>
+</head>
+<body>
+  <h1>Minipelit</h1>
+  <p>Testisivu: jokainen nappi avaa yhden pelin. Peli loppuu itsestään viimeistään noin 18 sekunnissa.</p>
+  <label><input type="checkbox" id="snd" checked> Äänet</label>
+  <div class="grid" id="grid"></div>
+  <div id="log" aria-live="polite"></div>
+  <script type="module">
+    import '@fontsource/fredoka/latin-600.css';
+    import '@fontsource/fredoka/latin-700.css';
+    import '@fontsource/nunito/latin-400.css';
+    import '@fontsource/nunito/latin-700.css';
+    import '../src/styles/tokens.css';
+    import '../src/styles/games.css';
+    import MiniGames from '../src/games/index.js';
+    import { FX } from '../src/fx.js';
+    import { SFX } from '../src/audio/sfx.js';
+
+    const grid = document.getElementById('grid'), log = document.getElementById('log');
+    const msg = (t) => { log.textContent = t; };
+    document.getElementById('snd').addEventListener('change', (e) => SFX.setEnabled(e.target.checked));
+
+    /* play(i) -> Promise<{ ms, said }> ; used by the buttons and by tools/games-test.cjs */
+    function play(i) {
+      return new Promise((resolve) => {
+        const t0 = performance.now();
+        let said = null;
+        window.__mgGame = MiniGames.play({
+          index: i,
+          say: (id) => { said = id; msg('say: ' + id); },
+          onDone: () => {
+            const ms = performance.now() - t0;
+            msg('onDone: peli ' + i + ' valmis (' + (ms / 1000).toFixed(1) + ' s), say = ' + said);
+            resolve({ ms, said });
+          }
+        });
+      });
+    }
+    window.__mgTest = { MiniGames, FX, SFX, play };
+
+    MiniGames.titles.forEach((title, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = i + '. ' + title;
+      b.addEventListener('click', () => { SFX.unlock(); play(i); });
+      grid.appendChild(b);
+    });
+    [['FX.confetti()', () => FX.confetti()],
+     ['FX.show(5000)', () => FX.show(5000)],
+     ['FX.burst()', () => { FX.burst(innerWidth / 2, innerHeight / 2); SFX.pop(); }],
+     ['FX.sparkle()', () => { FX.sparkle(innerWidth / 2, innerHeight / 2); SFX.sparkle(); }],
+     ['FX.firework()', () => { FX.firework(innerWidth / 2, innerHeight / 3, Math.random() * 360); SFX.boom(); }],
+     ['FX.clear()', () => FX.clear()]].forEach((d) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'fx';
+      b.textContent = d[0];
+      b.addEventListener('click', () => { SFX.unlock(); d[1](); });
+      grid.appendChild(b);
+    });
+    msg('MiniGames.count = ' + MiniGames.count);
+  </script>
+</body>
+</html>
