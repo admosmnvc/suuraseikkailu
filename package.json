@@ -10,6 +10,9 @@
     "check:arabic": "node tools/check-arabic.mjs"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
     "vite": "^8.3.2"
   },
   "dependencies": {

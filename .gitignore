@@ -11,3 +11,11 @@ v2-reference/screens-390/
 # children name clips must never be committed
 suuraseikkailu-nimet/
 *-nimi.mp3
+
+# Android release signing (kept by the owner) and machine-local files
+android/keystore.properties
+android/local.properties
+*.jks
+*.keystore
+__pycache__/
+*.pyc

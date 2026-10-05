@@ -28,6 +28,22 @@ Source: branch `main` of github.com/admosmnvc/suuraseikkailu. Owner communicates
 - Release: `npm run build && node tools/check-arabic.mjs && node tools/e2e.cjs dist` (~9 min, all PASS), then commit to
   `main` and copy `dist/` (+ `.nojekyll`) to `gh-pages`.
 
+## Android app (APK, Capacitor 8)
+- `capacitor.config.json` (appId `fi.suuraseikkailu.app`: never change it, nor the server scheme/hostname, or saved
+  profiles/recordings are lost) + `android/`. The web build is bundled in the APK; no service worker in the app
+  (`src/pwa.js` nativeApp()); WebView plays sound without a tap (Capacitor), so the intro never waits for "Kosketa!".
+  Back button = the app's Escape (closes the open sheet/picker); `allowBackup=false` (data stays on the device).
+- Build: `npm ci && npm run build && npx cap sync android`, then in `android/`: `./gradlew assembleRelease`
+  (needs JDK 21 + Android SDK platform 36 / build-tools 36: set `ANDROID_HOME` or `android/local.properties`).
+  Output `android/app/build/outputs/apk/release/app-release.apk`; publish it as `Suuraseikkailu.apk` on gh-pages
+  (download https://admosmnvc.github.io/suuraseikkailu/Suuraseikkailu.apk) and send it to the owner.
+- Signing: the owner keeps the release keystore (`suuraseikkailu-release.jks` + password). An update MUST be signed
+  with it (else Android refuses the update and only uninstall + reinstall works, losing the children's data). Ask the
+  owner to upload it, write `android/keystore.properties` (storeFile, storePassword, keyAlias=suuraseikkailu,
+  keyPassword; ignored by git), and never commit either file. The release build fails without it.
+- Every release: bump `versionCode` (+1) and `versionName` in `android/app/build.gradle`.
+- Icons/splash: `node tools/make-android-assets.cjs` (from ART.appIcon()).
+
 ## Open owner questions / notes
 - The minigame hint is a cartoon hand (no face). A reviewer noted it is a human body part; owner has not objected.
 - Shahada recording licence: owner took responsibility (YouTube source).

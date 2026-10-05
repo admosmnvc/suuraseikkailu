@@ -15,8 +15,11 @@ function safeToReload() {
 }
 let started = false;
 
+/* inside the Android app (Capacitor) the files ship in the app itself: no service worker, no update checks */
+const nativeApp = () => { try { return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); } catch (e) { return false; } };
+
 export function registerSW(options) {
-  if (started || !import.meta.env.PROD) return;
+  if (started || !import.meta.env.PROD || nativeApp()) return;
   started = true;
   const onOfflineReady = options && typeof options.onOfflineReady === 'function' ? options.onOfflineReady : null;
   let container = null;

@@ -1,0 +1,14 @@
+{
+  "appId": "fi.suuraseikkailu.app",
+  "appName": "Suuraseikkailu",
+  "webDir": "dist",
+  "android": {
+    "backgroundColor": "#FFF8F1"
+  },
+  "plugins": {
+    "SystemBars": {
+      "style": "LIGHT",
+      "initialViewportFitValueHint": "cover"
+    }
+  }
+}

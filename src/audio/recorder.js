@@ -168,7 +168,9 @@ export async function start(opts = {}) {
     setSessionType('playback');
     const n = (e && e.name) || 'Error';
     if (n === 'NotAllowedError' || n === 'SecurityError' || n === 'PermissionDeniedError') {
-      throw named('NotAllowedError', 'Mikrofonin käyttö estettiin. Salli mikrofoni selaimen asetuksista.');
+      const app = (() => { try { return !!(window.Capacitor && window.Capacitor.isNativePlatform()); } catch (x) { return false; } })();
+      throw named('NotAllowedError', app ? 'Mikrofonin käyttö estettiin. Salli se: Asetukset > Sovellukset > Suuraseikkailu > Käyttöoikeudet > Mikrofoni.'
+        : 'Mikrofonin käyttö estettiin. Salli mikrofoni selaimen asetuksista.');
     }
     if (n === 'NotFoundError' || n === 'OverconstrainedError' || n === 'DevicesNotFoundError') {
       throw named('NotFoundError', 'Mikrofonia ei löytynyt.');
