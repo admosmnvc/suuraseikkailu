@@ -36,6 +36,7 @@ Exit code 1 if any clip fails validation.
 """
 import argparse
 import asyncio
+import difflib
 import hashlib
 import json
 import os
@@ -45,6 +46,7 @@ import statistics
 import subprocess
 import sys
 import tempfile
+import threading
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -94,6 +96,11 @@ SAY_ID = {
     'intro-title': 'Suuuuraseikkailuu!',      # stretched and excited, like a cartoon title
     'bye': 'Nähdään, taas!',                  # Noora ran it together ("nahdantos"); the comma separates the words
 }
+# ElevenLabs: its own whole-text inputs (the Noora fixes above do not apply). The title as the owner picked it.
+SAY_ID_ELEVEN = {
+    'intro-title': 'Suuuura-seikkailuu!',     # stretched, like a cartoon title (owner's pick of 3 takes)
+    'finale-shahada': 'Mahtavaa! Osaat koko Shahadan.',   # '!' rose like a question ('Osaatko koko...?') in 4 takes
+}
 
 # ElevenLabs (Finnish clips). Cheerful defaults: lower stability = livelier intonation, some style
 # exaggeration, a fixed seed for repeatable takes. Every value is part of the clip key: change one and
@@ -101,11 +108,11 @@ SAY_ID = {
 ELEVEN = {
     'voice_id': 'YSabzCJMvEHDduIDMdwV',     # owner's choice: "Aurora"
     'voice_name': 'Aurora',
-    'model_id': 'eleven_multilingual_v2',
+    'model_id': 'eleven_v3',                # owner's choice: the livelier v3 (audio tags, see V3_EXCITED)
     'output_format': 'mp3_44100_128',
-    'stability': 0.35,
+    'stability': 0.5,                       # v3: 0 creative / 0.5 natural / 1 robust
     'similarity_boost': 0.8,
-    'style': 0.45,
+    'style': 0.0,
     'use_speaker_boost': True,
     'speed': 1.0,
     'seed': 7,
@@ -117,11 +124,29 @@ CREDITS_PER_CHAR = {'eleven_multilingual_v2': 1.0, 'eleven_v3': 1.0, 'eleven_fla
                     'eleven_turbo_v2_5': 0.5}
 # Respellings for ElevenLabs: only the Arabic names (the Noora vowel fixes above are Noora-specific).
 SAY_AS_ELEVEN = {'fi': {k: SAY_AS['fi'][k] for k in ('Al-Fatihan', 'Al-Ikhlasin', 'Al-Kawtharin', 'Kawtharin')}}
-ELEVEN_CREDIT = 'Suomenkieliset kehotteet: ElevenLabs, ääni Aurora.'
+ELEVEN_CREDIT = 'Suomenkieliset kehotteet: ElevenLabs, ääni Aurora. Vanhempi voi korvata ne ja Shahadan omalla äänellään asetuksissa.'
 CREDIT_PREFIX = 'Suomenkieliset kehotteet:'
 DATA_JS = ROOT / 'src' / 'content' / 'data.js'
 SAMPLES_DIR = ROOT.parent / 'qa' / 'voice-samples'
 SAMPLE_IDS = ['intro-title', 'turn-1', 'finale-fatiha']
+
+# Clips mastered from a fixed take instead of TTS (never re-synthesized; a new take = a new file here). The title is
+# the owner's own melody turned into Aurora's voice: ElevenLabs speech-to-speech, eleven_multilingual_sts_v2, seed 9,
+# stability 0.5, similarity 0.85, background noise removal (owner's pick of 3; the owner's recording is not in git).
+SOURCE_TAKES = {
+    'intro-title': 'tools/voice-src/intro-title.aurora-sts.mp3',
+}
+
+# eleven_v3 audio tags (sent to the TTS only, never shown): excited for the intro, praise and celebrations,
+# cheerful for every other prompt, none for the calm meaning lines.
+V3_EXCITED = re.compile(r'(intro-title|intro-go|nice-name|welcome-new|praise-\d+|gem|rocket-part|rocket-launch|finale-.+'
+                        r'|sticker|game-done|fx-.+)')
+
+# Take check (ElevenLabs, v3 can slip a word): back-transcribe every new take with faster-whisper and compare it
+# with the text sent; below QA_MIN another take with the next seed, at most QA_TAKES, the best one stays.
+QA_MODEL = 'large-v3'      # 'small' mishears Finnish too often (false alarms, missed slips)
+QA_MIN = 0.93
+QA_TAKES = 4
 
 SILENCE_DB = -50          # below this (RMS, 20 ms window) counts as silence when trimming
 PAD_S = 0.06              # silence kept before and after the speech
@@ -153,7 +178,11 @@ def list_clips():
 
 
 def voice_cfg(clip, provider, eleven=None):
-    """Voice settings for a clip: ElevenLabs for Finnish clips when chosen, Edge otherwise."""
+    """Voice settings for a clip: ElevenLabs for Finnish clips when chosen (a fixed take for SOURCE_TAKES), Edge otherwise."""
+    if provider == 'elevenlabs' and clip.get('id') in SOURCE_TAKES:
+        src = ROOT / SOURCE_TAKES[clip['id']]
+        return {'provider': 'elevenlabs', 'source': SOURCE_TAKES[clip['id']],
+                'source_sha256': hashlib.sha256(src.read_bytes()).hexdigest()[:16]}
     if provider == 'elevenlabs' and clip['lang'] == 'fi':
         return {'provider': 'elevenlabs', **(eleven or ELEVEN)}
     return {'provider': 'edge', **VOICES[clip['lang']]}
@@ -161,10 +190,26 @@ def voice_cfg(clip, provider, eleven=None):
 
 def say_text(clip, provider='edge'):
     """Text actually sent to TTS: SAY_ID, then the longest SAY_AS keys first, whole words only."""
-    text = SAY_ID.get(clip.get('id'), clip['text'])
-    table = (SAY_AS_ELEVEN if provider == 'elevenlabs' and clip['lang'] == 'fi' else SAY_AS).get(clip['lang'], {})
+    eleven = provider == 'elevenlabs' and clip['lang'] == 'fi'
+    text = (SAY_ID_ELEVEN if eleven else SAY_ID).get(clip.get('id'), clip['text'])
+    table = (SAY_AS_ELEVEN if eleven else SAY_AS).get(clip['lang'], {})
     for src in sorted(table, key=len, reverse=True):
         text = re.sub(r'(?<![\w-])' + re.escape(src) + r'(?![\w-])', table[src], text)
+    return text
+
+
+def v3_tag(clip_id):
+    clip_id = str(clip_id or '')
+    if clip_id.startswith('mean-'):
+        return ''
+    return '[excited] ' if V3_EXCITED.fullmatch(clip_id) else '[cheerful] '
+
+
+def tts_text(clip, cfg):
+    """What one TTS call sends: say_text, plus the audio tag for eleven_v3 models."""
+    text = say_text(clip, cfg['provider'])
+    if cfg['provider'] == 'elevenlabs' and not cfg.get('source') and str(cfg.get('model_id', '')).startswith('eleven_v3'):
+        text = v3_tag(clip.get('id')) + text
     return text
 
 
@@ -176,7 +221,7 @@ def clip_key(clip, target, cfg=None):
         payload = [PIPELINE, say_text(clip), cfg['voice'], cfg['rate'], cfg['pitch'], round(target, 1),
                    SILENCE_DB, PAD_S, TP_TARGET, SAMPLE_RATE, BITRATE]
     else:
-        payload = [PIPELINE, 'elevenlabs', say_text(clip, 'elevenlabs'), {k: cfg[k] for k in sorted(cfg)},
+        payload = [PIPELINE, 'elevenlabs', tts_text(clip, cfg), {k: cfg[k] for k in sorted(cfg)},
                    round(target, 1), SILENCE_DB, PAD_S, TP_TARGET, SAMPLE_RATE, BITRATE]
     return hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True).encode()).hexdigest()[:16]
 
@@ -360,6 +405,34 @@ def eleven_synth(text, cfg, path, key):
         SLEEP(delay)
 
 
+def qa_norm(text):
+    """Letters only, lower case, no audio tags, runs of 3+ equal letters as 2 ('Suuuura' = 'Suura')."""
+    text = re.sub(r'\[[^\]]*\]', '', text.lower())
+    return re.sub(r'(.)\1{2,}', r'\1\1', re.sub(r'[^a-zåäöü]', '', text))
+
+
+def qa_score(sent, heard):
+    """Letter similarity; a statement heard as a question ('Osaat koko' -> 'Osaatko koko?') counts against it."""
+    score = difflib.SequenceMatcher(None, qa_norm(sent), qa_norm(heard)).ratio()
+    if '?' in heard and '?' not in sent:
+        score -= 0.1
+    return round(score, 3)
+
+
+_qa = {'model': None, 'lock': threading.Lock()}
+
+
+def qa_heard(path, lang):
+    """Back-transcript of one file (faster-whisper, loaded once, one transcription at a time)."""
+    with _qa['lock']:
+        if _qa['model'] is None:
+            from faster_whisper import WhisperModel
+            _qa['model'] = WhisperModel(QA_MODEL, device='cpu', compute_type='int8',
+                                        download_root=os.environ.get('VOICES_ASR_MODELS'))
+        segs, _ = _qa['model'].transcribe(str(path), language=lang, beam_size=5)
+        return ' '.join(x.text.strip() for x in segs)
+
+
 def eleven_quota(key):
     """Remaining characters of the subscription, or None (best effort, free call)."""
     try:
@@ -375,7 +448,8 @@ def eleven_quota(key):
 
 def estimate(jobs, provider, eleven):
     """Print the size of a run; returns the ElevenLabs credits it would spend."""
-    chars = sum(len(say_text(c, provider)) for c in jobs if voice_cfg(c, provider, eleven)['provider'] == 'elevenlabs')
+    chars = sum(len(tts_text(c, voice_cfg(c, provider, eleven))) for c in jobs
+                if voice_cfg(c, provider, eleven)['provider'] == 'elevenlabs' and not voice_cfg(c, provider, eleven).get('source'))
     credits = chars * CREDITS_PER_CHAR.get(eleven['model_id'], 1.0)
     if chars:
         log(f'ElevenLabs: {len(jobs)} clip(s), {chars} characters = about {credits:.0f} credits '
@@ -398,11 +472,12 @@ def apply_credit(path=None):
     return True
 
 
-async def make_all(clips, target, jobs, provider='edge', eleven=None, out_dir=None, names=None):
-    """Synthesize + master clips. out_dir/names: write to out_dir/<names[id]> instead of public/<file>."""
+async def make_all(clips, target, jobs, provider='edge', eleven=None, out_dir=None, names=None, qa=None):
+    """Synthesize + master clips. out_dir/names: write to out_dir/<names[id]> instead of public/<file>.
+    qa (dict, ElevenLabs only): checks every take (QA_MIN / QA_TAKES) and gets {id: {score, heard, seed, takes}}."""
     cfgs = {c['id']: voice_cfg(c, provider, eleven) for c in clips}
     edge_tts = import_edge_tts() if any(v['provider'] == 'edge' for v in cfgs.values()) else None
-    key = api_key() if any(v['provider'] == 'elevenlabs' for v in cfgs.values()) else ''
+    key = api_key() if any(v['provider'] == 'elevenlabs' and not v.get('source') for v in cfgs.values()) else ''
     sem = asyncio.Semaphore(jobs)
     results = {}
     with tempfile.TemporaryDirectory() as tmp:
@@ -410,13 +485,34 @@ async def make_all(clips, target, jobs, provider='edge', eleven=None, out_dir=No
             async with sem:
                 cfg = cfgs[clip['id']]
                 raw = Path(tmp) / (clip['id'] + '.raw.mp3')
-                if cfg['provider'] == 'elevenlabs':
-                    await asyncio.to_thread(eleven_synth, say_text(clip, 'elevenlabs'), cfg, raw, key)
-                else:
-                    await synth(edge_tts, say_text(clip), cfg, raw)
                 out = Path(out_dir) / names[clip['id']] if out_dir else PUBLIC / clip['file']
                 out.parent.mkdir(parents=True, exist_ok=True)
-                results[clip['id']] = await asyncio.to_thread(master, raw, out, target)
+                if cfg.get('source'):                     # a fixed take: master only
+                    shutil.copyfile(ROOT / cfg['source'], raw)
+                    results[clip['id']] = await asyncio.to_thread(master, raw, out, target)
+                elif cfg['provider'] != 'elevenlabs':
+                    await synth(edge_tts, say_text(clip), cfg, raw)
+                    results[clip['id']] = await asyncio.to_thread(master, raw, out, target)
+                elif qa is None:
+                    await asyncio.to_thread(eleven_synth, tts_text(clip, cfg), cfg, raw, key)
+                    results[clip['id']] = await asyncio.to_thread(master, raw, out, target)
+                else:
+                    best = None
+                    for take in range(QA_TAKES):
+                        c2 = dict(cfg, seed=(cfg.get('seed') or 0) + take)
+                        cand = Path(tmp) / f"{clip['id']}.take{take}.mp3"
+                        await asyncio.to_thread(eleven_synth, tts_text(clip, c2), c2, raw, key)
+                        norm = await asyncio.to_thread(master, raw, cand, target)
+                        heard = await asyncio.to_thread(qa_heard, cand, clip['lang'])
+                        score = qa_score(say_text(clip, 'elevenlabs'), heard)
+                        if best is None or score > best['score']:
+                            best = {'score': score, 'heard': heard, 'seed': c2['seed'], 'file': cand, 'norm': norm}
+                        if score >= QA_MIN:
+                            break
+                        log(f"  take {take + 1} of {clip['id']}: heard \"{heard}\" ({score}), another take")
+                    shutil.copyfile(best.pop('file'), out)
+                    results[clip['id']] = best.pop('norm')
+                    qa[clip['id']] = dict(best, takes=take + 1)
                 log(f"  made {out.relative_to(ROOT) if out.is_relative_to(ROOT) else out}")
         await asyncio.gather(*(one(c) for c in clips))
     return results
@@ -478,7 +574,7 @@ def run_samples(clips, target, args, provider, eleven):
     if not gate(estimate(pick, provider, eleven), args, eleven):
         return
     asyncio.run(make_all(pick, target, 2, provider, eleven, SAMPLES_DIR, names))
-    settings = {c['id']: {'file': names[c['id']], 'text': c['text'], 'sayText': say_text(c, provider),
+    settings = {c['id']: {'file': names[c['id']], 'text': c['text'], 'sayText': tts_text(c, voice_cfg(c, provider, eleven)),
                           'settings': voice_cfg(c, provider, eleven)} for c in pick}
     idx = SAMPLES_DIR / 'samples.json'
     old = json.loads(idx.read_text(encoding='utf-8')) if idx.exists() else {}
@@ -530,6 +626,7 @@ def main():
     ap.add_argument('--asr', nargs='?', const='large-v3-turbo', metavar='MODEL',
                     help='back-transcribe the processed clips with faster-whisper')
     ap.add_argument('--prune', action='store_true', help='delete unused public/audio/fi/*.mp3, *-c-*.mp3')
+    ap.add_argument('--no-qa', action='store_true', help='ElevenLabs: skip the take check (faster-whisper)')
     args = ap.parse_args()
 
     clips = list_clips()
@@ -561,7 +658,9 @@ def main():
     if todo and not gate(estimate(todo, provider, eleven), args, eleven):
         return
     jobs = args.jobs or (2 if provider == 'elevenlabs' else 4)
-    norm = asyncio.run(make_all(todo, target, max(1, jobs), provider, eleven)) if todo else {}
+    qa = None if args.no_qa or provider != 'elevenlabs' else {}
+    norm = asyncio.run(make_all(todo, target, max(1, jobs), provider, eleven, qa=qa)) if todo else {}
+    qa = qa or {}
 
     entries, failed = [], []
     for c in clips:
@@ -573,6 +672,8 @@ def main():
         made = c['id'] in norm
         if made:
             cfg = voice_cfg(c, provider, eleven)
+            if c['id'] in qa and cfg['provider'] == 'elevenlabs':
+                cfg = dict(cfg, seed=qa[c['id']]['seed'])     # the take that stayed
         elif 'settings' in prev:
             cfg = prev['settings']
         elif 'voice' in prev:                # v3 entries (Edge): voice/rate/pitch at the top level
@@ -580,9 +681,13 @@ def main():
         else:
             cfg = voice_cfg(c, 'edge')
         e = {'id': c['id'], 'lang': c['lang'], 'file': c['file'], 'text': c['text'],
-             'sayText': say_text(c, cfg['provider']), 'provider': cfg['provider'], 'settings': cfg,
+             'sayText': tts_text(c, cfg), 'provider': cfg['provider'], 'settings': cfg,
              **measure(path), 'normalization': norm.get(c['id'], prev.get('normalization', '?')),
-             'key': clip_key(c, target, cfg) if made else prev.get('key', '')}
+             'key': clip_key(c, target, voice_cfg(c, provider, eleven)) if made else prev.get('key', '')}
+        if c['id'] in qa:
+            e['qa'] = qa[c['id']]
+        elif not made and 'qa' in prev:
+            e['qa'] = prev['qa']
         if c['id'] not in norm and 'asr' in prev:
             e['asr'] = prev['asr']           # file unchanged, so the old transcript still applies
         entries.append(e)
@@ -615,11 +720,15 @@ def main():
         'say_id': SAY_ID,
         'say_as': SAY_AS,
         'say_as_elevenlabs': SAY_AS_ELEVEN,
+        'say_id_elevenlabs': SAY_ID_ELEVEN,
         'clips': entries,
     }, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
 
     for e in entries:
         log(f"{e['id']:20s} {e['duration_s']:6.2f} s {e['lufs']:6.1f} LUFS {e['true_peak_dbtp']:5.1f} dBTP  {e['normalization']}")
+    weak = sorted((e['qa']['score'], e['id'], e['qa']['heard']) for e in entries if e.get('qa') and e['qa']['score'] < QA_MIN)
+    for sc, cid, heard in weak:
+        log(f'  check by ear: {cid} heard "{heard}" ({sc}) after {QA_TAKES} takes')
     if failed:
         log('\nFAILED:\n  ' + '\n  '.join(failed))
         sys.exit(1)

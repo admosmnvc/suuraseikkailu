@@ -182,7 +182,7 @@ const SUURA_DATA = {
   "Koraanin teksti: Tanzil Quran Text (Uthmani), © Tanzil Project, CC BY 3.0, tanzil.net. Tekstiä saa käyttää vain muuttamattomana.",
   "Resitaatio: Mishary Rashid Alafasy (murattal), Quran.com / quranicaudio.com; sana-ajat Quran.com (QDC).",
   "Shahada: oikean ihmisen ääni, SC Brotherhood & News Reports (YouTube: How to recite the Shahada of Islam).",
-  "Suomenkieliset kehotteet: valmiiksi tehdyt puheäänitteet (Microsoft Edge -puheääni Noora). Vanhempi voi korvata ne ja Shahadan omalla äänellään asetuksissa.",
+  "Suomenkieliset kehotteet: ElevenLabs, ääni Aurora. Vanhempi voi korvata ne ja Shahadan omalla äänellään asetuksissa.",
   "Sana kerrallaan -paloittelu: Mishary Alafasyn resitaatio, sana-ajat Quran.com (QDC).",
   "Fontit: Fredoka, Nunito ja Amiri Quran (SIL Open Font License 1.1)."
  ]

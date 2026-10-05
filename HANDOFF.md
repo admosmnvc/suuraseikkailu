@@ -10,29 +10,23 @@ Source: branch `main` of github.com/admosmnvc/suuraseikkailu. Owner communicates
   6 minigames per theme, mosque progress (girls) / rocket (boys), premium soft style. See CONTRACTS.md (decisions log).
 - Audio: Mishary lines + word-boundary prefix cuts (`public/audio/cut/`, `tools/build-cuts.py`, QDC timings);
   Shahada = real human recording supplied by the owner (wording "…anna Muhammadan rasuulullaah", owner's decision);
-  Finnish prompts = Edge TTS Noora (`tools/make_voices.py`).
+  Finnish prompts = ElevenLabs Aurora (`tools/make_voices.py`, see below).
 
-## Next task: natural Finnish voice with ElevenLabs (owner chose this)
-1. The owner adds the API key as environment variable `ELEVENLABS_API_KEY` (never ask for it in chat).
-2. The owner CHOSE the voice: ElevenLabs Voice Library "Aurora" – Young Finnish friendly and professional voice,
-   voice_id `YSabzCJMvEHDduIDMdwV` (https://elevenlabs.io/voices/YSabzCJMvEHDduIDMdwV). Make 2–3 short samples with it
-   (e.g. "Nyt sinun vuorosi! Sano perässä." / "Mahtavaa! Osaat koko Al-Fatihan!") with a cheerful, warm, slower delivery
-   for 4–7-year-olds (try stability/style settings), send them to the owner for a quick OK, then generate all clips.
-   The full Finnish script with ids is in PUHEKASIKIRJOITUS.md.
-3. The ElevenLabs provider is ALREADY implemented in `tools/make_voices.py` (unit tests:
-   `python3 -m unittest tools/make_voices_test.py -v`). Run, in order:
-   `python3 tools/make_voices.py --provider elevenlabs --samples --yes` (3 samples → ../qa/voice-samples/, send to owner)
-   `python3 tools/make_voices.py --provider elevenlabs` (estimate only: 83 clips ≈ 2 027 credits)
-   `python3 tools/make_voices.py --provider elevenlabs --yes` (all Finnish clips; credits line updated automatically).
-   Free plan (10 000 credits) is enough; ElevenLabs free tier = non-commercial + attribution (credit line covers it).
-   Currently all 83 Finnish clips are Edge Noora placeholders (27 new ones: intro-title, intro-go, nice-name, …, fx-*).
-4. Children's names: ask the owner for the names, then
-   `python3 tools/make_name.py "Nimi" --provider elevenlabs --yes` (writes OUTSIDE the project, ../suuraseikkailu-nimet/),
-   send the files to the owner via chat; the owner imports them in the app: Vanhemmille → Lapset → Nimi omalla äänellä →
-   Tuo tiedosto (stored only on the device). Never commit names.
-5. `npm run build && node tools/check-arabic.mjs && node tools/e2e.cjs dist` (~9 min, must be all PASS), then publish:
-   commit to `main`; copy `dist/` (+ `.nojekyll`) to branch `gh-pages` and push. The service worker now uses
-   network-first navigation + safe auto-reload, so phones show updates on the next open.
+## Finnish voice: ElevenLabs Aurora (done, v3.5)
+- All 83 Finnish clips = ElevenLabs voice "Aurora" (`YSabzCJMvEHDduIDMdwV`), model `eleven_v3` (owner's pick: livelier),
+  audio tags `[excited]` / `[cheerful]` (none for the meaning lines). The intro title "Suuraseikkailu!" is the owner's
+  own melody turned into Aurora's voice (ElevenLabs speech-to-speech), a fixed take in `tools/voice-src/` (SOURCE_TAKES
+  in make_voices.py: re-mastered, never re-synthesized; the owner's own recording is not in git).
+  Settings + per-clip seeds in `tools/voices.json`. The owner has a Starter plan (free plan cannot use library voices
+  or voice design via the API); the API key goes in the environment variable `ELEVENLABS_API_KEY` (never in chat/files).
+- `tools/make_voices.py --provider elevenlabs --yes` checks every new take with faster-whisper large-v3 (`QA_MIN`,
+  `QA_TAKES`, a statement heard as a question counts against it) and keeps the best take; `--no-qa` skips it.
+  Onomatopoeia (fx-*) scores low by nature. Unit tests: `python3 -m unittest tools/make_voices_test.py`.
+- Children's names: `python3 tools/make_name.py "Nimi" --provider elevenlabs --yes` (writes OUTSIDE the project,
+  ../suuraseikkailu-nimet/); send the file to the owner, who imports it on the device: Vanhemmille -> Lapset ->
+  Nimi omalla äänellä -> Tuo tiedosto. Never commit names.
+- Release: `npm run build && node tools/check-arabic.mjs && node tools/e2e.cjs dist` (~9 min, all PASS), then commit to
+  `main` and copy `dist/` (+ `.nojekyll`) to `gh-pages`.
 
 ## Open owner questions / notes
 - The minigame hint is a cartoon hand (no face). A reviewer noted it is a human body part; owner has not objected.
