@@ -14,8 +14,11 @@ Source: branch `main` of github.com/admosmnvc/suuraseikkailu. Owner communicates
 
 ## Next task: natural Finnish voice with ElevenLabs (owner chose this)
 1. The owner adds the API key as environment variable `ELEVENLABS_API_KEY` (never ask for it in chat).
-2. Make 3–4 short samples of natural, warm, cheerful Finnish voices (multilingual model) of e.g.
-   "Nyt sinun vuorosi! Sano perässä." and "Mahtavaa! Osaat koko Al-Fatihan!" → send to the owner to pick one.
+2. The owner CHOSE the voice: ElevenLabs Voice Library "Aurora" – Young Finnish friendly and professional voice,
+   voice_id `YSabzCJMvEHDduIDMdwV` (https://elevenlabs.io/voices/YSabzCJMvEHDduIDMdwV). Make 2–3 short samples with it
+   (e.g. "Nyt sinun vuorosi! Sano perässä." / "Mahtavaa! Osaat koko Al-Fatihan!") with a cheerful, warm, slower delivery
+   for 4–7-year-olds (try stability/style settings), send them to the owner for a quick OK, then generate all clips.
+   The full Finnish script with ids is in PUHEKASIKIRJOITUS.md.
 3. Add an ElevenLabs provider to `tools/make_voices.py` (keep the trim / loudness −18.4 LUFS / validation pipeline),
    regenerate every Finnish clip in `public/audio/fi/` (list: `node tools/list-clips.mjs`), keep the SAY_AS fixes only
    if still needed, update credits in `src/content/data.js` + README + `tools/voices-report.md`.
