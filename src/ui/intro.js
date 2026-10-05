@@ -8,11 +8,13 @@
      3.8 s the logo sinks into the start button, which pops out with a springy bounce
    A tap anywhere skips to the final state; reduced motion starts there. The scene stays behind the picker.
 
-   Sound effects (sounds(), in step with the CSS timeline) only if the device lets sound start without a tap
-   (audio context.autoStart; an installed Android app does): an engine hum + honk, hooves + a neigh, camel steps, the rocket's whoosh,
-   a clink per star, a pop per logo letter, a boing for the button. A slow cold start may decide late (up to
-   2.5 s): the sounds already passed are left out, the rest stay in step. Otherwise (iOS, a browser tab) it stays
-   silent until the first tap (soundNow()). Effects switched off, reduced motion, a skip: no sounds.
+   Sound effects (sounds(), in step with the CSS timeline): an engine hum + honk, hooves + a neigh, camel steps,
+   the rocket's whoosh, a clink per star, a pop per logo letter, a boing for the button. The intro holds its first
+   (grey) frame ('wait') until audio context.autoStart knows whether sound may start without a tap (an installed
+   Android app: yes, a cold start may take a moment). Yes: it plays at once, with sound. No (iOS, a browser tab):
+   it keeps waiting with a pulsing "Kosketa!" (#introWake); the first tap unlocks audio (main.js) and wakeIntro()
+   plays the whole intro with sound. Effects + speech switched off: it plays at once, silent. Reduced motion, a skip:
+   no effects.
    Voice cues (main.js speaks them, once sound may play): 'title' as SUURA drops in (not after a skip; main.js says it
    on the skip tap instead), 'go' 3 s after the start button has appeared (main.js skips it once the button was tapped).
 
@@ -36,6 +38,8 @@ const FINAL_MS = 5000; /* after the button's pop (4.08 s + 0.8 s) */
 const TITLE_MS = 2750;   /* the first letters of SUURA land */
 const BUTTON_MS = 4080;  /* the start button pops out */
 const GO_MS = 3000;      /* 'go' cue this long after the button appeared */
+const WAIT_MS = 2500;    /* longest wait for "may sound start without a tap?" before the "Kosketa!" shows */
+const WAKE_GRACE_MS = 1000; /* after the "Kosketa!" tap: more taps (a child taps twice) neither skip nor speak */
 
 /* [ms from the start, sound] – times match app.css (car .6-1.45 s, camel 1-1.7 s, pony 1.4-2 s, rocket 1.7 s,
    stars 2 s + i * 140 ms, SUURA lands 2.91 s + i * 80 ms, SEIKKAILU 3.17 s + i * 55 ms, button 4.08 s) */
@@ -54,7 +58,8 @@ function sounds(nStars, nTop, nBot) {
 }
 
 let box = null, gate = null, state = 'idle', timer = 0, skippedAt = 0, orient = '', sfxTimers = [];
-let cue = null, allowed = false, playAt = 0, buttonAt = 0, goTimer = 0;
+let cue = null, sfxOn = false, allowed = false, playAt = 0, buttonAt = 0, goTimer = 0, wokeAt = -1e9;
+const inGrace = () => state === 'play' && performance.now() - wokeAt < WAKE_GRACE_MS;
 
 /* the 'go' cue, once, GO_MS after the button appeared (needs: sound allowed, the button visible) */
 function armGo() {
@@ -180,8 +185,12 @@ function build() {
 function setState(s) {
   state = s;
   const intro = $('intro');
-  if (intro) intro.dataset.state = s;
+  if (intro) {
+    intro.dataset.state = s === 'wait' ? 'play' : s; /* waiting = the intro's first frame, paused (app.css) */
+    intro.toggleAttribute('data-wait', s === 'wait');
+  }
   gate.dataset.intro = s;
+  if (s !== 'wait') $('introWake').hidden = true;
   if (s === 'done') {
     clearTimeout(timer);
     timer = 0;
@@ -201,15 +210,22 @@ export function initIntro(boxEl, gateEl) {
   gate = gateEl;
   /* a tap anywhere during the intro jumps to the end (the same tap never presses the button) */
   gate.addEventListener('pointerdown', (e) => {
-    if (state !== 'play' || gate.dataset.mode !== 'start' || e.button > 0) return;
+    if (state !== 'play' || gate.dataset.mode !== 'start' || e.button > 0 || inGrace()) return;
     skippedAt = Date.now();
     setState('done');
   }, true);
+  /* the child left the app: the intro's remaining sounds and the 'go' cue are dropped (never into a hidden page) */
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) return;
+    sfxTimers.forEach(clearTimeout);
+    sfxTimers = [];
+    if (goTimer) { clearTimeout(goTimer); goTimer = -1; }
+  });
   /* a new orientation gets its own composition (final state) */
   let rt = 0;
   addEventListener('resize', () => {
     clearTimeout(rt);
-    rt = setTimeout(() => { if (state !== 'idle' && orientation() !== orient && box.firstElementChild) { build(); setState('done'); } }, 200);
+    rt = setTimeout(() => { if (state !== 'idle' && orientation() !== orient && box.firstElementChild) { build(); setState(state === 'wait' ? 'wait' : 'done'); } }, 200);
   });
 }
 
@@ -217,32 +233,54 @@ export function initIntro(boxEl, gateEl) {
 export function playIntro(o = {}) {
   build();
   cue = typeof o.cue === 'function' ? o.cue : null;
-  const t0 = performance.now();
-  if (reducedMotion()) setState('done');
-  else {
-    playAt = t0;
-    setState('play');
-    timer = setTimeout(() => setState('done'), FINAL_MS);
+  sfxOn = !!o.sfx;
+  const sound = sfxOn || !!cue;
+  if (reducedMotion()) {
+    setState('done');
+    if (sound) audio.autoStart(WAIT_MS).then((ok) => { if (ok && !document.hidden) { allowed = true; armGo(); } }, () => {});
+    return;
   }
-  if (!o.sfx && !cue) return;
-  /* the silent media probe alone can take > 150 ms on a busy device; sounds stay on the animation's clock (t0) */
-  audio.autoStart(2500).then((ok) => {
-    if (!ok || document.hidden) return;
-    allowed = true;
-    armGo();
-    if (state !== 'play') return;
-    const late = performance.now() - t0;
-    const list = [];
-    if (o.sfx) {
-      const stars = box.querySelectorAll('.in-chars .in-star').length;
-      const top = gate.querySelectorAll('.logo-top i').length, bot = gate.querySelectorAll('.logo-bot i').length;
-      list.push(...sounds(stars, top, bot));
-    }
-    if (cue) list.push([TITLE_MS, () => cue('title')]);
-    list.forEach(([ms, fn]) => {
-      if (ms >= late) sfxTimers.push(setTimeout(() => { if (state === 'play') fn(); }, ms - late));
-    });
-  }, () => {});
+  if (!sound) { run(false); return; }
+  setState('wait');
+  /* the silent media probe can take a while on a cold start: the first frame waits for its answer */
+  audio.autoStart(WAIT_MS).then((ok) => {
+    if (state !== 'wait') return; /* a tap woke it meanwhile */
+    if (ok && !document.hidden) run(true);
+    else showWake();
+  }, () => { if (state === 'wait') showWake(); });
+}
+
+/* the intro from its first frame; sound: the effects + the 'title' cue on the animation's clock */
+function run(sound) {
+  playAt = performance.now();
+  setState('play');
+  timer = setTimeout(() => setState('done'), FINAL_MS);
+  if (!sound) return;
+  allowed = true;
+  const list = [];
+  if (sfxOn) {
+    const stars = box.querySelectorAll('.in-chars .in-star').length;
+    const top = gate.querySelectorAll('.logo-top i').length, bot = gate.querySelectorAll('.logo-bot i').length;
+    list.push(...sounds(stars, top, bot));
+  }
+  if (cue) list.push([TITLE_MS, () => cue('title')]);
+  list.forEach(([ms, fn]) => sfxTimers.push(setTimeout(() => { if (state === 'play') fn(); }, ms)));
+}
+
+/* sound needs a tap here: the pulsing "Kosketa!" over the waiting grey world */
+function showWake() {
+  if (state !== 'wait') return;
+  $('introWake').hidden = false; /* Tab reaches it; no focus ring on the first screen (as the start button) */
+}
+
+/* the first tap on a waiting intro: main.js has unlocked audio inside that tap, so it plays now, with sound.
+   'woke' | 'grace' (a tap right after the wake: nothing more) | '' (not waiting) */
+export function wakeIntro() {
+  if (inGrace()) return 'grace';
+  if (state !== 'wait') return '';
+  wokeAt = performance.now();
+  run(true);
+  return 'woke';
 }
 
 /* a tap on the cover unlocked audio (main.js): the 'go' cue may play now – GO_MS after this tap if the button
@@ -254,4 +292,4 @@ export function soundNow() {
 }
 
 /* true while the intro still runs, or right after a skip tap (that tap's click must not start the app) */
-export function introBusy() { return state === 'play' || Date.now() - skippedAt < 450; }
+export function introBusy() { return state === 'play' || state === 'wait' || Date.now() - skippedAt < 450; }

@@ -38,8 +38,9 @@ Source: branch `main` of github.com/admosmnvc/suuraseikkailu. Owner communicates
 - The minigame hint is a cartoon hand (no face). A reviewer noted it is a human body part; owner has not objected.
 - Shahada recording licence: owner took responsibility (YouTube source).
 - Intro sound before any tap: only an installed Android app (a real WebAPK; check chrome://webapks) is allowed it by
-  Chrome. iOS, a browser tab, a "Create shortcut" icon and links opened from WhatsApp etc. need a tap: the first tap on
-  the cover turns sound on (title at once, "intro-go" 3 s later). The owner uses Android.
+  Chrome. iOS, a browser tab, a "Create shortcut" icon and links opened from WhatsApp etc. need a tap: there the intro
+  waits on its grey first frame with a pulsing "Kosketa!" (#introWake); that tap plays the whole intro with sound
+  (src/ui/intro.js 'wait' state). The owner uses Android.
 - Tests: `tools/e2e.cjs` (full app), `tools/audio-test.cjs`, `tools/games-test.cjs` (needs `npx vite --port 5204` dev
   server, or its own vite config), `tools/games-girl-test.cjs`, `tools/pwa-test.cjs dist`, `tools/settings-v3-test.cjs`.
 - Build needs Node 20+; `npm ci`. Playwright is not a project dependency (tests use a global install).

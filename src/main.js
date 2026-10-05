@@ -37,7 +37,7 @@ import { applyTheme, syncBar } from './ui/theme.js';
 import { unitsOf, linesDoneBy, stepsBeforeLine, unitClips } from './ui/units.js';
 import { prefixClips } from './content/chunks.js';
 import { popPraise, randomWord } from './ui/praise.js';
-import { initIntro, playIntro, introBusy, soundNow } from './ui/intro.js';
+import { initIntro, playIntro, introBusy, soundNow, wakeIntro } from './ui/intro.js';
 import { initWho, renderPicker, showView, viewFocus } from './ui/who.js';
 import { renderLevel } from './ui/level.js';
 import { renderHome, initParentButton, forgetShown } from './ui/home.js';
@@ -164,7 +164,7 @@ function greetId() {
 
 /* intro voice cues (intro.js, only when sound may start before a tap): never once the start button was tapped */
 function onIntroCue(name) {
-  if (started || !gateOpen() || $('gate').dataset.mode !== 'start' || safe(() => settings.isSettingsOpen())) return;
+  if (started || document.hidden || !gateOpen() || $('gate').dataset.mode !== 'start' || safe(() => settings.isSettingsOpen())) return;
   if (name === 'title') {
     if (titleSaid) return; /* once (a key press on the button during the intro must not say it twice) */
     titleSaid = titleBusy = true;
@@ -686,12 +686,20 @@ function onGateTap() {
   resumeAfterUnlock();
 }
 
-/* Any tap on the cover that does not start (the intro's skip tap, a tap beside the button) still unlocks audio:
-   where sound could not start before a tap (iOS, a browser tab) the intro speaks from here on ('title', then 'go'). */
+/* Any tap on the cover that does not start (the "Kosketa!" tap, the intro's skip tap, a tap beside the button) still
+   unlocks audio: a waiting intro (no sound before a tap: iOS, a browser tab) now plays with sound; later taps speak
+   from here on ('title', then 'go'). */
 function onCoverTap() {
   if (started || $('gate').dataset.mode !== 'start') return;
   safe(() => engine.unlock());
   safe(() => SFX.unlock());
+  const c = centerOf($('introWake'));
+  const w = safe(() => wakeIntro());
+  if (w === 'woke') { /* instant answer to the tap: sparkles, the world wakes */
+    safe(() => FX.burst(c.x, c.y, ['#FF7A9A', '#5AB4FF', '#FFD36E', '#8EE3C8', '#FFFFFF'], 22));
+    safe(() => SFX.sparkle());
+  }
+  if (w) return;
   safe(() => soundNow());
   if (!titleSaid && store.settings.speech !== false) onIntroCue('title');
 }
@@ -889,7 +897,7 @@ function boot() {
   playIntro({ sfx: store.settings.sfx !== false, cue: store.settings.speech !== false ? onIntroCue : null });
   syncBar(true);
   safe(() => engine.onLockChange(onLock));
-  safe(() => engine.preload(['cover', 'who', 'ask-theme', 'welcome'].map((id) => engine.prompt(id))));
+  safe(() => engine.preload(['intro-title', 'intro-go', 'cover', 'who', 'ask-theme', 'welcome'].map((id) => engine.prompt(id))));
   if (typeof pwa.registerSW === 'function') safe(() => pwa.registerSW());
 }
 

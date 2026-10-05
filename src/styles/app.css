@@ -678,6 +678,42 @@ html.cover-up .cover-art { display: block; }
 [data-theme="girl"] .gate[data-mode="resume"] .gate-btn { --j1: #FFC0D3; --j2: #F6588C; --j3: #E03C74; --je: #BE2A60; --jg: 240, 80, 130; }
 [data-theme="boy"] .gate[data-mode="resume"] .gate-btn { --j1: #B5DCFF; --j2: #3B8EF5; --j3: #2563EB; --je: #1B4FC4; --jg: 47, 107, 255; }
 .gate-btn:focus-visible { outline-offset: 6px; }
+/* no sound before a tap (iOS, a browser tab): the intro waits on its first, grey frame with a pulsing "Kosketa!";
+   the tap wakes the world, with sound (intro.js) */
+.intro[data-wait], .intro[data-wait] * { animation-play-state: paused !important; }
+.gate[data-mode="start"][data-intro="wait"] .gate-btn, .gate[data-mode="start"][data-intro="idle"] .gate-btn { visibility: hidden; } /* idle: before the JS runs */
+.intro-wake {
+  position: absolute; left: 50%; top: 50%; z-index: 2; translate: -50% -50%; display: grid; justify-items: center; gap: 12px;
+  padding: 0; border: 0; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.intro-wake[hidden] { display: none; }
+.wake-ico {
+  position: relative; display: grid; place-items: center; width: 120px; height: 120px; border-radius: 50%; color: #6C3FE4;
+  background: radial-gradient(circle at 35% 30%, #fff 0 45%, #EDE5FF 100%);
+  box-shadow: 0 9px 0 rgba(86, 48, 196, .35), 0 18px 30px rgba(122, 79, 224, .35);
+  animation: wake-pulse 1.4s ease-in-out infinite;
+}
+.wake-ico::after { /* a ring that keeps pulsing out: "touch here" */
+  content: ""; position: absolute; inset: -6px; border-radius: 50%; border: 6px solid rgba(255, 255, 255, .95); pointer-events: none;
+  animation: wake-ring 1.4s ease-out infinite;
+}
+.wake-ico .icon { width: 54px; height: 54px; margin-left: 8px; fill: currentColor; }
+.wake-label {
+  position: relative; z-index: 1; /* above the pulsing ring */
+  padding: 4px 20px 7px; border-radius: 999px; background: linear-gradient(180deg, #9F7BFF, #6C3FE4);
+  box-shadow: 0 5px 0 #5630C4, 0 10px 18px rgba(40, 10, 120, .3);
+  font-family: "Sniglet", var(--f-display); font-weight: 800; font-size: clamp(1.6rem, 7vw, 2.1rem); line-height: 1.15; color: #fff;
+}
+.intro-wake:focus-visible { outline-offset: 8px; }
+/* landscape phones: smaller and lower, the mosque stays in view */
+@media (orientation: landscape) and (max-height: 500px) {
+  .intro-wake { top: 64%; gap: 8px; }
+  .wake-ico { width: 84px; height: 84px; }
+  .wake-ico .icon { width: 40px; height: 40px; margin-left: 6px; }
+  .wake-label { font-size: 1.5rem; }
+}
+@keyframes wake-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.09); } }
+@keyframes wake-ring { from { opacity: .9; transform: scale(1); } to { opacity: 0; transform: scale(1.65); } }
 .gate-hint { padding: 6px 18px; border-radius: var(--r-pill); background: rgba(255, 255, 255, .9); box-shadow: var(--shadow-1); font-size: 1.08rem; font-weight: 800; color: var(--ink-soft); }
 
 /* ---------- player picker + onboarding ---------- */

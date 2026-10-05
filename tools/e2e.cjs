@@ -22,11 +22,12 @@
      intro-sound    autoplay allowed: the intro starts Web Audio without a tap, its effects run in step with the
                     animation (car 0.6 s ... button 4.1 s), "intro-title" at the logo, "intro-go" 3 s after the button
                     when nobody taps; a skip stops them and says the title at once (+ "intro-go" 3 s later); effects / speech off;
-                    a slow start (probe answers after 1.2 s): the later sounds still play in step.
-     intro-silent   a second Chromium WITHOUT the autoplay flag (iOS / first visit): no AudioContext, effect or voice
-                    before the tap, the intro plays as usual, the start tap unlocks audio and says the title; a skip tap
-                    unlocks audio too: "intro-title" at once, "intro-go" 3 s later (also a late tap beside the button);
-                    a quick start while the title still plays adds no "cover".
+                    a slow start (probe answers after 1.2 s): the intro waits for it, then plays with every sound in step.
+     intro-silent   a second Chromium WITHOUT the autoplay flag (iOS / a browser tab): the intro waits on its grey first
+                    frame with a pulsing "Kosketa!" (no AudioContext, effect or voice); that tap unlocks audio and plays the
+                    whole intro with its effects + "intro-title" + "intro-go"; a skip after it says the title at once; a quick
+                    start while the title still plays adds no "cover"; reduced motion: no wait, a tap beside the button says
+                    the title at once and "intro-go" 3 s later.
    Voice lines in the flows: onboarding "nice-name" (tap right away + after a 1.2 s pause, once per name), "welcome-new",
    picker name + "welcome-back" + time-of-day greeting, new child greeting + "welcome", "game-done" before the praise, finale Kotiin "bye".
    Every screen: no horizontal scroll, visible buttons >= 64 px (inside settings >= 44 px), labels inside their
@@ -391,7 +392,14 @@ async function seed(ctx, st, key = KEY) {
    (on the button's spot, the worst case) skips it. Reduced motion starts at the final state. */
 async function intro(ctx, o = {}) {
   const S = ctx.suite, page = ctx.page;
-  await W(ctx, () => { const g = document.getElementById('gate'); return g && !g.hidden && g.dataset.mode === 'start' && g.dataset.intro !== 'idle'; });
+  await W(ctx, () => { const g = document.getElementById('gate'); return g && !g.hidden && g.dataset.mode === 'start' && g.dataset.intro !== 'idle' &&
+    (g.dataset.intro !== 'wait' || !document.getElementById('introWake').hidden); });
+  /* no sound before a tap: the intro waits for "Kosketa!" -> wake it (it then plays from its start, with sound) */
+  if (await page.evaluate(() => document.getElementById('gate').dataset.intro === 'wait')) {
+    await tap(ctx, '#introWake');
+    await W(ctx, () => document.getElementById('gate').dataset.intro === 'play', null, 3000);
+    await sleep(1100); /* past the wake's grace time (a tap right after it does not skip) */
+  }
   const st = await page.evaluate(() => ({ intro: document.getElementById('gate').dataset.intro, rm: matchMedia('(prefers-reduced-motion: reduce)').matches,
     parts: ['in-mosque', 'in-road', 'in-car', 'in-camel', 'in-pony', 'in-stars', 'in-rocket', 'in-crown'].filter((id) => document.querySelector('#coverArt #' + id + ', #coverArt [data-in="' + id + '"]')),
     font: document.fonts.check('800 40px Sniglet') }));
@@ -1026,14 +1034,17 @@ async function suiteBackground(browser, base) {
     await page.evaluate(() => window.__setHidden(false));
     const t0 = Date.now();
     let done = false;
+    /* the probe hides the page in the same step it sees the game done (a busy machine must not miss the window) */
+    const probeHide = () => page.evaluate((src) => { const r = (0, eval)('(' + src + ')')(); if (r.open && r.done) window.__setHidden(true); return r; }, ARENA.toString());
     while (!done && Date.now() - t0 < 30000) {
-      const t = await page.evaluate(ARENA);
+      const t = await probeHide();
       if (!t.open) break;
       if (t.done) { done = true; break; }
       const it = t.items[0] || { x: t.arena.x + t.arena.w / 2, y: t.arena.y + t.arena.h / 2 };
       await page.mouse.move(it.x, it.y); await page.mouse.down();
       for (let i = 1; i <= 5; i++) await page.mouse.move(it.x + Math.sin(i) * 40, it.y + Math.cos(i) * 30);
       await page.mouse.up();
+      if ((await probeHide()).done) { done = true; break; }
       await sleep(80);
     }
     await page.evaluate(() => window.__setHidden(true));
@@ -1064,11 +1075,17 @@ const introAudio = (ctx) => ctx.page.evaluate(() => {
   return { at, done: A.introDone, probe: A.probe.slice(), ac: A.ac.map((a) => ({ t: a.t - at, tapped: a.tapped, state: a.c.state })), src: A.src.map((t) => t - at) };
 });
 
-/* fi/ prompts of the current document with their time on the intro clock: [[id, ms], ...] */
-const fiTimed = (ctx) => ctx.page.evaluate(() => {
-  const A = window.__audio;
-  return A.log.filter((e) => e.type === 'playing' && e.src.startsWith('fi/')).map((e) => [e.src.slice(3).replace(/\.mp3$/, ''), Math.round(e.t - A.introAt)]);
-});
+/* fi/ prompts of the current document with their time on the intro clock (abs: page clock): [[id, ms], ...].
+   One entry per play(): a 'playing' again after a stall (a busy machine) is the same start. */
+const fiTimed = (ctx, abs) => ctx.page.evaluate((abs) => {
+  const A = window.__audio, armed = {};
+  return A.log.filter((e) => {
+    if (e.type === 'play') { armed[e.el] = true; return false; }
+    if (e.type !== 'playing' || !armed[e.el]) return false;
+    armed[e.el] = false;
+    return e.src.startsWith('fi/');
+  }).map((e) => [e.src.slice(3).replace(/\.mp3$/, ''), Math.round(e.t - (abs ? 0 : A.introAt))]);
+}, !!abs);
 /* the cover tap -> the prompts until the picker / onboarding prompt */
 async function coverSaid(ctx, view) {
   const from = await alen(ctx);
@@ -1149,58 +1166,105 @@ async function suiteIntroSound(browser, base) {
     await seed(ctx, store([]));
     await W(ctx, () => window.__audio.introAt != null && performance.now() - window.__audio.introAt > 4500, null, 9000);
     const slow = await introAudio(ctx), st = (await fiTimed(ctx)).find(([id]) => id === 'intro-title');
-    check(S, 'slow start: probe after 1.2 s -> no early effects, the later ones + "intro-title" still play in step', slow.ac.length === 1 && slow.ac[0].t >= 1100 &&
-      slow.src.length >= 20 && slow.src[0] >= 1150 && slow.src[slow.src.length - 1] >= 4050 && slow.src[slow.src.length - 1] <= 4400 && !!st && st[1] >= 2600 && st[1] <= 3500,
-      JSON.stringify({ ac: slow.ac, starts: slow.src.length, first: slow.src[0], last: slow.src[slow.src.length - 1], title: st }));
+    const slowWake = await page.evaluate(() => !document.getElementById('introWake').hidden);
+    check(S, 'slow start: probe after 1.2 s -> the intro waits for it, then plays with every effect + "intro-title" in step', slow.at >= 1150 && !slowWake &&
+      slow.ac.length === 1 && slow.src.length >= 30 && slow.src[0] >= 550 && slow.src[0] <= 800 && slow.src[slow.src.length - 1] >= 4050 && slow.src[slow.src.length - 1] <= 4400 &&
+      !!st && st[1] >= 2600 && st[1] <= 3500,
+      JSON.stringify({ playAt: Math.round(slow.at), wake: slowWake, ac: slow.ac, starts: slow.src.length, first: slow.src[0], last: slow.src[slow.src.length - 1], title: st }));
   } catch (e) { await crash(ctx, e); }
   await finish(ctx);
   return ctx;
 }
 
-/* No autoplay (iOS, a first visit): the intro stays silent, nothing breaks, the start tap unlocks audio. */
+/* No sound before a tap (iOS, a browser tab): the intro waits for "Kosketa!", that tap plays it with sound. */
 async function suiteIntroSilent(browser, base) {
   const ctx = await newCtx(browser, base, 'intro-silent', [390, 844]);
   const S = ctx.suite, page = ctx.page;
+  const wakeBox = () => page.evaluate(() => { const w = document.getElementById('introWake'), r = w.getBoundingClientRect();
+    return { shown: !w.hidden, w: Math.round(r.width), h: Math.round(r.height), intro: document.getElementById('gate').dataset.intro }; });
   try {
     await seed(ctx, store([]));
-    await W(ctx, () => window.__audio.introDone != null && performance.now() - window.__audio.introAt > 7900, null, 12000);
-    const a = await introAudio(ctx), early = await fiTimed(ctx);
-    check(S, 'silent path: no voice before the tap (no "intro-title", no "intro-go")', early.length === 0, JSON.stringify(early));
+    await W(ctx, () => !document.getElementById('introWake').hidden, null, 6000);
+    await sleep(3000);
+    const a = await introAudio(ctx), early = await fiTimed(ctx), wb = await wakeBox();
     check(S, 'silent path: the browser refuses the app\'s silent autoplay probe (no tap yet)', a.probe[0] === 'NotAllowedError', JSON.stringify(a.probe));
-    check(S, 'silent path: intro plays to the end with no AudioContext and no effect', a.ac.length === 0 && a.src.length === 0 && a.done - a.at > 4500 && a.done - a.at < 6500,
-      JSON.stringify(Object.assign(a, { doneAt: a.done - a.at })));
+    check(S, 'silent path: the intro waits on its first frame with "Kosketa!" (no AudioContext, effect or voice)', wb.shown && wb.intro === 'wait' && wb.w >= 64 && wb.h >= 64 &&
+      a.at == null && a.ac.length === 0 && a.src.length === 0 && early.length === 0, JSON.stringify({ wb, a, early }));
+    await screen(ctx, 'intro-wait', 0);
+    /* the "Kosketa!" tap: audio unlocked, the whole intro from its start, with sound */
+    await tap(ctx, '#introWake');
+    await W(ctx, () => window.__audio.introAt != null && performance.now() - window.__audio.introAt > 4500, null, 8000);
+    const u = await introAudio(ctx), uw = await wakeBox();
+    const wakeFx = u.src.filter((t) => t >= -50 && t < 300).length, inIntro = u.src.filter((t) => t >= 300 && t <= 4500);
+    check(S, 'silent path: the "Kosketa!" tap creates + runs the AudioContext and starts the intro, with an instant sparkle', !uw.shown && u.ac.length === 1 && u.ac[0].tapped === true &&
+      u.ac[0].state === 'running' && u.ac[0].t <= 50 && wakeFx > 0, JSON.stringify({ uw, ac: u.ac, wakeFx }));
+    check(S, 'silent path: after the tap the effects run in step (car ~0.6 s ... button boing ~4.1 s)', inIntro.length >= 30 && inIntro[0] >= 550 && inIntro[0] <= 800 &&
+      inIntro[inIntro.length - 1] >= 4050 && inIntro[inIntro.length - 1] <= 4400, JSON.stringify({ starts: inIntro.length, first: inIntro[0], last: inIntro[inIntro.length - 1] }));
+    await W(ctx, () => window.__audio.log.some((e) => e.type === 'playing' && e.src === 'fi/intro-go.mp3'), null, 5000);
+    const us = await fiTimed(ctx), ut = us.filter(([id]) => id === 'intro-title'), ug = us.filter(([id]) => id === 'intro-go');
+    check(S, 'silent path: after the tap "intro-title" as the logo drops in, "intro-go" ~3 s after the button', ut.length === 1 && ut[0][1] >= 2600 && ut[0][1] <= 3500 &&
+      ug.length === 1 && ug[0][1] >= 6900 && ug[0][1] <= 7900, JSON.stringify(us));
     const c1 = await coverSaid(ctx, 'new');
-    check(S, 'silent path: start tap -> "intro-title", "ask-theme" (no "cover")', c1.ok && inOrder(c1.said, ['intro-title', 'ask-theme']) && !c1.said.includes('cover'), c1.said.join(','));
-    const u = await introAudio(ctx);
-    check(S, 'silent path: the start tap creates + runs the AudioContext', u.ac.length === 1 && u.ac[0].tapped === true && u.ac[0].state === 'running', JSON.stringify(u.ac));
-    /* a skip tap unlocks audio: the title at once, 'go' 3 s later (as on a device that allows sound) */
+    check(S, 'silent path: start tap -> "cover", "ask-theme" (title already heard)', c1.ok && inOrder(c1.said, ['cover', 'ask-theme']) && !c1.said.includes('intro-title'), c1.said.join(','));
+    /* a child taps "Kosketa!" twice (250 ms apart): the second tap neither skips nor speaks; a tap after 1 s skips */
+    await page.reload();
+    await W(ctx, () => !document.getElementById('introWake').hidden, null, 6000);
+    const wc = await center(ctx, '#introWake');
+    await page.mouse.click(wc.x, wc.y, { delay: 40 });
+    await sleep(210);
+    await page.mouse.click(wc.x, wc.y, { delay: 40 });
+    await W(ctx, () => window.__audio.introAt != null && performance.now() - window.__audio.introAt > 3600, null, 8000);
+    const d1 = await introAudio(ctx), dt = (await fiTimed(ctx)).filter(([id]) => id === 'intro-title');
+    const dState = await page.evaluate(() => document.getElementById('gate').dataset.intro);
+    check(S, 'silent path: a double tap on "Kosketa!" keeps the intro playing with its effects + the title at the logo', dState === 'play' &&
+      d1.src.filter((t) => t >= 300).length >= 20 && dt.length === 1 && dt[0][1] >= 2600 && dt[0][1] <= 3500, JSON.stringify({ dState, starts: d1.src.length, title: dt }));
+    await page.mouse.click(wc.x, wc.y + 200, { delay: 40 });
+    check(S, 'silent path: a tap after the grace time skips as usual', await tryW(ctx, () => document.getElementById('gate').dataset.intro === 'done', null, 1500));
+    /* the app hidden mid-intro: no more effects, no voice cue into the hidden page */
+    await page.reload();
+    await W(ctx, () => !document.getElementById('introWake').hidden, null, 6000);
+    await tap(ctx, '#introWake');
+    await W(ctx, () => window.__audio.introAt != null && performance.now() - window.__audio.introAt > 1000, null, 6000);
+    const hideAt = await page.evaluate(() => { window.__setHidden(true); return performance.now() - window.__audio.introAt; });
+    await sleep(7000);
+    const h1 = await introAudio(ctx), hs = await fiTimed(ctx);
+    await page.evaluate(() => window.__setHidden(false));
+    check(S, 'silent path: hidden mid-intro -> no further effects, no "intro-title" / "intro-go"', h1.src.filter((t) => t > hideAt + 60).length === 0 && hs.length === 0,
+      JSON.stringify({ hideAt: Math.round(hideAt), after: h1.src.filter((t) => t > hideAt + 60).slice(0, 5), said: hs }));
+    /* wake, then skip: the effects stop, the title at once, 'go' 3 s later */
     await page.reload();
     await intro(ctx, {});
-    const r = await introAudio(ctx);
-    check(S, 'silent path: the skip tap creates + runs the AudioContext (no effect)', r.ac.length === 1 && r.ac[0].tapped === true && r.ac[0].state === 'running' && r.src.length === 0, JSON.stringify(r));
+    const r = await introAudio(ctx), rd = r.done - r.at;
+    await sleep(2400);
+    const r2 = await introAudio(ctx);
+    check(S, 'silent path: a skip after the wake stops the remaining effects', r2.src.filter((t) => t > rd + 120).length === 0, JSON.stringify({ skipAt: rd, src: r2.src.slice(-5) }));
     await W(ctx, () => window.__audio.log.some((e) => e.type === 'playing' && e.src === 'fi/intro-go.mp3'), null, 4500);
-    const rs = await fiTimed(ctx), rt = rs.filter(([id]) => id === 'intro-title'), rg = rs.filter(([id]) => id === 'intro-go'), rd = r.done - r.at;
+    const rs = await fiTimed(ctx), rt = rs.filter(([id]) => id === 'intro-title'), rg = rs.filter(([id]) => id === 'intro-go');
     check(S, 'silent path: the skip tap says "intro-title" at once, "intro-go" ~3 s later', rt.length === 1 && rt[0][1] - rd >= 0 && rt[0][1] - rd < 700 &&
       rg.length === 1 && rg[0][1] - rd >= 2900 && rg[0][1] - rd <= 3800, JSON.stringify({ skipAt: rd, said: rs }));
     const c2 = await coverSaid(ctx, 'new');
     check(S, 'silent path: start after a skip -> "cover", "ask-theme" (title already said)', c2.ok && inOrder(c2.said, ['cover', 'ask-theme']) && !c2.said.includes('intro-title'), c2.said.join(','));
-    /* the intro ended long ago, then a tap beside the button: the whole title at once, 'go' 3 s after that tap */
-    await page.reload();
-    await W(ctx, () => window.__audio.introDone != null && performance.now() - window.__audio.introAt > 8500, null, 12000);
-    const spot = await page.evaluate(() => { const x = innerWidth / 2, y = innerHeight * 0.12, el = document.elementFromPoint(x, y);
-      return { x, y, inGate: !!el && document.getElementById('gate').contains(el) && !el.closest('button') }; });
-    const tapAt = await page.evaluate(() => performance.now() - window.__audio.introAt);
-    await page.mouse.click(spot.x, spot.y, { delay: 40 });
-    await W(ctx, () => window.__audio.log.some((e) => e.type === 'playing' && e.src === 'fi/intro-go.mp3'), null, 4500);
-    const bs = await fiTimed(ctx), bt = bs.filter(([id]) => id === 'intro-title'), bg = bs.filter(([id]) => id === 'intro-go');
-    check(S, 'silent path: a late tap beside the button -> "intro-title" at once (not cut), "intro-go" ~3 s after the tap', spot.inGate && bt.length === 1 &&
-      bt[0][1] - tapAt >= 0 && bt[0][1] - tapAt < 700 && bg.length === 1 && bg[0][1] - tapAt >= 2900 && bg[0][1] - tapAt <= 3800 && bs[0][0] === 'intro-title',
-      JSON.stringify({ spot, tapAt: Math.round(tapAt), said: bs }));
     /* a quick start right after the skip, the title still playing: no 'cover' on top of it */
     await page.reload();
     await intro(ctx, { quiet: true });
     const c3 = await coverSaid(ctx, 'new');
     check(S, 'silent path: skip + quick start -> "ask-theme" (no "cover", no second title)', c3.ok && inOrder(c3.said, ['ask-theme']) && !c3.said.includes('cover') && !c3.said.includes('intro-title'), c3.said.join(','));
+    /* reduced motion: no wait (final frame at once); a tap beside the button -> the whole title at once, 'go' 3 s after that tap */
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.reload();
+    await W(ctx, () => document.getElementById('gate').dataset.intro === 'done', null, 6000);
+    await sleep(3500);
+    const spot = await page.evaluate(() => { const x = innerWidth / 2, y = innerHeight * 0.12, el = document.elementFromPoint(x, y);
+      return { x, y, inGate: !!el && document.getElementById('gate').contains(el) && !el.closest('button'), wake: !document.getElementById('introWake').hidden, said: window.__audio.log.filter((e) => e.type === 'playing' && e.src.startsWith('fi/')).length }; });
+    const tapAt = await page.evaluate(() => performance.now());
+    await page.mouse.click(spot.x, spot.y, { delay: 40 });
+    await W(ctx, () => window.__audio.log.some((e) => e.type === 'playing' && e.src === 'fi/intro-go.mp3'), null, 4500);
+    const bs = await fiTimed(ctx, true);
+    const bt = bs.filter(([id]) => id === 'intro-title'), bg = bs.filter(([id]) => id === 'intro-go');
+    check(S, 'reduced motion: no wait; a tap beside the button -> "intro-title" at once (not cut), "intro-go" ~3 s after the tap', spot.inGate && !spot.wake && spot.said === 0 &&
+      bt.length === 1 && bt[0][1] - tapAt >= 0 && bt[0][1] - tapAt < 700 && bg.length === 1 && bg[0][1] - tapAt >= 2900 && bg[0][1] - tapAt <= 3800 && bs[0][0] === 'intro-title',
+      JSON.stringify({ spot, tapAt: Math.round(tapAt), said: bs }));
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
   } catch (e) { await crash(ctx, e); }
   await finish(ctx);
   return ctx;
