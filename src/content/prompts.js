@@ -51,10 +51,40 @@ export const PROMPTS = {
   'game-girl-3': 'Koristele kakku!',
   'game-girl-4': 'Kasvata kukkaniitty!',
   'game-girl-5': 'Sytytä moskeijan valot!',
+  /* v3.2: intro, profiles, greetings, extra praise, game exclamations (owner's wishes; Aurora voice) */
+  'intro-title': 'Suuraseikkailu!',
+  'intro-go': 'No niin, aloitetaan! Tule jo!',
+  'nice-name': 'Oi, onpa kiva nimi!',
+  'welcome-new': 'Jee! Tervetuloa mukaan!',
+  'welcome-back': 'Hei taas! Kiva, että tulit!',
+  'greet-morning': 'Hyvää huomenta!',
+  'greet-day': 'Hyvää päivää!',
+  'greet-evening': 'Hyvää iltaa!',
+  'bye': 'Nähdään taas!',
+  'praise-6': 'Olet tosi taitava!',
+  'praise-7': 'Jee, hienosti!',
+  'praise-8': 'Vau, ihan mahtavaa!',
+  'praise-9': 'Upeasti sanottu!',
+  'praise-10': 'Sinä osaat!',
+  'game-done': 'Hienosti pelattu!',
+  'fx-vroom': 'Vrruum!',
+  'fx-namnam': 'Nam nam!',
+  'fx-shine': 'Kiiltoa!',
+  'fx-splash': 'Pläts!',
+  'fx-ready': 'Valmista!',
+  'fx-wow': 'Vau!',
+  'fx-yay': 'Jippii!',
+  'fx-beep': 'Piip piip!',
+  'fx-pretty': 'Kaunista!',
+  'fx-yum': 'Herkullista!',
+  'fx-go': 'Mennään!',
+  'fx-boing': 'Pomppis!',
   'test-fi': 'Hei! Tämä on suomen puheääni.'
 };
 
-export const PRAISE_IDS = ['praise-1', 'praise-2', 'praise-3', 'praise-4', 'praise-5'];
+export const PRAISE_IDS = ['praise-1', 'praise-2', 'praise-3', 'praise-4', 'praise-5', 'praise-6', 'praise-7', 'praise-8', 'praise-9', 'praise-10'];
+/* short in-game exclamations (games call say('fx-…') at fitting moments; keep them sparse) */
+export const FX_IDS = ['fx-vroom', 'fx-namnam', 'fx-shine', 'fx-splash', 'fx-ready', 'fx-wow', 'fx-yay', 'fx-beep', 'fx-pretty', 'fx-yum', 'fx-go', 'fx-boing'];
 export const THEMES = ['girl', 'boy'];
 export const LEVELS = ['easy', 'medium', 'hard'];
 export const LEVEL_NAMES = { easy: 'HELPPO', medium: 'KESKITASO', hard: 'VAIKEA' };
@@ -100,6 +130,9 @@ export const RECORDABLE = [
   { group: 'Juhla', id: 'rocket-launch', label: PROMPTS['rocket-launch'] },
   { group: 'Muut kehotteet', id: 'welcome', label: PROMPTS['welcome'] },
   { group: 'Muut kehotteet', id: 'next', label: PROMPTS['next'] },
+  ...['intro-title', 'intro-go', 'nice-name', 'welcome-new', 'welcome-back', 'greet-morning', 'greet-day', 'greet-evening', 'bye', 'game-done'].map((id) => ({ group: 'Muut kehotteet', id, label: PROMPTS[id] })),
+  ...['praise-6', 'praise-7', 'praise-8', 'praise-9', 'praise-10'].map((id) => ({ group: 'Kehut', id, label: PROMPTS[id] })),
+  ...['fx-vroom', 'fx-namnam', 'fx-shine', 'fx-splash', 'fx-ready', 'fx-wow', 'fx-yay', 'fx-beep', 'fx-pretty', 'fx-yum', 'fx-go', 'fx-boing'].map((id) => ({ group: 'Pelien huudahdukset', id, label: PROMPTS[id] })),
   ...['cover', 'who', 'pick-level', 'level-easy', 'level-medium', 'level-hard'].map((id) => ({ group: 'Muut kehotteet', id, label: PROMPTS[id] })),
   ...THEMES.flatMap((t) => Array.from({ length: GAME_COUNT }, (_, i) => (
     { group: t === 'boy' ? 'Pelit (poika)' : 'Pelit (tyttö)', id: gameId(t, i), label: PROMPTS[gameId(t, i)] }))),

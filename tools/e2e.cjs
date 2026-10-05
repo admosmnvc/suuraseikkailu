@@ -19,6 +19,13 @@
      offline    service worker precache under a sub-path, server stopped + offline reload, playback.
      background app hidden during a minigame: onDone held, one reward, flow goes on.
      boygames   the boy's game turn seeded at 3, 4, 5: those games run (the flows reach boy-0..2).
+     intro-sound    autoplay allowed: the intro starts Web Audio without a tap, its effects run in step with the
+                    animation (car 0.6 s ... button 4.1 s), "intro-title" at the logo, "intro-go" 3 s after the button
+                    when nobody taps; a skip stops them (the title then follows the start tap); effects / speech off.
+     intro-silent   a second Chromium WITHOUT the autoplay flag (iOS / first visit): no AudioContext, effect or voice
+                    before the tap, the intro plays + skips as usual, the start tap unlocks audio and says the title.
+   Voice lines in the flows: onboarding "nice-name" (tap right away + after a 1.2 s pause, once per name), "welcome-new",
+   picker name + "welcome-back" + time-of-day greeting, new child greeting + "welcome", "game-done" before the praise, finale Kotiin "bye".
    Every screen: no horizontal scroll, visible buttons >= 64 px (inside settings >= 44 px), labels inside their
    buttons, reward/finale buttons on screen without scrolling, screenshot to <shots>/<suite>/. Console errors /
    warnings and failed requests fail the suite. Exit code 1 on any failure. */
@@ -97,7 +104,14 @@ function instrument() {
     }));
   }
   const op = HTMLMediaElement.prototype.play;
-  HTMLMediaElement.prototype.play = function () { watch(this); return op.apply(this, arguments); };
+  /* A.probe: outcomes of silent data: plays (the app's autoplay probe, the unlock in a tap): 'ok' or the error name */
+  A.probe = [];
+  HTMLMediaElement.prototype.play = function () {
+    watch(this);
+    const p = op.apply(this, arguments);
+    if (p && p.then && String(this.src).startsWith('data:')) p.then(() => A.probe.push('ok'), (e) => A.probe.push(e && e.name));
+    return p;
+  };
   /* 'stop' = pause() called on a playing element, logged synchronously with the src it was playing */
   const opa = HTMLMediaElement.prototype.pause;
   HTMLMediaElement.prototype.pause = function () {
@@ -119,6 +133,27 @@ function instrument() {
     const b = e.target && e.target.closest ? e.target.closest('button,label') : null;
     A.clicks.push({ t: T(), id: b ? (b.id || b.getAttribute('data-act') || b.getAttribute('data-test') || b.className) : '' });
   }, true);
+  /* Web Audio: contexts created (and whether a tap had happened), source node starts (sound effects) */
+  A.ac = []; A.src = [];
+  if (window.AudioContext) {
+    window.AudioContext = new Proxy(window.AudioContext, { construct(t, args) {
+      const c = Reflect.construct(t, args);
+      A.ac.push({ t: T(), tapped: navigator.userActivation ? navigator.userActivation.hasBeenActive : null, c });
+      return c;
+    } });
+  }
+  if (window.AudioScheduledSourceNode) {
+    const ost = AudioScheduledSourceNode.prototype.start;
+    AudioScheduledSourceNode.prototype.start = function () { A.src.push(T()); return ost.apply(this, arguments); };
+  }
+  /* intro clock: when #gate's data-intro turns 'play' / 'done' */
+  document.addEventListener('DOMContentLoaded', () => {
+    const g = document.getElementById('gate');
+    if (!g) return;
+    const note = () => { const v = g.dataset.intro; if (v === 'play' && A.introAt == null) A.introAt = T(); if (v === 'done' && A.introDone == null) A.introDone = T(); };
+    note();
+    new MutationObserver(note).observe(g, { attributes: true, attributeFilter: ['data-intro'] });
+  });
   if (window.BaseAudioContext) {
     const od = BaseAudioContext.prototype.decodeAudioData;
     BaseAudioContext.prototype.decodeAudioData = function () { A.decodes++; return od.apply(this, arguments); };
@@ -233,6 +268,17 @@ function waitEvent(ctx, from, type, src, ms = 15000) {
   return tryW(ctx, ({ from, type, src }) => window.__audio.log.slice(from).some((e) => e.type === type &&
     (src.endsWith('*') ? e.src.startsWith(src.slice(0, -1)) : e.src === src)), { from, type, src }, ms);
 }
+/* the fi/ prompts played since `from`, in order (ids without fi/ and .mp3) */
+const fiPlays = (log) => plays(log).filter((e) => e.src.startsWith('fi/')).map((e) => e.src.slice(3).replace(/\.mp3$/, ''));
+/* want appears in got in this order (other prompts may sit between) */
+const inOrder = (got, want) => { let i = 0; for (const g of got) if (g === want[i]) i++; return i === want.length; };
+const GREETS = ['greet-morning', 'greet-day', 'greet-evening'];
+const greetNow = () => { const h = new Date().getHours(); return h >= 5 && h < 10 ? 'greet-morning' : h >= 10 && h < 17 ? 'greet-day' : 'greet-evening'; };
+/* waits until `last` has played, then the prompt list since `from` */
+async function promptsUntil(ctx, from, last, ms = 9000) {
+  await waitEvent(ctx, from, 'playing', 'fi/' + last + '.mp3', ms);
+  return fiPlays(await alog(ctx, from));
+}
 const lsStore = (ctx) => ctx.page.evaluate((k) => JSON.parse(localStorage.getItem(k) || 'null'), KEY);
 const shown = (ctx, id) => ctx.page.evaluate((i) => { const e = document.getElementById(i); return !!e && !e.hidden; }, id);
 /* After a screen change, the cover tap or a closing overlay the app ignores pointer clicks for 450 ms
@@ -345,7 +391,13 @@ async function intro(ctx, o = {}) {
   const st = await page.evaluate(() => ({ intro: document.getElementById('gate').dataset.intro, rm: matchMedia('(prefers-reduced-motion: reduce)').matches,
     parts: ['in-mosque', 'in-road', 'in-car', 'in-camel', 'in-pony', 'in-stars', 'in-rocket', 'in-crown'].filter((id) => document.querySelector('#coverArt #' + id + ', #coverArt [data-in="' + id + '"]')),
     font: document.fonts.check('800 40px Sniglet') }));
-  if (st.rm) { if (!o.quiet) check(S, 'intro: reduced motion starts at the final state', st.intro === 'done', JSON.stringify(st)); return; }
+  if (st.rm) {
+    if (o.quiet) return;
+    await sleep(700);
+    const snd = await page.evaluate(() => ({ ac: window.__audio.ac.length, src: window.__audio.src.length }));
+    check(S, 'intro: reduced motion starts at the final state, no intro effects', st.intro === 'done' && !snd.src, JSON.stringify(Object.assign(st, snd)));
+    return;
+  }
   if (st.intro === 'done') { if (!o.quiet) check(S, 'intro: still running when checked', false, JSON.stringify(st)); return; }
   if (o.watch) {
     const t0 = Date.now();
@@ -488,6 +540,13 @@ async function playGame(ctx, from, theme) {
 function gameChecks(ctx, speechOn = true) {
   const S = ctx.suite, gs = ctx.games;
   if (!gs.length) return;
+  if (speechOn && gs.some((g) => g.doneSaid !== undefined)) {
+    /* every 2nd step: always; every step: may skip only right after a game that said it (< 30 s apart) */
+    const gd = gs.filter((g) => g.doneSaid !== undefined).map((g) => g.doneSaid);
+    const ok = gd.length > 0 && gd.every((v, i) => v === true || (ctx.every === 1 && i > 0 && gd[i - 1] === true));
+    check(S, '"game-done" before the reward praise' + (ctx.every === 1 ? ' (every other game when they come fast)' : ' after every game'), ok,
+      gd.map((v) => (v ? 'y' : '-')).join(''));
+  }
   const bad = gs.filter((g) => !g.game.startsWith(g.theme + '-') || g.title !== PROMPTS['game-' + g.game] || !g.closed || g.ms > 25000 || (speechOn && !g.said));
   check(S, 'minigames: ' + gs.length + ' played (' + Array.from(new Set(gs.map((g) => g.game))).sort().join(',') + ')', bad.length === 0,
     (bad.length ? 'BAD ' + bad.map((g) => JSON.stringify(g)).join(' ') + ' · ' : '') +
@@ -504,6 +563,7 @@ async function runSection(ctx, sec, level, every, theme, name, pre) {
   check(S, sec.id + ' ' + level + ': ' + U + ' step bubbles, 1 open', st.count === U && st.enabled === 1 && st.current === 1, JSON.stringify(st));
   let stars = 0;
   const bad = [], rbad = [];
+  let lastPraise = '';
   const shotK = new Set([1, units.findIndex((u) => !u.last) + 1, U]);
   for (let k = 1; k <= U; k++) {
     await waitLearn(ctx, k, U);
@@ -516,10 +576,21 @@ async function runSection(ctx, sec, level, every, theme, name, pre) {
     const from = await alen(ctx);
     await tap(ctx, '#saidBtn');
     if (k < U) {
-      if (every === 1 || k % 2 === 0) await playGame(ctx, from, theme);
+      const gamed = every === 1 || k % 2 === 0;
+      if (gamed) await playGame(ctx, from, theme);
       await waitShown(ctx, 'reward', 9000);
+      if (gamed) {
+        /* 'game-done' (when said) comes before the praise */
+        await waitEvent(ctx, from, 'playing', 'fi/praise-*', 6000);
+        const got = fiPlays(await alog(ctx, from));
+        const gi = got.indexOf('game-done'), pi = got.findIndex((x) => x.startsWith('praise-'));
+        ctx.games[ctx.games.length - 1].doneSaid = gi >= 0 && pi > gi ? true : gi < 0 && pi >= 0 ? false : 'bad:' + got.join(',');
+      }
       stars++;
       const rw = await rewardInfo(ctx);
+      const praise = rw.heading.replace(/, [^,]*!$/, '');
+      if (praise === lastPraise) rbad.push(sec.id + ' k' + k + ' same praise twice in a row: ' + praise);
+      lastPraise = praise;
       const piece = theme === 'boy' ? PROMPTS['rocket-part'] : PROMPTS.gem;
       const nextWant = k + 1 >= U ? 'Seuraavaksi: koko ' + sec.name : level === 'hard' ? 'Seuraavaksi: rivit 1–' + (k + 1) : 'Seuraavaksi: vaihe ' + (k + 1) + '/' + U;
       if (u.last) {
@@ -554,12 +625,14 @@ async function runSection(ctx, sec, level, every, theme, name, pre) {
         fi.plus === '+3 tähteä' && fi.text === PROMPTS['finale-' + sec.id] && fi.theme === theme, JSON.stringify(fi));
       await screen(ctx, 'finale-' + sec.id, theme === 'boy' ? 300 : 900);
       await sleep(400);
+      const fromBye = await alen(ctx);
       await tap(ctx, '#finaleHome');
       await waitShown(ctx, 'home');
+      if (!(await waitEvent(ctx, fromBye, 'playing', 'fi/bye.mp3', 4000))) rbad.push(sec.id + ' Kotiin from the finale: no "bye"');
     }
   }
   check(S, sec.id + ' ' + level + ': step k shows the touched lines, newest unit marked', bad.length === 0, bad.slice(0, 3).join(' | ') || U + ' steps');
-  check(S, sec.id + ' ' + level + ': ' + (U - 1) + ' rewards: praise + name, slots per line, piece lands on line ends, next text', rbad.length === 0, rbad.slice(0, 3).join(' | ') || 'ok');
+  check(S, sec.id + ' ' + level + ': ' + (U - 1) + ' rewards: praise (no repeat) + name, slots per line, piece lands, next text; finale Kotiin says "bye"', rbad.length === 0, rbad.slice(0, 3).join(' | ') || 'ok');
   const ls = await lsStore(ctx);
   const me = ls.children.find((c) => c.name === name);
   check(S, sec.id + ' ' + level + ': saved (progress ' + sec.N + ', done' + (level === 'hard' ? '' : ', steps ' + U) + ', level remembered)',
@@ -572,6 +645,7 @@ async function suiteFlow(browser, base, vp, rm) {
   const ctx = await newCtx(browser, base, 'flow-' + vp.join('x') + (rm ? '-rm' : ''), vp, { rm });
   const S = ctx.suite;
   const every = vp[0] === 390 ? 1 : 2;
+  ctx.every = every;
   try {
     await seed(ctx, store([], { every }));
     check(S, 'empty device: intro -> start -> onboarding, "ask-theme" plays', await cover(ctx, 'new', { intro: { watch: vp[0] === 390 } }));
@@ -580,8 +654,12 @@ async function suiteFlow(browser, base, vp, rm) {
     const noName = await tryW(ctx, () => /nimi/.test(document.getElementById('newMsg').textContent) && !document.getElementById('who').hidden, null, 2000);
     check(S, 'onboarding: Tyttö without a name asks for the name', noName);
     await ctx.page.fill('#newName', GIRL);
+    const fromNew = await alen(ctx);
     await tap(ctx, '#pickGirl');
     await W(ctx, () => document.getElementById('who').hidden && !document.getElementById('home').hidden);
+    const said = await promptsUntil(ctx, fromNew, 'welcome');
+    check(S, 'new child: "nice-name" -> "welcome-new" -> ' + greetNow() + ' -> "welcome"', inOrder(said, ['nice-name', 'welcome-new', greetNow(), 'welcome']) &&
+      said.filter((x) => x === 'nice-name').length === 1, said.join(','));
     await sleep(SETTLE_MS);
     let h = await homeInfo(ctx);
     let ls = await lsStore(ctx);
@@ -612,9 +690,17 @@ async function suiteFlow(browser, base, vp, rm) {
     await tap(ctx, '#pkAdd');
     await W(ctx, () => document.getElementById('who').dataset.view === 'new');
     await sleep(SETTLE_MS);
+    const fromName = await alen(ctx);
     await ctx.page.fill('#newName', BOY);
+    const praised = await waitEvent(ctx, fromName, 'playing', 'fi/nice-name.mp3', 3000);
+    const msg = await ctx.page.evaluate(() => document.getElementById('newMsg').textContent);
+    check(S, 'onboarding: name typed + 1.2 s pause -> "nice-name" (spoken + shown)', praised && msg === PROMPTS['nice-name'], msg);
+    await sleep(1500);
+    const fromBoy = await alen(ctx);
     await tap(ctx, '#pickBoy');
     await W(ctx, () => document.getElementById('who').hidden && !document.getElementById('home').hidden);
+    const saidB = await promptsUntil(ctx, fromBoy, 'welcome');
+    check(S, 'same name not praised twice: "welcome-new" -> greeting -> "welcome"', inOrder(saidB, ['welcome-new', greetNow(), 'welcome']) && !saidB.includes('nice-name'), saidB.join(','));
     await sleep(SETTLE_MS);
     h = await homeInfo(ctx);
     ls = await lsStore(ctx);
@@ -629,7 +715,11 @@ async function suiteFlow(browser, base, vp, rm) {
     await waitShown(ctx, 'who');
     const cards = await ctx.page.evaluate(() => Array.from(document.querySelectorAll('#whoGrid .pk-card')).map((c) => c.id + ':' + (c.dataset.theme || '')));
     await screen(ctx, 'picker-two');
+    const fromPick = await alen(ctx);
     await pickKid(ctx, girlId);
+    const saidP = await promptsUntil(ctx, fromPick, greetNow()).then(async (x) => { await sleep(1200); return fiPlays(await alog(ctx, fromPick)); });
+    check(S, 'picker: name, "welcome-back" -> ' + greetNow() + ' (no "welcome")', inOrder(saidP, ['welcome-back', greetNow()]) && !saidP.includes('welcome') &&
+      saidP.filter((x) => GREETS.includes(x)).length === 1, saidP.join(','));
     h = await homeInfo(ctx);
     check(S, 'picker: 2 child cards + add; switch back to the girl keeps her theme and stars', cards.length === 3 && cards.includes('pk-' + boyId + ':boy') &&
       cards.includes('pk-' + girlId + ':girl') && h.theme === 'girl' && h.stars === stars && h.name === GIRL, JSON.stringify({ cards, h }));
@@ -964,6 +1054,105 @@ async function suiteBackground(browser, base) {
   return ctx;
 }
 
+/* intro clock + Web Audio record of the current document */
+const introAudio = (ctx) => ctx.page.evaluate(() => {
+  const A = window.__audio, at = A.introAt;
+  return { at, done: A.introDone, probe: A.probe.slice(), ac: A.ac.map((a) => ({ t: a.t - at, tapped: a.tapped, state: a.c.state })), src: A.src.map((t) => t - at) };
+});
+
+/* fi/ prompts of the current document with their time on the intro clock: [[id, ms], ...] */
+const fiTimed = (ctx) => ctx.page.evaluate(() => {
+  const A = window.__audio;
+  return A.log.filter((e) => e.type === 'playing' && e.src.startsWith('fi/')).map((e) => [e.src.slice(3).replace(/\.mp3$/, ''), Math.round(e.t - A.introAt)]);
+});
+/* the cover tap -> the prompts until the picker / onboarding prompt */
+async function coverSaid(ctx, view) {
+  const from = await alen(ctx);
+  const ok = await cover(ctx, view);
+  return { ok, said: fiPlays(await alog(ctx, from)) };
+}
+
+/* Autoplay allowed (an installed PWA, a site used often): the intro's effects play without a tap, in step. */
+async function suiteIntroSound(browser, base) {
+  const ctx = await newCtx(browser, base, 'intro-sound', [390, 844]);
+  const S = ctx.suite, page = ctx.page;
+  try {
+    await seed(ctx, store([]));
+    await W(ctx, () => window.__audio.introDone != null, null, 9000);
+    const a = await introAudio(ctx);
+    const inIntro = a.src.filter((t) => t >= 0 && t <= a.done - a.at);
+    check(S, 'sound path: AudioContext created + running before any tap', a.probe[0] === 'ok' && a.ac.length === 1 && a.ac[0].tapped === false && a.ac[0].state === 'running' && a.ac[0].t < 600,
+      JSON.stringify({ probe: a.probe, ac: a.ac }));
+    check(S, 'sound path: effects in step with the intro (car ~0.6 s ... button boing ~4.1 s)', inIntro.length >= 30 &&
+      inIntro[0] >= 550 && inIntro[0] <= 800 && inIntro[inIntro.length - 1] >= 4050 && inIntro[inIntro.length - 1] <= 4400,
+      JSON.stringify({ starts: inIntro.length, first: inIntro[0], last: inIntro[inIntro.length - 1], doneAt: a.done - a.at }));
+    const ft = await fiTimed(ctx);
+    const title = ft.find(([id]) => id === 'intro-title');
+    check(S, 'sound path: "intro-title" as the logo drops in (~2.75 s)', !!title && title[1] >= 2600 && title[1] <= 3500, JSON.stringify(ft));
+    const c1 = await coverSaid(ctx, 'new');
+    check(S, 'sound path: start tap -> "cover" + "ask-theme" (title already said)', c1.ok && inOrder(c1.said, ['cover', 'ask-theme']) && !c1.said.includes('intro-title'), c1.said.join(','));
+    /* a skip in the middle (after the honk): no further intro sounds */
+    await page.reload();
+    await W(ctx, () => window.__audio.introAt != null && performance.now() - window.__audio.introAt > 1550, null, 8000);
+    const b = await page.evaluate(() => { const r = document.getElementById('gateBtn').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+    const skipAt = await page.evaluate(() => performance.now() - window.__audio.introAt);
+    await page.mouse.click(b.x, b.y, { delay: 40 });
+    await sleep(2800);
+    const k = await introAudio(ctx);
+    const before = k.src.filter((t) => t < skipAt).length, after = k.src.filter((t) => t > skipAt + 120);
+    check(S, 'sound path: a tap mid-intro skips and stops the remaining effects', before > 0 && after.length === 0 && k.done != null && k.done - k.at < 2200,
+      JSON.stringify({ skipAt: Math.round(skipAt), before, after: after.slice(0, 5), doneAt: k.done - k.at }));
+    const c2 = await coverSaid(ctx, 'new');
+    check(S, 'sound path: skipped before the title -> the start tap says "intro-title", "ask-theme" (no "cover")', c2.ok && inOrder(c2.said, ['intro-title', 'ask-theme']) && !c2.said.includes('cover'), c2.said.join(','));
+    /* nobody taps: 'intro-go' once, ~3 s after the button popped out (4.08 s) */
+    await page.reload();
+    await W(ctx, () => window.__audio.introAt != null && performance.now() - window.__audio.introAt > 8600, null, 12000);
+    const fg = await fiTimed(ctx);
+    const go = fg.filter(([id]) => id === 'intro-go');
+    check(S, 'sound path: no tap -> "intro-go" once ~3 s after the button appeared', go.length === 1 && go[0][1] >= 6900 && go[0][1] <= 7900, JSON.stringify(fg));
+    const c3 = await coverSaid(ctx, 'new');
+    check(S, 'sound path: start after "intro-go" -> onboarding prompts', c3.ok && !c3.said.includes('intro-title'), c3.said.join(','));
+    /* effects switched off in settings: no effect (the voice cue still speaks) */
+    await seed(ctx, store([], { sfx: false }));
+    await W(ctx, () => window.__audio.introAt != null && performance.now() - window.__audio.introAt > 3600, null, 8000);
+    const off = await introAudio(ctx), offSaid = (await fiTimed(ctx)).map(([id]) => id);
+    check(S, 'effects off: no intro effects, "intro-title" still spoken', off.src.length === 0 && offSaid.includes('intro-title'), JSON.stringify({ src: off.src.length, said: offSaid }));
+    /* speech and effects off: no context before the tap at all */
+    await seed(ctx, store([], { sfx: false, speech: false }));
+    await W(ctx, () => window.__audio.introAt != null && performance.now() - window.__audio.introAt > 3600, null, 8000);
+    const mute = await introAudio(ctx);
+    check(S, 'speech + effects off: intro silent, no AudioContext before the tap', mute.ac.length === 0 && mute.src.length === 0 && !mute.probe.length, JSON.stringify(mute));
+  } catch (e) { await crash(ctx, e); }
+  await finish(ctx);
+  return ctx;
+}
+
+/* No autoplay (iOS, a first visit): the intro stays silent, nothing breaks, the start tap unlocks audio. */
+async function suiteIntroSilent(browser, base) {
+  const ctx = await newCtx(browser, base, 'intro-silent', [390, 844]);
+  const S = ctx.suite, page = ctx.page;
+  try {
+    await seed(ctx, store([]));
+    await W(ctx, () => window.__audio.introDone != null && performance.now() - window.__audio.introAt > 7900, null, 12000);
+    const a = await introAudio(ctx), early = await fiTimed(ctx);
+    check(S, 'silent path: no voice before the tap (no "intro-title", no "intro-go")', early.length === 0, JSON.stringify(early));
+    check(S, 'silent path: the browser refuses the app\'s silent autoplay probe (no tap yet)', a.probe[0] === 'NotAllowedError', JSON.stringify(a.probe));
+    check(S, 'silent path: intro plays to the end with no AudioContext and no effect', a.ac.length === 0 && a.src.length === 0 && a.done - a.at > 4500 && a.done - a.at < 6500,
+      JSON.stringify(Object.assign(a, { doneAt: a.done - a.at })));
+    const c1 = await coverSaid(ctx, 'new');
+    check(S, 'silent path: start tap -> "intro-title", "ask-theme" (no "cover")', c1.ok && inOrder(c1.said, ['intro-title', 'ask-theme']) && !c1.said.includes('cover'), c1.said.join(','));
+    const u = await introAudio(ctx);
+    check(S, 'silent path: the start tap creates + runs the AudioContext', u.ac.length === 1 && u.ac[0].tapped === true && u.ac[0].state === 'running', JSON.stringify(u.ac));
+    await page.reload();
+    await intro(ctx, {});
+    const r = await introAudio(ctx);
+    check(S, 'silent path: after a reload + skip still no AudioContext before the start tap', r.ac.length === 0 && r.src.length === 0, JSON.stringify(r));
+    check(S, 'silent path: start after a skip -> onboarding', await cover(ctx, 'new'));
+  } catch (e) { await crash(ctx, e); }
+  await finish(ctx);
+  return ctx;
+}
+
 /* The boy's later games: game turn seeded at 3, 4, 5 -> Shahada VAIKEA step 1 -> that game -> reward. */
 async function suiteBoyGames(browser, base) {
   const ctx = await newCtx(browser, base, 'boygames', [390, 844]);
@@ -1061,7 +1250,12 @@ async function main() {
   if (want('offline')) jobs.push(suiteOffline(browser));
   if (want('background')) jobs.push(suiteBackground(browser, srv.url));
   if (want('boygames')) jobs.push(suiteBoyGames(browser, srv.url));
+  if (want('intro-sound')) jobs.push(suiteIntroSound(browser, srv.url));
+  /* the silent path needs the browser's default autoplay policy */
+  const quiet = want('intro-silent') ? await chromium.launch({ args: FLAGS.filter((f) => !/autoplay/.test(f)) }) : null;
+  if (quiet) jobs.push(suiteIntroSilent(quiet, srv.url));
   const ctxs = await Promise.all(jobs);
+  if (quiet) await quiet.close();
   await browser.close();
   await srv.close();
 

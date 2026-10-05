@@ -1,4 +1,4 @@
-/* Intro: a ~5 s children's-TV opening on every launch (silent: no audio before the first tap).
+/* Intro: a ~5 s children's-TV opening on every launch.
      0.0 s grey world (mosque on its hill, grey road, pale sky)
      0.6 s the car drives in (bouncing, wheels spinning), road + grass colour in behind it; the camel walks after it
      1.4 s the pony trots in and stops; colour blooms out from it over the whole scene, flowers + palms grow in
@@ -7,6 +7,13 @@
      2.6 s the logo: SUURA drops in letter by letter with squash & stretch, SEIKKAILU reveals below it
      3.8 s the logo sinks into the start button, which pops out with a springy bounce
    A tap anywhere skips to the final state; reduced motion starts there. The scene stays behind the picker.
+
+   Sound effects (sounds(), in step with the CSS timeline) only if the device lets sound start without a tap
+   (audio context.autoStart, decided within 0.5 s, before the first sound at 0.6 s): an engine hum + honk, hooves + a neigh, camel steps, the rocket's whoosh,
+   a clink per star, a pop per logo letter, a boing for the button. Otherwise (iOS, a first visit) it stays
+   silent; the start button unlocks audio as before. Effects switched off, reduced motion, a skip: no sounds.
+   Voice cues (main.js speaks them, only when sound may start without a tap): 'title' as SUURA drops in (not after
+   a skip), 'go' 3 s after the start button has appeared (main.js skips it once the button was tapped).
 
    Layers in #coverArt (same SVG, same viewBox, so they line up): .in-base (colour scenery), .in-grey (grey
    scenery, clipped away by the car's wipe), .in-bloom (colour scenery, revealed by a growing radial mask) and
@@ -17,14 +24,42 @@
 import ART from '../art.js';
 import { reducedMotion } from '../util.js';
 import { $ } from './dom.js';
+import SFX from '../audio/sfx.js';
+import * as audio from '../audio/context.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 const SCENERY = ['in-sky', 'in-hills', 'in-grass', 'in-road', 'in-mosque', 'in-flowers', 'in-palms'];
 const CHARS = ['in-car', 'in-camel', 'in-pony', 'in-clouds', 'in-stars', 'in-rocket', 'in-crown'];
 const LATE = ['in-flowers', 'in-palms']; /* not in the grey world: they grow in with the colour */
 const FINAL_MS = 5000; /* after the button's pop (4.08 s + 0.8 s) */
+const TITLE_MS = 2750;   /* the first letters of SUURA land */
+const BUTTON_MS = 4080;  /* the start button pops out */
+const GO_MS = 3000;      /* 'go' cue this long after the button appeared */
 
-let box = null, gate = null, state = 'idle', timer = 0, skippedAt = 0, orient = '';
+/* [ms from the start, sound] – times match app.css (car .6-1.45 s, camel 1-1.7 s, pony 1.4-2 s, rocket 1.7 s,
+   stars 2 s + i * 140 ms, SUURA lands 2.91 s + i * 80 ms, SEIKKAILU 3.17 s + i * 55 ms, button 4.08 s) */
+function sounds(nStars, nTop, nBot) {
+  const out = [[600, () => SFX.vroom(0.85)], [1000, () => SFX.steps(4, 0.7)], [1400, () => SFX.hooves(6, 0.6)],
+    [1450, () => SFX.honk()], [1700, () => SFX.whoosh()], [2000, () => SFX.neigh()], [4120, () => SFX.boing()]];
+  for (let i = 0; i < nStars; i++) out.push([2080 + i * 140, () => SFX.ding(i)]);
+  const top = [];
+  for (let i = 0; i < nTop; i++) top.push(2910 + i * 80);
+  for (let i = 0; i < nBot; i++) {
+    const ms = 3170 + i * 55;
+    if (!top.some((t) => Math.abs(t - ms) < 30)) out.push([ms, () => SFX.pop()]); /* two pops at once = one loud one */
+  }
+  top.forEach((ms) => out.push([ms, () => SFX.pop()]));
+  return out;
+}
+
+let box = null, gate = null, state = 'idle', timer = 0, skippedAt = 0, orient = '', sfxTimers = [];
+let cue = null, allowed = false, playAt = 0, buttonAt = 0, goTimer = 0;
+
+/* the 'go' cue, once, GO_MS after the button appeared (needs: sound allowed, the button visible) */
+function armGo() {
+  if (!cue || !allowed || goTimer || state !== 'done') return;
+  goTimer = setTimeout(() => cue('go'), Math.max(0, buttonAt + GO_MS - performance.now()));
+}
 
 const orientation = () => (innerWidth >= innerHeight ? 'landscape' : 'portrait');
 
@@ -149,6 +184,11 @@ function setState(s) {
   if (s === 'done') {
     clearTimeout(timer);
     timer = 0;
+    sfxTimers.forEach(clearTimeout);
+    sfxTimers = [];
+    /* the button: popped out at BUTTON_MS (intro played on), or shows now (a skip / reduced motion) */
+    if (!buttonAt) { const now = performance.now(), at = playAt + BUTTON_MS; buttonAt = playAt && now >= at ? at : now; }
+    armGo();
     /* the colour scenery alone from here on: drop the reveal copies */
     if (intro) intro.querySelectorAll('.in-grey, .in-bloom, .in-sparks').forEach((el) => el.remove());
   }
@@ -172,11 +212,36 @@ export function initIntro(boxEl, gateEl) {
   });
 }
 
-export function playIntro() {
+/* o.sfx: effects are on in settings; o.cue(name): speaks the 'title' / 'go' cue (null: speech off) */
+export function playIntro(o = {}) {
   build();
-  if (reducedMotion()) { setState('done'); return; }
-  setState('play');
-  timer = setTimeout(() => setState('done'), FINAL_MS);
+  cue = typeof o.cue === 'function' ? o.cue : null;
+  const t0 = performance.now();
+  if (reducedMotion()) setState('done');
+  else {
+    playAt = t0;
+    setState('play');
+    timer = setTimeout(() => setState('done'), FINAL_MS);
+  }
+  if (!o.sfx && !cue) return;
+  /* the silent media probe alone can take > 150 ms on a busy device; sounds stay on the animation's clock (t0) */
+  audio.autoStart(500).then((ok) => {
+    if (!ok || document.hidden) return;
+    allowed = true;
+    armGo();
+    if (state !== 'play') return;
+    const late = performance.now() - t0;
+    const list = [];
+    if (o.sfx) {
+      const stars = box.querySelectorAll('.in-chars .in-star').length;
+      const top = gate.querySelectorAll('.logo-top i').length, bot = gate.querySelectorAll('.logo-bot i').length;
+      list.push(...sounds(stars, top, bot));
+    }
+    if (cue) list.push([TITLE_MS, () => cue('title')]);
+    list.forEach(([ms, fn]) => {
+      if (ms >= late) sfxTimers.push(setTimeout(() => { if (state === 'play') fn(); }, ms - late));
+    });
+  }, () => {});
 }
 
 /* true while the intro still runs, or right after a skip tap (that tap's click must not start the app) */

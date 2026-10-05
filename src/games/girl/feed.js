@@ -120,6 +120,8 @@ export default {
       st.sparks(m.x, m.y, 6);
       st.praise(a.x + a.s * 0.5, a.y - 6, fed === 3 ? pick(WORDS) : 'Nam!', 34);
       fed++;
+      if (fed === 1 || fed === 4) st.say(fed === 1 ? 'fx-namnam' : 'fx-yum');
+      else if (fed === 6) st.say('fx-yay');
       S.point();
       if (fed === 6) S.later(() => S.finish(), 900);
       if (fed % 3 === 0 && ++round < ROUNDS) S.later(newRound, 900);

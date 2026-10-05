@@ -133,8 +133,8 @@ export default {
       S.snd('sparkle');
       const t = parked[parked.length - 1].spot;
       S.sparkle(t);
-      if (k < CARS - 1) { S.point(); S.later(nextCar, 800); }
-      else { allDone(); S.point(); }
+      if (k < CARS - 1) { S.say('fx-beep'); S.point(); S.later(nextCar, 800); }
+      else { S.say('fx-ready'); allDone(); S.point(); }
     }
     function allDone() {
       if (ended) return;

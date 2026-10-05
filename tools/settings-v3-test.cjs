@@ -69,7 +69,8 @@ async function noHScroll(pg, label) {
 async function minSizes(pg, label) {
   const bad = await T(pg, () => {
     const out = [];
-    document.querySelectorAll('#settings button, #settings summary, #settings .set-switch, #settings input:not([type="checkbox"])').forEach((el) => {
+    /* (the shared, visually hidden file input is opened by the "Tuo tiedosto" buttons, it is not a control itself) */
+    document.querySelectorAll('#settings button, #settings summary, #settings .set-switch, #settings input:not([type="checkbox"]):not([type="file"])').forEach((el) => {
       const r = el.getBoundingClientRect();
       if (!r.width) return; /* not rendered (hidden / closed details) */
       if (r.height < 63.5 || r.width < 63.5) out.push((el.className || el.tagName) + ' ' + Math.round(r.width) + 'x' + Math.round(r.height));
@@ -409,6 +410,75 @@ async function recordingFlows(pg, tag) {
   await pg.click(row2 + ' [data-act="delyes"]');
   await pg.waitForFunction((r) => document.querySelector(r).dataset.st === 'file', row2, { timeout: 5000 }).catch(() => {});
   await nameRecordingFlows(pg, tag);
+  await importFlows(pg, tag);
+}
+
+/* "Tuo tiedosto": a local audio file becomes the recording (IndexedDB only) */
+async function importFlows(pg, tag) {
+  const MP3 = path.join(ROOT, 'public/audio/fi/praise-1.mp3');
+  const size = fs.statSync(MP3).size;
+  const pick = async (row, files) => {
+    const [chooser] = await Promise.all([pg.waitForEvent('filechooser', { timeout: 5000 }), pg.click(row + ' [data-act="file"]')]);
+    await chooser.setFiles(files);
+  };
+  const msgOf = (row) => pg.textContent(row + ' .rec-msg');
+  check(await T(pg, () => { const i = document.querySelector('#settings [data-file]'); return !!i && i.accept === 'audio/*' && !i.closest('.set-sheet'); }),
+    tag + ': one shared file input accept=audio/* (outside the dialog\'s Tab cycle)');
+  check(await T(pg, () => Array.from(document.querySelectorAll('.rec-row')).every((r) => !!r.querySelector('[data-act="file"]'))), tag + ': every recording row has Tuo tiedosto');
+  /* child's name from a file */
+  const id = await T(pg, () => window.__t.store.children[0].id);
+  const nrow = '.rec-row[data-id="name-' + id + '"]';
+  await pg.locator(nrow).scrollIntoViewIfNeeded();
+  await pick(nrow, MP3);
+  await pg.waitForFunction((r) => document.querySelector(r).dataset.st === 'own', nrow, { timeout: 8000 }).catch(() => {});
+  let st = await T(pg, (a) => window.__t.recorder.get('name-' + a.id).then((b) => ({ st: document.querySelector(a.r).dataset.st, status: document.querySelector(a.r + ' .rec-status').textContent,
+    size: b && b.size, type: b && b.type, eng: (window.__t.engine.diagnostics().recordings || []).includes('name-' + a.id),
+    focus: document.activeElement && document.activeElement.dataset.act })), { id, r: nrow });
+  check(st.st === 'own' && st.status === 'Oma ääni' && /Tiedosto tuotu/.test(await msgOf(nrow)), tag + ': Tuo tiedosto (mp3) -> name-<childId> = Oma ääni');
+  check(st.size === size && st.type === 'audio/mpeg' && st.eng && st.focus === 'play', tag + ': stored in IndexedDB as audio/mpeg (' + st.size + ' B), engine refreshed, focus on Kuuntele');
+  await shotAt(pg, nrow, tag + '-name-imported.png');
+  await pg.click(nrow + ' [data-act="play"]');
+  await pg.waitForTimeout(250);
+  check(await T(pg, (r) => document.querySelector(r + ' [data-act="play"]').classList.contains('is-playing'), nrow), tag + ': imported name plays');
+  await pg.waitForFunction((r) => !document.querySelector(r + ' [data-act="play"]').classList.contains('is-playing'), nrow, { timeout: 8000 }).catch(() => {});
+  check(!(await T(pg, (r) => document.querySelector(r + ' [data-act="play"]').classList.contains('is-playing'), nrow)), tag + ': playback of the imported file finished');
+  await pg.click(nrow + ' [data-act="del"]');
+  await pg.click(nrow + ' [data-act="delyes"]');
+  await pg.waitForFunction((r) => document.querySelector(r).dataset.st === 'none', nrow, { timeout: 5000 }).catch(() => {});
+  /* a Shahada line from a file, then wrong files */
+  const srow = '.rec-row[data-id="shahada-1"]';
+  await pg.locator(srow).scrollIntoViewIfNeeded();
+  await pick(srow, MP3);
+  await pg.waitForFunction((r) => document.querySelector(r).dataset.st === 'own', srow, { timeout: 8000 }).catch(() => {});
+  check((await pg.textContent(srow + ' .rec-status')) === 'Oma ääni', tag + ': Shahada rivi 1 from a file -> Oma ääni');
+  await pg.click(srow + ' [data-act="del"]');
+  await pg.click(srow + ' [data-act="delyes"]');
+  await pg.waitForFunction((r) => document.querySelector(r).dataset.st === 'file', srow, { timeout: 5000 }).catch(() => {});
+  const brow = '.rec-row[data-id="shahada-2"]';
+  await pg.locator(brow).scrollIntoViewIfNeeded();
+  await pick(brow, { name: 'muistio.txt', mimeType: 'text/plain', buffer: Buffer.from('ei ääntä') });
+  await pg.waitForFunction((r) => /äänitiedosto/.test(document.querySelector(r + ' .rec-msg').textContent), brow, { timeout: 5000 }).catch(() => {});
+  check(/Tiedosto ei ole äänitiedosto/.test(await msgOf(brow)) && (await pg.textContent(brow + ' .rec-status')) === 'Valmis ääni', tag + ': a text file is refused in Finnish: ' + (await msgOf(brow)));
+  await shotAt(pg, brow, tag + '-import-error.png');
+  await pick(brow, { name: 'iso.mp3', mimeType: 'audio/mpeg', buffer: Buffer.alloc(2.5 * 1024 * 1024, 1) });
+  await pg.waitForFunction((r) => /liian suuri/.test(document.querySelector(r + ' .rec-msg').textContent), brow, { timeout: 5000 }).catch(() => {});
+  check(/liian suuri \(enintään 2 Mt\)/.test(await msgOf(brow)) && (await pg.textContent(brow + ' .rec-status')) === 'Valmis ääni', tag + ': a 2.5 MB file is refused: ' + (await msgOf(brow)));
+  check(await T(pg, () => Array.from(document.querySelectorAll('[data-act="file"]')).every((b) => !b.disabled)), tag + ': Tuo tiedosto usable again after errors');
+  /* recorder.saveBlob unit checks */
+  st = await T(pg, async () => {
+    const r = window.__t.recorder, out = {};
+    const err = async (fn) => { try { await fn(); return 'no error'; } catch (e) { return e.name + ': ' + e.message; } };
+    const typed = await r.saveBlob('unit-m4a', new File([new Uint8Array([1, 2, 3])], 'nimi.m4a', { type: '' }));
+    out.m4a = typed.type;
+    out.noId = await err(() => r.saveBlob('', new Blob([new Uint8Array([1])], { type: 'audio/mpeg' })));
+    out.empty = await err(() => r.saveBlob('unit-x', new Blob([], { type: 'audio/mpeg' })));
+    out.video = await err(() => r.saveBlob('unit-x', new File([new Uint8Array([1])], 'v.mp4', { type: 'video/mp4' })));
+    await r.remove('unit-m4a');
+    out.left = (await r.list()).filter((x) => /^unit-/.test(x));
+    return out;
+  });
+  check(st.m4a === 'audio/mp4' && /^TypeError: /.test(st.noId) && /^NotFoundError: Tiedosto on tyhjä/.test(st.empty) && /^TypeMismatchError: /.test(st.video) && !st.left.length,
+    tag + ': saveBlob: type from extension, Finnish errors ' + JSON.stringify(st));
 }
 
 /* the child's own name recording ('name-<childId>') in every child card */
@@ -664,6 +734,15 @@ async function closeFlows(pg, tag) {
     await pg.locator('.set-card-rec').scrollIntoViewIfNeeded();
     check(await pg.isVisible('[data-rec-note]'), 'unsupported: explanation shown');
     check(await T(pg, () => Array.from(document.querySelectorAll('[data-act="rec"]')).every((b) => b.disabled)), 'unsupported: Nauhoita disabled');
+    check(await T(pg, () => Array.from(document.querySelectorAll('[data-act="file"]')).every((b) => !b.disabled) && /tuoda/.test(document.querySelector('[data-rec-note]').textContent)), 'unsupported: Tuo tiedosto still works (note says so)');
+    const row = '.rec-row[data-id="turn-1"]';
+    await T(pg, () => document.querySelectorAll('.set-details').forEach((d) => { d.open = true; }));
+    await pg.locator(row).scrollIntoViewIfNeeded();
+    const [chooser] = await Promise.all([pg.waitForEvent('filechooser', { timeout: 5000 }), pg.click(row + ' [data-act="file"]')]);
+    await chooser.setFiles(path.join(ROOT, 'public/audio/fi/praise-1.mp3'));
+    await pg.waitForFunction((r) => document.querySelector(r).dataset.st === 'own', row, { timeout: 8000 }).catch(() => {});
+    check((await pg.textContent(row + ' .rec-status')) === 'Oma ääni', 'unsupported: imported file replaces the prompt');
+    await pg.screenshot({ path: path.join(OUT, 'unsupported-import.png') });
     check(!errs.length, 'unsupported: no console errors ' + (errs.length ? JSON.stringify(errs) : ''));
     await ctx.close();
   }

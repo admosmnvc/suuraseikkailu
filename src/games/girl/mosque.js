@@ -135,12 +135,13 @@ export default {
       st.sparks(c.x, c.y, 6);
       sfx('ding', lit);
       lit++;
-      if (lit === 5) st.praise(c.x, c.y - 60, pick(WORDS));
+      if (lit === 5) { st.praise(c.x, c.y - 60, pick(WORDS)); st.say('fx-wow'); }
       S.point();
       if (lit === WINDOWS.length) {
         phase = 'fire';
         mosque.classList.add('is-lit');
         sfx('sparkle');
+        st.say('fx-pretty');
         S.later(() => st.hint({ type: 'tap', at: at(STAR) }), 500);
       }
     }

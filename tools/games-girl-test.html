@@ -34,9 +34,9 @@
     function play(i) {
       return new Promise((resolve) => {
         const t0 = performance.now();
-        let said = null;
-        const onDone = () => { const ms = performance.now() - t0; log.textContent = 'valmis ' + i + ': ' + (ms / 1000).toFixed(1) + ' s'; resolve({ ms, said }); };
-        window.__ggHandle = MiniGames.play({ theme: 'girl', index: i, onDone, say: (id) => { said = id; } });
+        const says = []; /* game title id first, then voice exclamations (fx-…) via S.say */
+        const onDone = () => { const ms = performance.now() - t0; log.textContent = 'valmis ' + i + ': ' + (ms / 1000).toFixed(1) + ' s'; resolve({ ms, said: says[0] || null, says }); };
+        window.__ggHandle = MiniGames.play({ theme: 'girl', index: i, onDone, say: (id) => { says.push(id); } });
       });
     }
 

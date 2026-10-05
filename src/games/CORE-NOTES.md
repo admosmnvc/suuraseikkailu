@@ -69,6 +69,11 @@ S.bump(el, k=1)           instant squash-pop (Web Animations on `scale`; reduced
 S.burst(at, colors?, n?)  soft particle burst at arena px      S.sparkle(at)
 S.comic(text?, at?, big?) clean praise pill ("Hienoa!"... random when text omitted) at arena px; alias S.praise
 S.snd(name, arg)          SFX: pop ding(i) chime(i) plop whoosh boom sparkle success tap (never throws)
+S.say(id) -> played?      short voice exclamation, id from FX_IDS in prompts.js: fx-vroom 'Vrruum!', fx-namnam,
+                          fx-shine, fx-splash, fx-ready, fx-wow, fx-yay, fx-beep, fx-pretty, fx-yum, fx-go, fx-boing.
+                          Goes to the say() the app passed to play() (it plays engine.prompt(id)). Rate-limited by the
+                          core: max 1 per 2.5 s, never in the first 1.5 s (title prompt); a limited call is dropped
+                          silently (returns false). Use 2–3 per game at real moments; keep the instant SFX as well.
 
 Hooks you may set:
 S.update = (dt, t) => {}     every animation frame (dt seconds)

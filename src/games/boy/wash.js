@@ -24,7 +24,7 @@ export default {
   id: 'wash',
   goal: 6,
   start(S) {
-    let si = -1, busy = true, L = null, cells = [], total = 0, cleanN = 0, travel = 0, lastP = null, drops = [], ended = false, pts = 0, lastSpark = 0;
+    let splashed = false, si = -1, busy = true, L = null, cells = [], total = 0, cleanN = 0, travel = 0, lastP = null, drops = [], ended = false, pts = 0, lastSpark = 0;
     const scene = S.el('div', 'bw-scene');
     const carEl = S.el('div', 'bw-car', '', scene);
     S.el('div', 'bw-wheel bw-w1', wheelSVG('normal', true), carEl);
@@ -211,6 +211,7 @@ export default {
       gloss.style.opacity = '1';
       setDull(0);
       carEl.classList.add('shine', 'happy');
+      S.say('fx-shine');
       S.snd('sparkle');
       for (let i = 0; i < 5; i++) S.later(() => S.sparkle({ x: L.cx + (Math.random() - 0.5) * L.cw * 0.8, y: L.cy + (Math.random() - 0.5) * L.ch * 0.6 }), i * 150);
       S.later(() => { honk(S); carEl.classList.add('bounce'); }, 450);
@@ -240,6 +241,7 @@ export default {
     S.rub(zone, {
       enabled: () => !busy,
       onStart(p) {
+        if (step().key === 'rinse' && !splashed) splashed = S.say('fx-splash');
         tool.classList.add('on');
         moveTool(p.x, p.y);
         lastP = null;

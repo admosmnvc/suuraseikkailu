@@ -230,6 +230,35 @@ export async function stopAndSave(id) {
   return blob;
 }
 
+/* Save an audio file the parent picked (settings "Tuo tiedosto") as recording `id`, in the same format
+   as stopAndSave(). Accepts audio/* up to ~2 MB; a file without a type (some Android / iOS pickers) is
+   accepted by its audio extension. The bytes are copied into memory first, so the stored copy never
+   depends on the picked file staying readable. Returns the stored Blob; throws Errors with a Finnish
+   message: TypeError (no id), NotFoundError (empty file), TypeMismatchError (not audio),
+   QuotaExceededError (too big, or storage full), plus storage errors. */
+export async function saveBlob(id, blob) {
+  const MAX_BYTES = 2 * 1024 * 1024;
+  const EXT = { mp3: 'audio/mpeg', m4a: 'audio/mp4', mp4: 'audio/mp4', aac: 'audio/aac', wav: 'audio/wav', ogg: 'audio/ogg',
+    oga: 'audio/ogg', opus: 'audio/ogg', webm: 'audio/webm', caf: 'audio/x-caf', flac: 'audio/flac', aif: 'audio/aiff', aiff: 'audio/aiff' };
+  if (!id) throw named('TypeError', 'Äänitykseltä puuttuu tunniste.');
+  if (!blob || typeof blob.size !== 'number' || !blob.size) throw named('NotFoundError', 'Tiedosto on tyhjä.');
+  const ext = (/\.([a-z0-9]+)$/i.exec(String(blob.name || '')) || [])[1];
+  const byExt = ext ? EXT[ext.toLowerCase()] : '';
+  const type = /^audio\//i.test(blob.type || '') ? blob.type : (!blob.type && byExt ? byExt : '');
+  if (!type) throw named('TypeMismatchError', 'Tiedosto ei ole äänitiedosto. Valitse esimerkiksi MP3- tai M4A-tiedosto.');
+  if (blob.size > MAX_BYTES) throw named('QuotaExceededError', 'Tiedosto on liian suuri (enintään 2 Mt). Valitse lyhyempi äänite.');
+  let data;
+  try {
+    data = typeof blob.arrayBuffer === 'function' ? await blob.arrayBuffer() : await new Response(blob).arrayBuffer();
+  } catch (e) {
+    throw named('NotReadableError', 'Tiedostoa ei voitu lukea. Yritä uudelleen.');
+  }
+  const copy = new Blob([data], { type });
+  await save(id, copy);
+  emit({ type: 'saved', id });
+  return copy;
+}
+
 /* Discard the current take and release the microphone. */
 export function cancel() {
   if (starting) abortStart = true;

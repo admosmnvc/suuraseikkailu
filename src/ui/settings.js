@@ -11,7 +11,9 @@
    (add / rename / theme / level / delete / "Pelaa nyt"). "Aloita alusta" for one child runs
    profiles.resetChild (idempotent, so an app that also resets is fine), save(), then onReset(childId) so the
    app can re-render. Each child card also has the child's own name recording (clip 'name-<childId>', recording
-   only: without it device speech says the name); deleting a child removes that recording. Shared settings live in
+   only: without it device speech says the name); deleting a child removes that recording. Every recording row
+   can also import an audio file from the device ("Tuo tiedosto": recorder.saveBlob, IndexedDB only, never
+   uploaded). Shared settings live in
    store.settings (speech, slow, translit, sfx, every): mutated here, save(), then onChange(key).
    The store object is re-read on every open, so changes made elsewhere (cover, level picks) show up.
    Every call into engine/recorder/art is defensive: those modules are developed in parallel. */
@@ -48,6 +50,7 @@ const MIC_HELP = 'Mikrofoni vaatii luvan ja HTTPS-osoitteen.';
 
 /* Fallback strokes for icons the (parallel) art module may not draw yet. 24x24, currentColor, no humans. */
 const OWN_ICONS = {
+  folder: '<path d="M3.6 7.4a1.9 1.9 0 0 1 1.9-1.9h3.7l2 2.2h7.3a1.9 1.9 0 0 1 1.9 1.9v7.9a1.9 1.9 0 0 1-1.9 1.9H5.5a1.9 1.9 0 0 1-1.9-1.9z"/><path d="M12 10.6v5.2M9.6 13.4 12 15.8l2.4-2.4"/>',
   edit: '<path d="M4.6 19.4l.9-4.1L15.9 4.9a2 2 0 0 1 2.8 0l.4.4a2 2 0 0 1 0 2.8L8.7 18.5z"/><path d="M13.7 7.1l3.2 3.2M4.6 19.4h5"/>',
   plus: '<path d="M12 5.2v13.6M5.2 12h13.6"/>',
   car: '<path d="M3.6 15.6v-3.1l2.1-4.4a2 2 0 0 1 1.8-1.1h9a2 2 0 0 1 1.8 1.1l2.1 4.4v3.1a1 1 0 0 1-1 1H4.6a1 1 0 0 1-1-1z"/>' +
@@ -65,6 +68,7 @@ let root = null, sheet = null, body = null, kidsEl = null, kidsMsg = null;
 let ac = null;              /* AbortController for this render's listeners (initSettings may run again) */
 let open = false, lastFocus = null, diagTimer = 0, lastDiag = '';
 let rec = null;             /* active recording: { id, row, t0, timer, saving } */
+let fileInput = null, fileId = null, importing = null;   /* "Tuo tiedosto": shared picker, target clip id, row being saved */
 let playTok = 0, testTok = 0, statusTok = 0;
 let watchingRecorder = false;
 let ownIds = new Set();     /* ids with an own recording (last recorder.list()), so re-rendered rows start right */
@@ -284,6 +288,7 @@ function recRow(item) {
     '<div class="rec-actions">' +
       '<button type="button" class="sbtn sbtn-rec" data-act="rec" aria-describedby="' + lid + '">' + icon('mic') + '<span>Nauhoita</span></button>' +
       '<button type="button" class="sbtn sbtn-play" data-act="play" aria-describedby="' + lid + '">' + icon('play') + '<span>Kuuntele</span></button>' +
+      '<button type="button" class="sbtn sbtn-file" data-act="file" aria-describedby="' + lid + '">' + icon('folder') + '<span>Tuo tiedosto</span></button>' +
       '<button type="button" class="sbtn sbtn-del" data-act="del" aria-describedby="' + lid + '"' + (st === 'own' ? '' : ' hidden') + '>' + icon('trash') + '<span>Poista oma ääni</span></button>' +
     '</div>' +
     '<div class="rec-live" hidden>' +
@@ -328,8 +333,8 @@ function recordingsCard() {
     return '<div class="rec-group" data-group="' + esc(g.name) + '">' + (g.items.length > 1 ? '<h4 class="rec-group-h">' + esc(g.name) + '</h4>' : '') + list + '</div>';
   }).join('');
   return card('rec', 'mic', 'Omat äänitykset',
-    '<p class="set-hint">Voit korvata valmiin äänen omalla äänelläsi. Oma ääni soi valmiin äänen sijaan kaikille lapsille.</p>' +
-    '<p class="set-note" data-rec-note hidden>Äänitys ei toimi tässä selaimessa. ' + MIC_HELP + '</p>' +
+    '<p class="set-hint">Voit korvata valmiin äänen omalla äänelläsi: nauhoita tai tuo äänitiedosto laitteelta. Oma ääni soi valmiin äänen sijaan kaikille lapsille. Tiedostot pysyvät vain tässä laitteessa.</p>' +
+    '<p class="set-note" data-rec-note hidden>Äänitys ei toimi tässä selaimessa. ' + MIC_HELP + ' Voit silti tuoda valmiin äänitiedoston.</p>' +
     html);
 }
 
@@ -388,7 +393,8 @@ function markup(credits) {
     '<div class="set-body">' +
       kidsCard() + soundCard() + gameCard() + recordingsCard() + testCard() + tipsCard() + creditsCard(credits) +
     '</div>' +
-  '</div>';
+  '</div>' +
+  '<input type="file" accept="audio/*" class="set-sr" data-file tabindex="-1" aria-hidden="true">';
 }
 
 /* ---------- Lapset ---------- */
@@ -640,17 +646,19 @@ function updateRowButtons() {
   const can = recSupported();
   const note = $('[data-rec-note]');
   if (note) note.hidden = can;
+  const canFile = importSupported();
   $$('.rec-row').forEach((row) => {
-    const busy = !!rec;
-    const mine = !!(rec && rec.row === row);
+    const busy = !!rec || !!importing;
+    const mine = !!(rec && rec.row === row) || importing === row;
     row.querySelector('[data-act="rec"]').disabled = !can || busy;
     row.querySelector('[data-act="play"]').disabled = busy;
+    row.querySelector('[data-act="file"]').disabled = !canFile || busy;
     row.querySelector('[data-act="del"]').disabled = busy;
     row.classList.toggle('is-dim', busy && !mine);
   });
   $$('[data-test]').forEach((b) => { b.disabled = !!rec; });
   /* a re-render of the children list would drop a running take in a name row: lock it meanwhile */
-  $$('[data-kact]').forEach((b) => { b.disabled = !!rec; });
+  $$('[data-kact]').forEach((b) => { b.disabled = !!rec || !!importing; });
 }
 
 function rowMsg(row, text, tone) {
@@ -759,6 +767,45 @@ async function removeRec(row) {
   focusEl(row.querySelector('[data-act="rec"]'));
 }
 
+/* ---------- "Tuo tiedosto": an audio file from the device becomes the recording ---------- */
+function importSupported() {
+  try { return typeof recorder.saveBlob === 'function' && !!window.indexedDB; } catch (e) { return false; }
+}
+
+/* Opens the device's file picker (iPhone Files, Android files / recorder apps). input.click() runs inside
+   the tap: iOS and Android open the picker only for a user-initiated call. */
+function pickFile(row) {
+  if (!fileInput || rec || importing || !importSupported()) return;
+  stopPlayback();
+  testTok++;
+  fileId = row.dataset.id;                    /* by id: the row may be re-rendered while the picker is open */
+  row.querySelector('.rec-confirm').hidden = true;
+  rowMsg(row, '', '');
+  fileInput.value = '';                       /* the same file picked twice still fires change */
+  try { fileInput.click(); } catch (e) { fileId = null; rowMsg(row, 'Tiedoston valinta ei avautunut.', 'warn'); }
+}
+
+async function importFile(file) {
+  const id = fileId;
+  fileId = null;
+  if (fileInput) fileInput.value = '';
+  const row = id != null ? $('.rec-row[data-id="' + cssEsc(id) + '"]') : null;
+  if (!file || !row || rec || importing) return;
+  importing = row;
+  rowMsg(row, 'Tuodaan tiedostoa…', '');
+  updateRowButtons();
+  let err = null;
+  try { await recorder.saveBlob(id, file); } catch (e) { err = e; }
+  await callAsync(engine.refreshRecordings, null);
+  importing = null;
+  await refreshStatuses();
+  updateRowButtons();
+  const now = $('.rec-row[data-id="' + cssEsc(id) + '"]') || row;
+  if (err) rowMsg(now, ownMessage(err) || 'Tiedostoa ei voitu tuoda (' + ((err && err.name) || 'virhe') + ').', 'warn');
+  else rowMsg(now, 'Tiedosto tuotu! Kuuntele ja tarkista.', 'ok');
+  if (open && now.isConnected) focusEl(now.querySelector(err ? '[data-act="file"]' : '[data-act="play"]'));
+}
+
 /* ---------- playback (Kuuntele) ---------- */
 function setPlaying(btn, on) {
   btn.classList.toggle('is-playing', on);
@@ -859,6 +906,7 @@ function onClick(e) {
     row.querySelector('.rec-confirm').hidden = false;
     focusEl(row.querySelector('[data-act="delno"]'));
   } else if (act === 'delyes' && row) removeRec(row);
+  else if (act === 'file' && row) pickFile(row);
   else if (act === 'delno' && row) {
     row.querySelector('.rec-confirm').hidden = true;
     focusEl(row.querySelector('[data-act="del"]'));
@@ -924,6 +972,9 @@ function bind() {
       else cancelAdd();
     }
   }, sig);
+  fileInput.addEventListener('change', () => { importFile(fileInput.files && fileInput.files[0]); }, sig);
+  /* the picker was closed without a choice (where the browser reports it) */
+  fileInput.addEventListener('cancel', () => { fileId = null; }, sig);
   document.addEventListener('keydown', onKey, sig);
   /* leaving the app mid-take: discard it (iOS may cut the microphone in the background anyway) */
   document.addEventListener('visibilitychange', () => {
@@ -946,6 +997,9 @@ export function initSettings(o) {
   body = root.querySelector('.set-body');
   kidsEl = root.querySelector('[data-kids]');
   kidsMsg = root.querySelector('[data-kids-msg]');
+  fileInput = root.querySelector('[data-file]');
+  fileId = null;
+  importing = null;
   ac = new AbortController();
   lastDiag = '';
   kid = freshKidUi();
@@ -988,6 +1042,7 @@ export function closeSettings() {
   if (!root || !open) return;
   open = false;
   settleEdit();                 /* a typed new name is kept even when the sheet is closed with X */
+  fileId = null;
   kid = freshKidUi();
   cancelRec();
   stopPlayback();

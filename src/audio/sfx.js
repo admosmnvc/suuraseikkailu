@@ -1,5 +1,5 @@
-/* SFX: short synthesized sound effects (Web Audio, no files). OWNER: audio agent.
-   Ported from v1 games.js, same names. Rules:
+/* SFX: short synthesized sound effects (Web Audio, no files). OWNER: audio agent (intro sounds vroom, honk,
+   hooves, neigh, steps, boing: ui agent). Ported from v1 games.js, same names. Rules:
    - All effects go through the shared context's SFX bus (context.js), clearly quieter than voice.
    - Skipped while the voice channel plays recitation (never over a Quran line).
    - No music: no scale runs, no arpeggios. success() is a shimmer + one soft clink; ding(i)/chime(i)
@@ -83,6 +83,24 @@ export const SFX = (function () {
     try { fn(ctx.currentTime + 0.005); } catch (e) { /* audio node trouble: stay silent */ }
   }
 
+  /* A tone through a filter with its own envelope: env = [[t, gain], ...] (absolute times). */
+  function voiced(type, freqs, t, env2, filter) {
+    const g = c.createGain(), f = c.createBiquadFilter();
+    f.type = filter[0]; f.frequency.value = filter[1]; f.Q.value = filter[2] || 0.7;
+    g.gain.setValueAtTime(0.0001, t);
+    env2.forEach(([tt, v]) => { if (v <= 0.0001) g.gain.exponentialRampToValueAtTime(0.0001, tt); else g.gain.linearRampToValueAtTime(v, tt); });
+    const end = env2[env2.length - 1][0] + 0.03;
+    const os = freqs.map((fr) => {
+      const o = c.createOscillator();
+      o.type = type;
+      if (typeof fr === 'function') fr(o.frequency); else o.frequency.value = fr;
+      o.connect(f); o.start(t); o.stop(end);
+      return o;
+    });
+    f.connect(g); g.connect(out);
+    return { os, f, g, end };
+  }
+
   function success(force) {
     play((t) => {
       clink(t, 1975.5, 0.2, 0.6);
@@ -138,6 +156,80 @@ export const SFX = (function () {
     success: function () { success(false); },
     tap: function () {
       play((t) => { osc('triangle', 1500, 900, t, 0.001, 0.03, 0.12, 0.03); });
+    },
+    /* ---- intro: vehicles, animals, the start button (short, soft, never a melody) ---- */
+    /* car engine: a low soft hum that revs up and settles, dur seconds */
+    vroom: function (dur) {
+      play((t) => {
+        const d = Math.max(0.3, +dur || 0.8);
+        const v = voiced('sawtooth', [(fq) => {
+          fq.setValueAtTime(56, t); fq.exponentialRampToValueAtTime(98, t + d * 0.55); fq.exponentialRampToValueAtTime(66, t + d);
+        }], t, [[t + 0.08, 0.15], [t + d * 0.7, 0.13], [t + d, 0.0001]], ['lowpass', 520, 0.9]);
+        v.f.frequency.setValueAtTime(380, t); v.f.frequency.linearRampToValueAtTime(820, t + d * 0.55); v.f.frequency.linearRampToValueAtTime(420, t + d);
+        /* the engine's chug: a fast gentle amplitude wobble */
+        const lfo = c.createOscillator(), lg = c.createGain();
+        lfo.frequency.value = 21; lg.gain.setValueAtTime(0.04, t); lg.gain.linearRampToValueAtTime(0, t + d); /* fades with the hum: no click at the end */
+        lfo.connect(lg); lg.connect(v.g.gain); lfo.start(t); lfo.stop(v.end);
+        noise(t, d, 0.04, 'lowpass', 480, 260, 0.7, 0.06);
+      });
+    },
+    /* a short friendly two-tone honk: two quick toots, both the same two-pitch horn sound */
+    honk: function () {
+      play((t) => {
+        [0, 0.17].forEach((dt) => {
+          const s = t + dt;
+          voiced('square', [415, 523], s, [[s + 0.015, 0.075], [s + 0.09, 0.07], [s + 0.13, 0.0001]], ['lowpass', 1700, 0.8]);
+        });
+      });
+    },
+    /* pony hooves: n soft clip-clops over dur seconds */
+    hooves: function (n, dur) {
+      play((t) => {
+        const k = Math.max(1, Math.round(+n) || 6), s = (+dur || 0.6) / k;
+        for (let i = 0; i < k; i++) {
+          const tt = t + i * s, hi = i % 2 === 0;
+          noise(tt, 0.035, 0.13, 'bandpass', hi ? 2300 : 1600, hi ? 1600 : 1100, 3, 0.001);
+          osc('sine', hi ? 820 : 660, hi ? 430 : 340, tt, 0.001, 0.05, 0.12, 0.04);
+        }
+      });
+    },
+    /* a short cute neigh: a wobbly little whinny that falls away */
+    neigh: function () {
+      play((t) => {
+        const d = 0.55;
+        const v = voiced('sawtooth', [(fq) => {
+          fq.setValueAtTime(640, t); fq.linearRampToValueAtTime(940, t + 0.11); fq.exponentialRampToValueAtTime(430, t + d);
+        }], t, [[t + 0.04, 0.17], [t + 0.3, 0.12], [t + d, 0.0001]], ['bandpass', 1250, 1.1]);
+        const vib = c.createOscillator(), vg = c.createGain();
+        vib.frequency.setValueAtTime(15, t); vib.frequency.linearRampToValueAtTime(9, t + d);
+        vg.gain.setValueAtTime(55, t); vg.gain.linearRampToValueAtTime(20, t + d);
+        vib.connect(vg); v.os.forEach((o) => vg.connect(o.frequency)); vib.start(t); vib.stop(v.end);
+        noise(t, d * 0.8, 0.025, 'bandpass', 2600, 1500, 0.8, 0.05);
+      });
+    },
+    /* soft padded footsteps (camel): n thuds over dur seconds */
+    steps: function (n, dur) {
+      play((t) => {
+        const k = Math.max(1, Math.round(+n) || 4), s = (+dur || 0.6) / k;
+        for (let i = 0; i < k; i++) {
+          const tt = t + i * s;
+          osc('sine', 150, 72, tt, 0.004, 0.1, 0.16, 0.08);
+          noise(tt, 0.07, 0.05, 'lowpass', 620, 260, 0.7, 0.004);
+        }
+      });
+    },
+    /* a springy boing (the start button pops out) */
+    boing: function () {
+      play((t) => {
+        const d = 0.5;
+        const v = voiced('sine', [(fq) => {
+          fq.setValueAtTime(190, t); fq.exponentialRampToValueAtTime(330, t + 0.08); fq.exponentialRampToValueAtTime(240, t + d);
+        }], t, [[t + 0.01, 0.24], [t + d, 0.0001]], ['lowpass', 3000, 0.7]);
+        const lfo = c.createOscillator(), lg = c.createGain();
+        lfo.frequency.value = 13; lg.gain.setValueAtTime(70, t); lg.gain.exponentialRampToValueAtTime(4, t + d);
+        lfo.connect(lg); v.os.forEach((o) => lg.connect(o.frequency)); lfo.start(t); lfo.stop(v.end);
+        osc('triangle', 380, 520, t, 0.005, 0.12, 0.04);
+      });
     },
     /* parent "Testaa äänet": plays even when effects are switched off in settings */
     test: function () { success(true); }

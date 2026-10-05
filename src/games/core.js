@@ -17,6 +17,7 @@ import { SFX } from '../audio/sfx.js';
 import { FX } from '../fx.js';
 import gestures from './gestures.js';
 import { createHint } from './hint.js';
+import { FX_IDS } from '../content/prompts.js';
 
 export const TIME_LIMIT = 16500;  /* auto-finish (success) starts here */
 const END_WAIT = 1500;            /* default celebration before onDone */
@@ -27,6 +28,8 @@ export const PALETTES = {
   boy: ['#5AB4FF', '#2F6BFF', '#FFD54A', '#FF9A3C', '#2EC4B6', '#FF5A5F']
 };
 export const INK = '#24324F';
+const SAY_GAP = 2500;    /* S.say: at most one exclamation per 2.5 s */
+const SAY_QUIET = 1500;  /* ... and none while the title prompt starts */
 
 let root = null, titleEl = null, goalEl = null, arena = null, current = null;
 
@@ -84,6 +87,8 @@ function createSession(o) {
   let limitLeft = TIME_LIMIT, limitFrom = 0, doneWaiting = false;
   let idleFn = null, idleMs = 2500, idleT = 0, lastAct = 0, downs = 0;
   const hint = createHint(arena);
+  const startT = now();
+  let lastSay = -1e9;
 
   /* ---------- timers, listeners, DOM ---------- */
   S.later = function (fn, ms) {
@@ -110,6 +115,16 @@ function createSession(o) {
   S.local = (cx, cy) => { const r = arena.getBoundingClientRect(); return { x: cx - r.left, y: cy - r.top }; };
   S.dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
   S.snd = snd;
+  /* short voice exclamation ('fx-vroom', 'fx-go', … PROMPTS FX_IDS) through the app's say(); rate-limited:
+     max 1 per 2.5 s and none in the first 1.5 s (the title prompt). Dropped silently when limited. -> played? */
+  S.say = function (id) {
+    if (S.dead || typeof o.say !== 'function' || FX_IDS.indexOf(id) < 0) return false;
+    const t = now();
+    if (t - startT < SAY_QUIET || t - lastSay < SAY_GAP) return false;
+    lastSay = t;
+    try { o.say(id); } catch (e) { /* speech is optional */ }
+    return true;
+  };
 
   /* ---------- gestures (auto-cleaned) ---------- */
   S.tap = (el, fn) => S.own(gestures.tap(el, (p) => { if (S.active()) fn(p); }));

@@ -7,3 +7,7 @@ tools/recitation-src/*.mp3
 tools/recitation-src/everyayah/
 tools/cut-src/*.mp3
 v2-reference/screens-390/
+
+# children name clips must never be committed
+suuraseikkailu-nimet/
+*-nimi.mp3

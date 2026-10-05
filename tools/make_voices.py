@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
-"""Suuraseikkailu: generate the teacher-voice clips (Finnish prompts + Arabic Shahada lines and chunks).
+"""Suuraseikkailu: generate the teacher-voice clips (Finnish prompts and meanings; Arabic TTS only for a
+section without a human recording).
 
-Real speech from Microsoft Edge neural TTS (python package `edge-tts`), never snippets of the
-recitation. The clip list comes from the app itself (`node tools/list-clips.mjs`, i.e.
+Real speech from a neural TTS provider, never snippets of the recitation:
+  --provider edge        Microsoft Edge neural TTS (python package `edge-tts`, free): fi-FI-NooraNeural (placeholder)
+  --provider elevenlabs  ElevenLabs (the owner's chosen voice "Aurora"), Finnish clips only; reads the API key from
+                         the environment variable ELEVENLABS_API_KEY (never printed or stored); prints the character
+                         / credit estimate first and spends credits only with --yes
+Without --provider the provider of the last run (tools/voices.json) is used, so a later plain run never
+silently switches voices. The clip list comes from the app itself (`node tools/list-clips.mjs`, i.e.
 src/content/prompts.js + the Shahada chunk clips of src/content/chunks.js), so texts are defined in
 exactly one place. The mastering below is also used for the Quran word recordings (tools/build-words.py).
 
@@ -17,6 +23,10 @@ Pipeline per clip (deterministic apart from the TTS service itself):
 
 Usage (run from anywhere; needs node, ffmpeg, edge-tts):
   python3 tools/make_voices.py              # make missing/outdated clips, validate all
+  ELEVENLABS_API_KEY=... python3 tools/make_voices.py --provider elevenlabs          # estimate only
+  ELEVENLABS_API_KEY=... python3 tools/make_voices.py --provider elevenlabs --yes    # switch: all fi clips
+  ELEVENLABS_API_KEY=... python3 tools/make_voices.py --provider elevenlabs --samples --yes [--style 0.6]
+                                            # 3 sample sentences -> ../qa/voice-samples/ (public/ untouched)
   python3 tools/make_voices.py --force      # regenerate everything
   python3 tools/make_voices.py --only praise-1,shahada-2
   python3 tools/make_voices.py --check      # validate only, no network
@@ -79,6 +89,40 @@ SAY_AS = {
     'ar': {},
 }
 
+# Whole-text TTS input per clip id (displayed text unchanged), applied before SAY_AS.
+SAY_ID = {
+    'intro-title': 'Suuuuraseikkailuu!',      # stretched and excited, like a cartoon title
+    'bye': 'Nähdään, taas!',                  # Noora ran it together ("nahdantos"); the comma separates the words
+}
+
+# ElevenLabs (Finnish clips). Cheerful defaults: lower stability = livelier intonation, some style
+# exaggeration, a fixed seed for repeatable takes. Every value is part of the clip key: change one and
+# exactly the clips made with the old value are regenerated.
+ELEVEN = {
+    'voice_id': 'YSabzCJMvEHDduIDMdwV',     # owner's choice: "Aurora"
+    'voice_name': 'Aurora',
+    'model_id': 'eleven_multilingual_v2',
+    'output_format': 'mp3_44100_128',
+    'stability': 0.35,
+    'similarity_boost': 0.8,
+    'style': 0.45,
+    'use_speaker_boost': True,
+    'speed': 1.0,
+    'seed': 7,
+    'language_code': None,                  # only for models that accept it (e.g. eleven_flash_v2_5: 'fi')
+}
+ELEVEN_API = 'https://api.elevenlabs.io/v1'
+ELEVEN_KEY_ENV = 'ELEVENLABS_API_KEY'
+CREDITS_PER_CHAR = {'eleven_multilingual_v2': 1.0, 'eleven_v3': 1.0, 'eleven_flash_v2_5': 0.5,
+                    'eleven_turbo_v2_5': 0.5}
+# Respellings for ElevenLabs: only the Arabic names (the Noora vowel fixes above are Noora-specific).
+SAY_AS_ELEVEN = {'fi': {k: SAY_AS['fi'][k] for k in ('Al-Fatihan', 'Al-Ikhlasin', 'Al-Kawtharin', 'Kawtharin')}}
+ELEVEN_CREDIT = 'Suomenkieliset kehotteet: ElevenLabs, ääni Aurora.'
+CREDIT_PREFIX = 'Suomenkieliset kehotteet:'
+DATA_JS = ROOT / 'src' / 'content' / 'data.js'
+SAMPLES_DIR = ROOT.parent / 'qa' / 'voice-samples'
+SAMPLE_IDS = ['intro-title', 'turn-1', 'finale-fatiha']
+
 SILENCE_DB = -50          # below this (RMS, 20 ms window) counts as silence when trimming
 PAD_S = 0.06              # silence kept before and after the speech
 TP_TARGET = -2.0          # loudnorm true-peak ceiling (0.5 dB headroom for MP3 encoding)
@@ -108,21 +152,33 @@ def list_clips():
     return json.loads(out)
 
 
-def say_text(clip):
-    """Text actually sent to TTS: longest SAY_AS keys first, whole words only."""
-    text = clip['text']
-    table = SAY_AS.get(clip['lang'], {})
+def voice_cfg(clip, provider, eleven=None):
+    """Voice settings for a clip: ElevenLabs for Finnish clips when chosen, Edge otherwise."""
+    if provider == 'elevenlabs' and clip['lang'] == 'fi':
+        return {'provider': 'elevenlabs', **(eleven or ELEVEN)}
+    return {'provider': 'edge', **VOICES[clip['lang']]}
+
+
+def say_text(clip, provider='edge'):
+    """Text actually sent to TTS: SAY_ID, then the longest SAY_AS keys first, whole words only."""
+    text = SAY_ID.get(clip.get('id'), clip['text'])
+    table = (SAY_AS_ELEVEN if provider == 'elevenlabs' and clip['lang'] == 'fi' else SAY_AS).get(clip['lang'], {})
     for src in sorted(table, key=len, reverse=True):
         text = re.sub(r'(?<![\w-])' + re.escape(src) + r'(?![\w-])', table[src], text)
     return text
 
 
-def clip_key(clip, target):
-    """Everything that influences the output file; unchanged key + existing file = skip."""
-    cfg = VOICES[clip['lang']]
-    payload = [PIPELINE, say_text(clip), cfg['voice'], cfg['rate'], cfg['pitch'], round(target, 1),
-               SILENCE_DB, PAD_S, TP_TARGET, SAMPLE_RATE, BITRATE]
-    return hashlib.sha256(json.dumps(payload, ensure_ascii=False).encode()).hexdigest()[:16]
+def clip_key(clip, target, cfg=None):
+    """Everything that influences the output file; unchanged key + existing file = skip.
+    (The Edge payload is the v2/v3 one, so existing Edge clips keep their keys.)"""
+    cfg = cfg or voice_cfg(clip, 'edge')
+    if cfg['provider'] == 'edge':
+        payload = [PIPELINE, say_text(clip), cfg['voice'], cfg['rate'], cfg['pitch'], round(target, 1),
+                   SILENCE_DB, PAD_S, TP_TARGET, SAMPLE_RATE, BITRATE]
+    else:
+        payload = [PIPELINE, 'elevenlabs', say_text(clip, 'elevenlabs'), {k: cfg[k] for k in sorted(cfg)},
+                   round(target, 1), SILENCE_DB, PAD_S, TP_TARGET, SAMPLE_RATE, BITRATE]
+    return hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True).encode()).hexdigest()[:16]
 
 
 # ---------------------------------------------------------------- ffmpeg helpers
@@ -230,21 +286,206 @@ async def synth(edge_tts, text, cfg, path):
             await asyncio.sleep(delay)
 
 
-async def make_all(clips, target, jobs):
-    edge_tts = import_edge_tts()
+# ---------------------------------------------------------------- ElevenLabs (HTTP layer replaceable in tests)
+
+class ElevenError(RuntimeError):
+    pass
+
+
+def redact(text, key):
+    text = str(text)
+    return text.replace(key, '***') if key else text
+
+
+def _ssl_context():
+    import ssl
+    return ssl.create_default_context(cafile=CA_BUNDLE) if os.path.exists(CA_BUNDLE) else ssl.create_default_context()
+
+
+def urllib_http(method, url, headers, data=None, timeout=60):
+    """-> (status, body bytes). Honors HTTPS_PROXY; uses the sandbox CA bundle when present."""
+    import urllib.error
+    import urllib.request
+    req = urllib.request.Request(url, data=data, headers=headers, method=method)
+    try:
+        with urllib.request.urlopen(req, timeout=timeout, context=_ssl_context()) as r:
+            return r.status, r.read()
+    except urllib.error.HTTPError as e:
+        return e.code, e.read()
+
+
+HTTP = urllib_http          # tests replace this
+SLEEP = __import__('time').sleep
+
+
+def api_key(required=True):
+    key = os.environ.get(ELEVEN_KEY_ENV, '').strip()
+    if required and not key:
+        sys.exit(f'{ELEVEN_KEY_ENV} is not set (export it in the shell; it is never written anywhere).')
+    return key
+
+
+def eleven_request(text, cfg, key):
+    """-> (url, headers, body bytes) of one text-to-speech call."""
+    url = f"{ELEVEN_API}/text-to-speech/{cfg['voice_id']}?output_format={cfg['output_format']}"
+    body = {'text': text, 'model_id': cfg['model_id'],
+            'voice_settings': {k: cfg[k] for k in ('stability', 'similarity_boost', 'style', 'use_speaker_boost', 'speed')}}
+    if cfg.get('seed') is not None:
+        body['seed'] = cfg['seed']
+    if cfg.get('language_code'):
+        body['language_code'] = cfg['language_code']
+    headers = {'xi-api-key': key, 'Content-Type': 'application/json', 'Accept': 'audio/mpeg',
+               'User-Agent': 'suuraseikkailu-voices/1'}
+    return url, headers, json.dumps(body, ensure_ascii=False).encode('utf-8')
+
+
+def eleven_synth(text, cfg, path, key):
+    """One clip; retries 429 / 5xx / network errors, fails at once on other errors (key redacted)."""
+    url, headers, body = eleven_request(text, cfg, key)
+    for attempt in range(RETRIES):
+        try:
+            status, data = HTTP('POST', url, headers, body, 90)
+        except Exception as e:  # noqa: BLE001  network
+            status, data = None, redact(f'{type(e).__name__}: {e}', key).encode()
+        if status == 200:
+            if len(data) < 1000 or not (data[:3] == b'ID3' or data[0] == 0xFF):
+                raise ElevenError(f'not an MP3 ({len(data)} bytes)')
+            Path(path).write_bytes(data)
+            return
+        msg = redact(data[:300].decode('utf-8', 'replace'), key)
+        if status not in (None, 429, 500, 502, 503, 504) or attempt == RETRIES - 1:
+            raise ElevenError(f'ElevenLabs HTTP {status}: {msg}')
+        delay = 2 ** attempt
+        log(f'  retry in {delay}s (HTTP {status})')
+        SLEEP(delay)
+
+
+def eleven_quota(key):
+    """Remaining characters of the subscription, or None (best effort, free call)."""
+    try:
+        status, data = HTTP('GET', f'{ELEVEN_API}/user/subscription', {'xi-api-key': key, 'Accept': 'application/json',
+                                                                   'User-Agent': 'suuraseikkailu-voices/1'}, None, 30)
+        if status == 200:
+            d = json.loads(data)
+            return int(d['character_limit']) - int(d['character_count'])
+    except Exception:  # noqa: BLE001
+        pass
+    return None
+
+
+def estimate(jobs, provider, eleven):
+    """Print the size of a run; returns the ElevenLabs credits it would spend."""
+    chars = sum(len(say_text(c, provider)) for c in jobs if voice_cfg(c, provider, eleven)['provider'] == 'elevenlabs')
+    credits = chars * CREDITS_PER_CHAR.get(eleven['model_id'], 1.0)
+    if chars:
+        log(f'ElevenLabs: {len(jobs)} clip(s), {chars} characters = about {credits:.0f} credits '
+            f"(model {eleven['model_id']}, voice {eleven['voice_name']} {eleven['voice_id']})")
+    return credits
+
+
+def apply_credit(path=None):
+    """data.js credits: the Finnish voice line -> ELEVEN_CREDIT (only after a successful ElevenLabs run)."""
+    path = Path(path or DATA_JS)
+    s = path.read_text(encoding='utf-8')
+    m = re.search(r'"' + re.escape(CREDIT_PREFIX) + r'[^"\n]*"', s)
+    if not m:
+        log(f'  warning: no "{CREDIT_PREFIX}" credit in {path.name}; add "{ELEVEN_CREDIT}" by hand')
+        return False
+    new = json.dumps(ELEVEN_CREDIT, ensure_ascii=False)
+    if m.group(0) != new:
+        path.write_text(s[:m.start()] + new + s[m.end():], encoding='utf-8')
+        log(f'  credits: {ELEVEN_CREDIT}')
+    return True
+
+
+async def make_all(clips, target, jobs, provider='edge', eleven=None, out_dir=None, names=None):
+    """Synthesize + master clips. out_dir/names: write to out_dir/<names[id]> instead of public/<file>."""
+    cfgs = {c['id']: voice_cfg(c, provider, eleven) for c in clips}
+    edge_tts = import_edge_tts() if any(v['provider'] == 'edge' for v in cfgs.values()) else None
+    key = api_key() if any(v['provider'] == 'elevenlabs' for v in cfgs.values()) else ''
     sem = asyncio.Semaphore(jobs)
     results = {}
     with tempfile.TemporaryDirectory() as tmp:
         async def one(clip):
             async with sem:
+                cfg = cfgs[clip['id']]
                 raw = Path(tmp) / (clip['id'] + '.raw.mp3')
-                await synth(edge_tts, say_text(clip), VOICES[clip['lang']], raw)
-                out = PUBLIC / clip['file']
+                if cfg['provider'] == 'elevenlabs':
+                    await asyncio.to_thread(eleven_synth, say_text(clip, 'elevenlabs'), cfg, raw, key)
+                else:
+                    await synth(edge_tts, say_text(clip), cfg, raw)
+                out = Path(out_dir) / names[clip['id']] if out_dir else PUBLIC / clip['file']
                 out.parent.mkdir(parents=True, exist_ok=True)
                 results[clip['id']] = await asyncio.to_thread(master, raw, out, target)
-                log(f"  made {clip['file']}")
+                log(f"  made {out.relative_to(ROOT) if out.is_relative_to(ROOT) else out}")
         await asyncio.gather(*(one(c) for c in clips))
     return results
+
+
+def add_voice_args(ap):
+    """CLI options shared with tools/make_name.py."""
+    ap.add_argument('--provider', choices=['edge', 'elevenlabs'], help='default: the provider of the last run')
+    ap.add_argument('--yes', action='store_true', help='allow spending ElevenLabs credits')
+    ap.add_argument('--voice-id', help=f"ElevenLabs voice (default {ELEVEN['voice_id']} = {ELEVEN['voice_name']})")
+    ap.add_argument('--model', help=f"ElevenLabs model (default {ELEVEN['model_id']})")
+    for k in ('stability', 'similarity', 'style', 'speed'):
+        ap.add_argument('--' + k, type=float, help='ElevenLabs voice setting')
+    ap.add_argument('--seed', type=int, help='ElevenLabs seed (default %d)' % ELEVEN['seed'])
+    ap.add_argument('--language-code', help='ElevenLabs language_code (models that support it)')
+
+
+def eleven_from_args(args):
+    e = dict(ELEVEN)
+    for opt, k in (('voice_id', 'voice_id'), ('model', 'model_id'), ('stability', 'stability'),
+                   ('similarity', 'similarity_boost'), ('style', 'style'), ('speed', 'speed'), ('seed', 'seed'),
+                   ('language_code', 'language_code')):
+        v = getattr(args, opt, None)
+        if v is not None:
+            e[k] = v
+    if e['voice_id'] != ELEVEN['voice_id']:
+        e['voice_name'] = e['voice_id']
+    return e
+
+
+def last_provider():
+    if VOICES_JSON.exists():
+        return json.loads(VOICES_JSON.read_text(encoding='utf-8')).get('provider', 'edge')
+    return 'edge'
+
+
+def gate(credits, args, eleven):
+    """True = go on. Credits are spent only with --yes (and a key)."""
+    if not credits:
+        return True
+    if not args.yes:
+        log('Nothing was sent. Add --yes to spend these credits.')
+        return False
+    left = eleven_quota(api_key())
+    if left is not None:
+        log(f'ElevenLabs: {left} characters left on the subscription')
+        if left < credits:
+            sys.exit('Not enough ElevenLabs credits for this run.')
+    return True
+
+
+def run_samples(clips, target, args, provider, eleven):
+    """--samples: a few sentences with the current settings -> SAMPLES_DIR (public/ and voices.json untouched)."""
+    pick = [c for c in clips if c['id'] in SAMPLE_IDS]
+    names = {}
+    for c in pick:
+        tag = clip_key(c, target, voice_cfg(c, provider, eleven))[:8]
+        names[c['id']] = f"{provider}-{c['id']}-{tag}.mp3"
+    if not gate(estimate(pick, provider, eleven), args, eleven):
+        return
+    asyncio.run(make_all(pick, target, 2, provider, eleven, SAMPLES_DIR, names))
+    settings = {c['id']: {'file': names[c['id']], 'text': c['text'], 'sayText': say_text(c, provider),
+                          'settings': voice_cfg(c, provider, eleven)} for c in pick}
+    idx = SAMPLES_DIR / 'samples.json'
+    old = json.loads(idx.read_text(encoding='utf-8')) if idx.exists() else {}
+    old.update({v['file']: v for v in settings.values()})
+    idx.write_text(json.dumps(old, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
+    for v in settings.values():
+        log(f"  sample {SAMPLES_DIR / v['file']}  {measure(SAMPLES_DIR / v['file'])}")
 
 
 # ---------------------------------------------------------------- validation + optional ASR
@@ -283,7 +524,9 @@ def main():
     ap.add_argument('--force', action='store_true', help='regenerate even if up to date')
     ap.add_argument('--only', help='comma-separated clip ids')
     ap.add_argument('--check', action='store_true', help='validate only, never synthesize')
-    ap.add_argument('--jobs', type=int, default=4, help='parallel TTS requests')
+    ap.add_argument('--jobs', type=int, help='parallel TTS requests (default: edge 4, elevenlabs 2)')
+    ap.add_argument('--samples', action='store_true', help=f'only render {", ".join(SAMPLE_IDS)} to {SAMPLES_DIR}')
+    add_voice_args(ap)
     ap.add_argument('--asr', nargs='?', const='large-v3-turbo', metavar='MODEL',
                     help='back-transcribe the processed clips with faster-whisper')
     ap.add_argument('--prune', action='store_true', help='delete unused public/audio/fi/*.mp3, *-c-*.mp3')
@@ -296,19 +539,29 @@ def main():
 
     target, n_ref = recitation_target()
     log(f'Loudness target {target} LUFS (median of {n_ref} recitation files)')
+    provider = args.provider or last_provider()
+    eleven = eleven_from_args(args)
+    log(f'Provider: {provider}')
+    if args.samples:
+        run_samples(clips, target, args, provider, eleven)
+        return
 
     old = {}
     if VOICES_JSON.exists():
         old = {e['id']: e for e in json.loads(VOICES_JSON.read_text(encoding='utf-8')).get('clips', [])}
 
     def outdated(c):
-        return args.force or not (PUBLIC / c['file']).exists() or old.get(c['id'], {}).get('key') != clip_key(c, target)
+        key = clip_key(c, target, voice_cfg(c, provider, eleven))
+        return args.force or not (PUBLIC / c['file']).exists() or old.get(c['id'], {}).get('key') != key
 
     todo = [c for c in clips if (not only or c['id'] in only) and outdated(c)]
     if args.check:
         todo = []
     log(f'{len(todo)} clip(s) to synthesize' + ('' if args.check else ', the rest are up to date'))
-    norm = asyncio.run(make_all(todo, target, max(1, args.jobs))) if todo else {}
+    if todo and not gate(estimate(todo, provider, eleven), args, eleven):
+        return
+    jobs = args.jobs or (2 if provider == 'elevenlabs' else 4)
+    norm = asyncio.run(make_all(todo, target, max(1, jobs), provider, eleven)) if todo else {}
 
     entries, failed = [], []
     for c in clips:
@@ -317,11 +570,19 @@ def main():
         if not path.exists():
             failed.append(f"{c['id']}: missing {c['file']}")
             continue
-        cfg = VOICES[c['lang']]
-        e = {'id': c['id'], 'lang': c['lang'], 'file': c['file'], 'text': c['text'], 'sayText': say_text(c),
-             'voice': cfg['voice'], 'rate': cfg['rate'], 'pitch': cfg['pitch'], **measure(path),
-             'normalization': norm.get(c['id'], prev.get('normalization', '?')),
-             'key': clip_key(c, target) if c['id'] in norm else prev.get('key', '')}
+        made = c['id'] in norm
+        if made:
+            cfg = voice_cfg(c, provider, eleven)
+        elif 'settings' in prev:
+            cfg = prev['settings']
+        elif 'voice' in prev:                # v3 entries (Edge): voice/rate/pitch at the top level
+            cfg = {'provider': 'edge', 'voice': prev['voice'], 'rate': prev['rate'], 'pitch': prev['pitch']}
+        else:
+            cfg = voice_cfg(c, 'edge')
+        e = {'id': c['id'], 'lang': c['lang'], 'file': c['file'], 'text': c['text'],
+             'sayText': say_text(c, cfg['provider']), 'provider': cfg['provider'], 'settings': cfg,
+             **measure(path), 'normalization': norm.get(c['id'], prev.get('normalization', '?')),
+             'key': clip_key(c, target, cfg) if made else prev.get('key', '')}
         if c['id'] not in norm and 'asr' in prev:
             e['asr'] = prev['asr']           # file unchanged, so the old transcript still applies
         entries.append(e)
@@ -341,14 +602,19 @@ def main():
             else:
                 log(f'  warning: unused {f.relative_to(ROOT)} (use --prune)')
 
+    fi_providers = {e['provider'] for e in entries if e['lang'] == 'fi'}
     VOICES_JSON.write_text(json.dumps({
         'note': 'Generated by tools/make_voices.py - do not edit by hand.',
+        'provider': provider,
         'target_lufs': target,
         'target_source': 'median integrated loudness of tools/recitation-src/everyayah/*.mp3 (Mishary Alafasy, v2 verse files)',
         'true_peak_max_dbtp': TP_MAX,
         'format': f'MP3 mono {SAMPLE_RATE} Hz {BITRATE}bps CBR, {PAD_S * 1000:.0f} ms padding',
         'voices': VOICES,
+        'elevenlabs': eleven if 'elevenlabs' in fi_providers else None,
+        'say_id': SAY_ID,
         'say_as': SAY_AS,
+        'say_as_elevenlabs': SAY_AS_ELEVEN,
         'clips': entries,
     }, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
 
@@ -357,6 +623,8 @@ def main():
     if failed:
         log('\nFAILED:\n  ' + '\n  '.join(failed))
         sys.exit(1)
+    if fi_providers == {'elevenlabs'} and not args.check:
+        apply_credit()                       # every Finnish clip is ElevenLabs now
     log(f'\nOK: {len(entries)} clips valid (target {target} LUFS +-{LU_TOL}, true peak <= {TP_MAX} dBTP)')
 
 

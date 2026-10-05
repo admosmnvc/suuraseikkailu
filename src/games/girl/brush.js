@@ -176,7 +176,7 @@ export default {
       sfx('ding', lk.i);
       const left = locks.filter((q) => !q.done).length;
       if (left === 2) st.praise(box.x + 300 * box.s, box.y + 20 * box.s, pick(WORDS)); /* above the back, not over the mane */
-      if (lk.i === 4) st.praise(box.x + 300 * box.s, box.y + 20 * box.s, 'Nyt häntä!');
+      if (lk.i === 4) { st.praise(box.x + 300 * box.s, box.y + 20 * box.s, 'Nyt häntä!'); st.say('fx-shine'); } /* mane smooth */
       S.point();
       if (!left) S.later(showTreats, 380);
     }
@@ -217,6 +217,7 @@ export default {
       treats.forEach((q) => { if (!q.used) q.el.classList.add('is-gone'); });
       pony.classList.add('is-neigh');
       sfx('success');
+      st.say('fx-pretty');
       const hx = box.x + 120 * box.s, hy = box.y + 50 * box.s;
       st.hearts(box.x + 210 * box.s, box.y + 60 * box.s, 3);
       st.praise(Math.max(80, hx - 50 * box.s), Math.max(30, hy - 50 * box.s), 'Ihahaa!', 44);

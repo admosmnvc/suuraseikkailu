@@ -82,7 +82,7 @@ export default {
       level = Math.min(1, v);
       fill.style.transform = 'scaleX(' + level.toFixed(3) + ')';
       litres.textContent = String(Math.round(level * 40));
-      while (pts - 2 < 4 && level >= [0.25, 0.5, 0.75, 1][pts - 2]) { pts++; S.point(); }
+      while (pts - 2 < 4 && level >= [0.25, 0.5, 0.75, 1][pts - 2]) { pts++; S.point(); if (pts === 4) S.say('fx-yay'); }
     }
 
     S.tap(flap, () => {
@@ -156,6 +156,7 @@ export default {
         flap.classList.remove('open');
         car.classList.add('happy');
         honk(S);
+        S.say('fx-beep');
         carIn.classList.add('bounce');
       }, 450);
       S.later(() => S.finish(), 900);                                        /* praise while the car honks and bounces */

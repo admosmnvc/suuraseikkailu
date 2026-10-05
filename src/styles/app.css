@@ -753,6 +753,7 @@ html.cover-up .cover-art { display: block; }
 @keyframes wiggle { 0%, 100% { transform: none; } 25% { transform: rotate(-4deg) scale(1.03); } 75% { transform: rotate(3deg) scale(1.03); } }
 .new-msg { min-height: 1.5em; text-align: center; font-weight: 800; font-size: 1.1rem; color: var(--ink); }
 .new-msg.pop { animation: bump .5s var(--spring); }
+.new-msg.pop.speaking { animation: bump .5s var(--spring), speak-bob .8s .5s ease-in-out infinite alternate; }
 
 /* ---------- praise pop (ui/praise.js): clean rounded word with a soft glow ---------- */
 .praise-pop {
@@ -780,6 +781,7 @@ html.cover-up .cover-art { display: block; }
   opacity: 0; transform: translate(-50%, 18px) scale(.86); visibility: hidden;
   transition: opacity .2s ease, transform .4s var(--spring), visibility 0s linear .4s;
 }
+.gate:not([hidden]) ~ .caption { z-index: 85; } /* the intro's 'go' cue speaks over the start gate */
 .caption.show { opacity: 1; transform: translate(-50%, 0) scale(1); visibility: visible; transition: opacity .2s ease, transform .4s var(--spring), visibility 0s; }
 html.in-learn .caption { bottom: calc(var(--bar-h) + 10px + var(--safe-b)); }
 .caption-ico { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: var(--t-tint); color: var(--t-deep); }

@@ -10,7 +10,7 @@ export default {
   id: 'race',
   goal: GOAL,
   start(S) {
-    let missed = false, L = null, carX = 0, tilt = 0, lastX = 0, spawnIn = 0.5, n = 0, got = 0, things = [], line = null, ended = false, scroll = 0, zoomT = -1, lastLane = 1;
+    let streak = 0, missed = false, L = null, carX = 0, tilt = 0, lastX = 0, spawnIn = 0.5, n = 0, got = 0, things = [], line = null, ended = false, scroll = 0, zoomT = -1, lastLane = 1;
     const grass = S.el('div', 'br-grass');
     const bushL = S.el('div', 'br-bush'), bushR = S.el('div', 'br-bush');
     const road = S.el('div', 'br-road');
@@ -87,6 +87,8 @@ export default {
     function collect(t) {
       t.hit = true;
       got++;
+      streak++;
+      if (streak === 3 && got < GOAL) S.say('fx-yay');
       S.snd('ding', got);
       S.burst({ x: t.x, y: t.y }, ['#FFD54A', '#FFFFFF', '#FF9A3C'], 14);
       t.el.classList.add('got');
@@ -131,14 +133,14 @@ export default {
         if (!t.hit && Math.abs(t.y - L.carY) < L.ch * 0.55 + L.size * 0.35 && Math.abs(t.x - carX) < L.lane * (t.star ? 0.7 : 0.5)) {
           if (t.star) collect(t); else bump(t);
         }
-        if (t.y > L.H + L.size || t.x < -L.size * 2 || t.x > L.W + L.size * 2) { if (t.star && !t.hit) missed = true; t.el.remove(); things.splice(i, 1); continue; }
+        if (t.y > L.H + L.size || t.x < -L.size * 2 || t.x > L.W + L.size * 2) { if (t.star && !t.hit) { missed = true; streak = 0; } t.el.remove(); things.splice(i, 1); continue; }
         if (!(t.star && t.hit)) t.el.style.translate = (t.x - L.size / 2).toFixed(1) + 'px ' + (t.y - L.size / 2).toFixed(1) + 'px';
         if (t.r) t.el.style.rotate = t.r.toFixed(0) + 'deg';
       }
       if (line) {
         line.y += sp * dt;
         line.el.style.translate = '0 ' + line.y.toFixed(1) + 'px';
-        if (line.y > L.carY - L.ch * 0.5 && zoomT < 0) { zoomT = 0; S.snd('whoosh'); S.hideHint(); }
+        if (line.y > L.carY - L.ch * 0.5 && zoomT < 0) { zoomT = 0; S.snd('whoosh'); S.say('fx-vroom'); S.hideHint(); }
       }
       if (zoomT >= 0) {
         zoomT += dt * 1.6;

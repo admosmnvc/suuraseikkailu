@@ -6,7 +6,8 @@
      MiniGames.play({ theme, index, onDone, say }) -> { abort() }
        theme  'girl' | 'boy' (default: <html data-theme>, else 'girl')
        index  any integer, used modulo 6
-       say    called once at start with gameId(theme, idx) (the UI plays engine.prompt(id))
+       say    called once at start with gameId(theme, idx) (the UI plays engine.prompt(id)); later also with short
+              exclamation ids from FX_IDS ('fx-vroom', …) when a game calls S.say (rate-limited, max 1 per 2.5 s)
        onDone called once when the game is finished (always a success; auto-finish by ~20 s).
               While the page is hidden the time limit pauses and onDone waits until it is visible again.
    Games: src/games/<theme>/index.js exports an array of 6 modules { id, title, goal?, start(S) } in prompt order.
@@ -84,7 +85,8 @@ function play(opts) {
   let idx = Math.floor(+opts.index) || 0;
   idx = ((idx % GAME_COUNT) + GAME_COUNT) % GAME_COUNT;
   const id = gameId(theme, idx);
-  const S = startSession({ theme: theme, index: idx, id: id, title: PROMPTS[id] || '', game: gameFor(theme, idx), onDone: onDone });
+  const say = typeof opts.say === 'function' ? opts.say : null;
+  const S = startSession({ theme: theme, index: idx, id: id, title: PROMPTS[id] || '', game: gameFor(theme, idx), onDone: onDone, say: say });
   if (!S) { /* no document body: finish right away */
     let t = onDone ? setTimeout(onDone, 0) : 0;
     return { abort: () => { if (t) clearTimeout(t); t = 0; } };

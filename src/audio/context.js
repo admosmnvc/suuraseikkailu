@@ -35,11 +35,12 @@ export function isSupported() { return !!AC; }
 /* The context if it exists (never creates one). */
 export function get() { return ctx; }
 
-/* Create the context and buses on first use. Returns null when Web Audio is unavailable. */
-export function ensure() {
+/* Create the context and buses on first use. Returns null when Web Audio is unavailable.
+   allowEarly: autoStart() already knows sound may start without a tap. */
+export function ensure(allowEarly) {
   if (ctx || !AC) return ctx;
   /* before any tap a context could only start suspended (and Chrome logs a warning): wait for the tap */
-  try { if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return null; } catch (e) { /* ignore */ }
+  try { if (!allowEarly && navigator.userActivation && !navigator.userActivation.hasBeenActive) return null; } catch (e) { /* ignore */ }
   try {
     ctx = new AC();
   } catch (e) { ctx = null; return null; }
@@ -130,6 +131,42 @@ export function resume(ms = 400) {
 }
 
 export function isRunning() { return !!ctx && ctx.state === 'running'; }
+
+/* A 10 ms silent WAV: probes whether this page may play sound before any tap. */
+const PROBE_WAV = (function () {
+  const n = 80, b = new Uint8Array(44 + n), dv = new DataView(b.buffer);
+  const str = (o, s) => { for (let i = 0; i < s.length; i++) b[o + i] = s.charCodeAt(i); };
+  str(0, 'RIFF'); dv.setUint32(4, 36 + n, true); str(8, 'WAVE'); str(12, 'fmt '); dv.setUint32(16, 16, true);
+  dv.setUint16(20, 1, true); dv.setUint16(22, 1, true); dv.setUint32(24, 8000, true); dv.setUint32(28, 8000, true);
+  dv.setUint16(32, 1, true); dv.setUint16(34, 8, true); str(36, 'data'); dv.setUint32(40, n, true); b.fill(128, 44);
+  let s = '';
+  for (let i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+  return 'data:audio/wav;base64,' + (typeof btoa === 'function' ? btoa(s) : '');
+})();
+
+/* No tap yet (e.g. the intro): some devices allow sound anyway (an installed PWA, an often used site).
+   A silent media element is asked first – a refused play() logs nothing, unlike an AudioContext created too
+   early – and only then the context is created and resumed. Resolves true if it runs within `ms`.
+   Never throws; iOS / a first visit simply resolve false and stay silent until the tap. */
+export function autoStart(ms = 150) {
+  if (ctx) return resume(ms);
+  if (!AC || typeof Audio === 'undefined') return Promise.resolve(false);
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (v) => { if (!done) { done = true; resolve(!!v); } };
+    setTimeout(() => finish(isRunning()), ms);
+    try {
+      const a = new Audio(PROBE_WAV);
+      const p = a.play();
+      if (!p || typeof p.then !== 'function') { finish(false); return; }
+      p.then(() => {
+        try { a.pause(); } catch (e) { /* ignore */ }
+        if (done || !ensure(true)) { finish(false); return; }
+        resume(ms).then(finish, () => finish(false));
+      }, () => finish(false));
+    } catch (e) { finish(false); }
+  });
+}
 
 /* ms since the last unlock(): right after it a resume may still be pending (sounds then play on resume). */
 export function sinceUnlock() { return Date.now() - unlockedAt; }

@@ -87,6 +87,10 @@ const TAP_BLOCK_MS = 450;
 let tapBlockUntil = 0;
 const blockTaps = () => { tapBlockUntil = Date.now() + TAP_BLOCK_MS; };
 let gateAfterGame = false; /* audio got locked during a minigame: the gate waits until the game is done */
+let titleSaid = false;     /* the intro said 'intro-title' (sound allowed before the tap); else the start tap says it */
+let lastPraise = '';       /* reward praise: never the same twice in a row */
+let lastGameEnd = 0, lastGameDone = false; /* 'game-done': every other game when they come fast (every = 1, < 30 s) */
+const GAME_FAST_MS = 30000;
 
 /* ---------- helpers ---------- */
 function updateStars(bump) {
@@ -150,6 +154,19 @@ const promptItem = (id, el) => ({ clip: engine.prompt(id), el, caption: el ? '' 
 function sayPrompt(id) { return speak([promptItem(id, $('greet'))]); }
 
 function gateOpen() { return isOpen('gate'); }
+
+/* greeting by the time of day: 5-10 morning, 10-17 day, else evening */
+function greetId() {
+  const h = new Date().getHours();
+  return h >= 5 && h < 10 ? 'greet-morning' : h >= 10 && h < 17 ? 'greet-day' : 'greet-evening';
+}
+
+/* intro voice cues (intro.js, only when sound may start before a tap): never once the start button was tapped */
+function onIntroCue(name) {
+  if (started || !gateOpen() || $('gate').dataset.mode !== 'start' || safe(() => settings.isSettingsOpen())) return;
+  if (name === 'title') { titleSaid = true; speak([promptItem('intro-title', $('introLogo'))]); }
+  else if (name === 'go') speak([promptItem('intro-go')]); /* caption above the gate */
+}
 
 /* Runs fn now, or after the app is visible and unlocked again (never speak into a hidden page). */
 function whenActive(fn) {
@@ -403,12 +420,16 @@ function startGame(sec, k, piece) {
   const t = flowTok;
   const done = () => {
     if (t === flowTok) gateIfLocked(); /* the reward then waits for the gate tap (whenActive) */
+    const now = Date.now();
+    const said = !(store.settings.every === 1 && now - lastGameEnd < GAME_FAST_MS && lastGameDone);
+    lastGameEnd = now;
+    lastGameDone = said;
     whenActive(() => {
       if (t !== flowTok) return;
       game = null;
       learnInert(false);
       bg.pause(false);
-      showReward(sec, k, piece);
+      showReward(sec, k, piece, said);
     });
   };
   bg.pause(true);
@@ -448,13 +469,16 @@ function nextText(sec, k) {
   return level === 'hard' ? 'Seuraavaksi: rivit 1–' + k : 'Seuraavaksi: vaihe ' + k + '/' + units.length;
 }
 
-/* piece: { slot, fresh } when the step completed a line (gem / rocket part flies in), else null */
-function showReward(sec, k, piece) {
+/* piece: { slot, fresh } when the step completed a line (gem / rocket part flies in), else null;
+   gameDone: a minigame just ended, 'game-done' comes first */
+function showReward(sec, k, piece, gameDone) {
   flow = false;
   if (screen !== 'learn' || cur !== sec) return;
   unshown = 0;
   const th = theme();
-  const praiseId = PRAISE_IDS[Math.floor(Math.random() * PRAISE_IDS.length)];
+  const pool = PRAISE_IDS.length > 1 ? PRAISE_IDS.filter((id) => id !== lastPraise) : PRAISE_IDS;
+  const praiseId = pool[Math.floor(Math.random() * pool.length)];
+  lastPraise = praiseId;
   const praise = promptText(praiseId).replace(/[!.]+$/, '');
   const pieceId = th === 'boy' ? 'rocket-part' : 'gem';
   renderReward({
@@ -473,12 +497,14 @@ function showReward(sec, k, piece) {
   openOverlay('reward', $('rewardGo'));
   updateStars(true);
   const title = $('rewardTitle'), gemText = $('rewardGem');
-  replay = () => speak([
+  const items = (first) => [
+    first && gameDone ? promptItem('game-done') : null,
     { clip: engine.prompt(praiseId), el: title },
     { clip: nameClip(), el: title },
     piece ? { clip: engine.prompt(pieceId), el: gemText } : null
-  ], { gapMs: 150 });
-  replay();
+  ];
+  replay = () => speak(items(false), { gapMs: 150 });
+  speak(items(true), { gapMs: 150 });
   if (piece) later(450, () => flyPiece(th, piece.slot));
 }
 
@@ -566,7 +592,8 @@ function openWho(view, closable, pre, silent) {
   /* spoken on the titles (no floating caption over the cards) */
   const el = view === 'pick' ? $('whoTitle') : $('newThemeLabel');
   const ids = (pre || []).concat([view === 'pick' ? 'who' : 'ask-theme']);
-  whenActive(() => speak(ids.map((id, i) => promptItem(id, i === ids.length - 1 ? el : (view === 'pick' ? el : $('newTitle'))))));
+  const elFor = (id, i) => (id === 'intro-title' ? null : i === ids.length - 1 ? el : (view === 'pick' ? el : $('newTitle'))); /* null: caption */
+  whenActive(() => speak(ids.map((id, i) => promptItem(id, elFor(id, i)))));
 }
 
 function closeWho() {
@@ -576,7 +603,9 @@ function closeWho() {
   syncBar(false);
 }
 
-function pickChild(id) {
+/* pre: what is said before the home greeting (picker: the child's name + 'welcome-back', then only the time-of-day
+   greeting; new child: 'welcome-new', then the greeting + 'welcome') */
+function pickChild(id, pre) {
   P.setActive(store, id);
   const c = P.activeChild(store);
   if (!c) return;
@@ -587,15 +616,19 @@ function pickChild(id) {
   setThemeFromChild();
   goHome();
   closeWho();
-  sayPrompt('welcome');
+  const greet = $('greet');
+  const first = pre || [{ clip: nameClip(), el: greet }, promptItem('welcome-back')];
+  /* home entry: the time-of-day greeting (then 'welcome', except after 'welcome-back': two "Hei" lines) */
+  speak(first.concat([promptItem(greetId()), pre ? promptItem('welcome', greet) : null]), { gapMs: 150 });
 }
 
-function createChild(name, th) {
+/* praise: the name was not praised yet ('nice-name' comes first) */
+function createChild(name, th, praise) {
   const c = P.addChild(store, name, th, IDS);
   if (!c) { toast('Pelaajia voi olla enintään ' + P.MAX_CHILDREN + '.'); return; }
   save();
   safe(() => SFX.success());
-  pickChild(c.id);
+  pickChild(c.id, [praise ? promptItem('nice-name') : null, promptItem('welcome-new')]);
 }
 
 /* Settings changed the children (add / rename / theme / level / delete / "Pelaa nyt"). The playing child was
@@ -642,7 +675,8 @@ function onGateTap() {
   blockTaps();
   safe(() => FX.burst(c.x, c.y, ['#FF7A9A', '#5AB4FF', '#FFD36E', '#8EE3C8', '#FFFFFF'], 26));
   safe(() => SFX.sparkle());
-  if (!resume) { openWho(store.children.length ? 'pick' : 'new', false, ['cover']); return; }
+  /* the title already said by the intro -> 'cover'; else the title instead of 'cover' (same words twice otherwise) */
+  if (!resume) { openWho(store.children.length ? 'pick' : 'new', false, [titleSaid ? 'cover' : 'intro-title']); return; }
   syncBar(isOpen('who'));
   resumeAfterUnlock();
 }
@@ -744,7 +778,11 @@ function wire() {
     if (rewardPiece && landPiece(rewardPiece.slot)) { leaving = true; later(420, nextStep); return; }
     nextStep();
   });
-  $('finaleHome').addEventListener('click', () => { if (!stray()) goHome(); });
+  $('finaleHome').addEventListener('click', () => {
+    if (stray()) return;
+    goHome();
+    speak([promptItem('bye')]);
+  });
   $('finaleAgain').addEventListener('click', () => {
     if (stray()) return;
     const sec = cur;
@@ -812,6 +850,7 @@ function boot() {
   initWho({
     onPick: pickChild,
     onCreate: createChild,
+    onName: (name, el) => speak([promptItem('nice-name', el)]),
     onAdd: () => {
       showView('new', { back: true });
       focusEl(viewFocus('new'));
@@ -831,7 +870,7 @@ function boot() {
   if (child) { showHome(); showScreen('home'); } else showScreen('none');
   initIntro($('coverArt'), $('gate'));
   showGate('start');
-  playIntro();
+  playIntro({ sfx: store.settings.sfx !== false, cue: store.settings.speech !== false ? onIntroCue : null });
   syncBar(true);
   safe(() => engine.onLockChange(onLock));
   safe(() => engine.preload(['cover', 'who', 'ask-theme', 'welcome'].map((id) => engine.prompt(id))));

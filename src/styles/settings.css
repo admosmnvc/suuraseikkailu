@@ -643,10 +643,30 @@ div.set-root[hidden], .set-root [hidden] { display: none !important; }
 }
 .set-root .rec-row[data-st="own"] .rec-status { background: var(--s-gold) linear-gradient(180deg, var(--s-gold-hi), var(--s-gold)); }
 .set-root .rec-row[data-st="none"] .rec-status { background: #ECEAF2; }
-/* two equal buttons per line on phones; "Poista oma ääni" takes its own line */
+/* two equal buttons per line on phones; "Tuo tiedosto" and "Poista oma ääni" take their own lines */
 .set-root .rec-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .set-root .rec-actions .sbtn { padding-inline: 12px; }
 .set-root .rec-actions .sbtn-del { grid-column: 1 / -1; }
+/* "Tuo tiedosto" is the quiet secondary choice in the long list (still a full 64 px target) */
+.set-root .rec-actions .sbtn-file {
+  grid-column: 1 / -1;
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px rgba(36, 50, 79, .14);
+  color: var(--s-ink-soft);
+  font-weight: 700;
+  font-size: .95rem;
+}
+.set-root .rec-actions .sbtn-file .set-ico { width: 20px; height: 20px; color: var(--s-ink-soft); }
+.set-root .rec-actions .sbtn-file:active:not(:disabled) { background: rgba(255, 255, 255, .7); }
+/* in a child's card the file is a main way to add the name (a natural voice file): full button */
+.set-root .kid .rec-actions .sbtn-file {
+  background: linear-gradient(180deg, #FFFFFF 0%, #F5F2F9 100%);
+  box-shadow: var(--s-hi), var(--s-lo), var(--s-btn);
+  color: var(--s-ink);
+  font-weight: 800;
+  font-size: 1rem;
+}
+.set-root .kid .rec-actions .sbtn-file .set-ico { color: var(--s-deep); }
 .set-root .rec-live { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .set-root .sbtn-stop {
   display: inline-flex;
@@ -842,8 +862,9 @@ div.set-root[hidden], .set-root [hidden] { display: none !important; }
   .set-root .set-body { gap: 24px; padding: 22px 24px 32px; }
   .set-root .set-card { padding: 20px 22px; }
   .set-root .test-grid { grid-template-columns: repeat(4, 1fr); }
-  .set-root .rec-actions { grid-template-columns: 1fr 1fr 1.35fr; }
-  .set-root .rec-actions .sbtn-del { grid-column: auto; }
+  .set-root .rec-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .set-root .rec-actions .sbtn-file { grid-column: auto; }
+  .set-root .kid .rec-actions .sbtn-file { grid-column: 1 / -1; }
   .set-root .tbtn { flex-direction: column; justify-content: center; text-align: center; min-height: 106px; }
   .set-root .lvl-name { font-size: 1rem; }
 }

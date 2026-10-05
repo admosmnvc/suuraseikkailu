@@ -118,7 +118,7 @@ export default {
       if (grown % 2 === 0) addFly(sp);
       if (grown === 3) st.praise(top.x, top.y - 50, pick(WORDS));
       S.point();
-      if (grown === N) S.later(() => S.finish(), 1000);
+      if (grown === N) { st.say('fx-pretty'); S.later(() => S.finish(), 1000); }
       S.later(() => sp.el.classList.remove('is-rain'), 600);
     }
     function landFly(f) {
@@ -132,7 +132,7 @@ export default {
       f.el.style.setProperty('--fy', -st.h * 0.4 + 'px');
       flies.push(f);
       landFly(f);
-      S.later(() => sfx('sparkle'), 700);
+      S.later(() => { sfx('sparkle'); if (k === 0) st.say('fx-wow'); }, 700); /* first butterfly lands */
     }
 
     st.onDown((p) => {

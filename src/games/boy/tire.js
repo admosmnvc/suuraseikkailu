@@ -182,6 +182,7 @@ export default {
           S.snd('ding', 5);
           S.burst(L.hub, null, 16);
           S.comic('Klik!', { x: L.hub.x, y: L.hub.y - L.Rt * 1.05 });
+          S.say('fx-go');
           nuts.forEach((n) => { n.classList.remove('off', 'back'); n.classList.add('hole'); });
           S.point();
           S.later(showHint, 450);
@@ -227,6 +228,7 @@ export default {
         inner.classList.add('bounce', 'happy');
         honk(S);
         S.snd('boom');
+        S.say('fx-vroom');
         const r = car.getBoundingClientRect(), a = S.local(r.left + r.width / 2, r.top + r.height * 0.4);
         S.burst(a, null, 24);
         S.later(() => S.finish(), S.rm ? 200 : 500);       /* praise while the happy car bounces */

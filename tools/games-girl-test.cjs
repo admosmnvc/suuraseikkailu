@@ -211,7 +211,9 @@ async function runGame(page, i, tag) {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   const hidden = await page.evaluate(() => { const m = document.querySelector('.mg'); return !m || m.hidden; });
   const ms = lat.filter((l) => l.ms != null).map((l) => l.ms);
-  return { i, tag, ms: res ? Math.round(res.ms) : null, said: res && res.said, overflow, hidden, botError: b && b.botError,
+  const says = (res && res.says) || [];
+  return { i, tag, ms: res ? Math.round(res.ms) : null, said: res && res.said, titleSays: says.filter((x) => /^game-/.test(x)).length,
+    fx: says.filter((x) => /^fx-/.test(x)), overflow, hidden, botError: b && b.botError,
     downs: lat.length, noChange: lat.filter((l) => l.ms == null || !l.beforeFrame).length,
     latMax: ms.length ? +Math.max(...ms).toFixed(1) : null, latMed: ms.length ? +ms.sort((a, c) => a - c)[ms.length >> 1].toFixed(1) : null,
     handlerMax: lat.length ? +Math.max(...lat.map((l) => l.handler || 0)).toFixed(1) : null };
@@ -245,14 +247,14 @@ async function runIdle(page, i, tag) {
       rows.push(r);
       const bad = [];
       if (r.ms == null || r.ms < MIN_MS || r.ms > MAX_MS) bad.push('time ' + r.ms);
-      if (r.said !== 'game-girl-' + i) bad.push('say ' + r.said);
+      if (r.said !== 'game-girl-' + i || r.titleSays !== 1) bad.push('say ' + r.said + ' x' + r.titleSays);
       if (r.overflow > 0) bad.push('overflow ' + r.overflow);
       if (!r.hidden) bad.push('overlay visible');
       if (r.noChange) bad.push(r.noChange + ' touches without same-frame change');
       if (r.latMax != null && r.latMax > LAT_MAX) bad.push('latency ' + r.latMax + ' ms');
       if (r.botError) bad.push('bot: ' + r.botError);
       if (bad.length) fails.push(tag + ' g' + i + ': ' + bad.join(', '));
-      console.log(tag, 'g' + i, (r.ms / 1000).toFixed(1) + 's', 'downs', r.downs, 'lat max/med', r.latMax + '/' + r.latMed + ' ms', bad.length ? 'FAIL ' + bad.join('; ') : 'ok');
+      console.log(tag, 'g' + i, (r.ms / 1000).toFixed(1) + 's', 'downs', r.downs, 'lat max/med', r.latMax + '/' + r.latMed + ' ms', 'fx ' + r.fx.join(','), bad.length ? 'FAIL ' + bad.join('; ') : 'ok');
       await sleep(300);
     }
     if (!QUICK && vp.w === 390) {

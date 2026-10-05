@@ -4,7 +4,7 @@
             events in the 390x844 touch run). It follows the game's own hint glove: the core test hook
             .mg.__mgForceHint() shows the current idle hint at once, the bot reads its type (tap / drag / rub /
             hold) and position and performs that gesture at child pace. Asserts: onDone within 10–20 s,
-            say(gameId) exactly once, overlay closed, no horizontal scroll, 0 console errors/warnings,
+            say(gameId) exactly once (S.say exclamations 'fx-…' counted apart: none in the first 1.5 s, >= 2.5 s apart), overlay closed, no horizontal scroll, 0 console errors/warnings,
             every visible button in the arena >= 64 px in both dimensions (asserted for boy games).
             Viewports: 390x844, 390x844 touch, 1024x768, 360x740 reduced motion, 740x360.
    latency: for every first pointerdown of a gesture: time from the start of the pointerdown dispatch
@@ -192,7 +192,7 @@ async function playGame(page, io, theme, i, tag, pause) {
   await sleep(80);
   const lat = await page.evaluate(() => window.__lat.slice());
   const c = await closedState(page);
-  return { theme, i, tag, ms: res ? Math.round(res.ms) : null, said: res && res.said, sayCount: res && res.sayCount, acts, types, lat, overflow: c.overflow, hidden: c.hidden, minTarget };
+  return { theme, i, tag, ms: res ? Math.round(res.ms) : null, said: res && res.said, sayCount: res && res.sayCount, fx: (res && res.fx) || [], acts, types, lat, overflow: c.overflow, hidden: c.hidden, minTarget };
 }
 
 async function playSuite(browser, vp, o) {
@@ -325,8 +325,9 @@ async function robustSuite(browser) {
   /* 2. play twice: the first is replaced, its stale abort() is harmless, only the second finishes */
   await page.evaluate(() => {
     const T = window.__mgTest.MiniGames, g = window.__g2 = { d1: 0, d2: 0, s: [] };
-    g.h1 = T.play({ theme: 'girl', index: 0, say: (id) => g.s.push(id), onDone: () => g.d1++ });
-    g.h2 = T.play({ theme: 'boy', index: 3, say: (id) => g.s.push(id), onDone: () => g.d2++ });
+    const title = (id) => { if (!/^fx-/.test(id)) g.s.push(id); };
+    g.h1 = T.play({ theme: 'girl', index: 0, say: title, onDone: () => g.d1++ });
+    g.h2 = T.play({ theme: 'boy', index: 3, say: title, onDone: () => g.d2++ });
     g.h1.abort();
   });
   let d = await domState(page);
@@ -345,7 +346,9 @@ async function robustSuite(browser) {
       await page.setViewportSize({ width: vp[0], height: vp[1] });
       await sleep(500);
       d = await domState(page);
-      ok(!d.hidden && d.overflow <= 0 && d.arena && d.arena[2] <= vp[0] + 1 && d.arena[3] <= vp[1] + 1, 'resize ' + theme + ' ' + i + ' -> ' + vp.join('x') + ': overflow ' + d.overflow);
+      const fin = await page.evaluate(() => window.__g.done === 1); /* a fast game may already be finished: fine */
+      ok((fin && d.hidden && d.overflow <= 0) || (!d.hidden && d.overflow <= 0 && d.arena && d.arena[2] <= vp[0] + 1 && d.arena[3] <= vp[1] + 1),
+        'resize ' + theme + ' ' + i + ' -> ' + vp.join('x') + ': overflow ' + d.overflow + (fin ? ' (already finished)' : ''));
       if (vp[0] === 1024) await page.screenshot({ path: path.join(OUT, theme + i + '-resized-1024x768.png') });
       await act();
     }
@@ -439,12 +442,16 @@ function latStats(list) {
       const okL = lat.n > 0 && lat.miss === 0 && (lat.max == null || lat.max <= FRAME_MS);
       /* touch targets >= 64 px: asserted for the boy games (girl games use their own stage, reported only) */
       const okS = g.theme !== 'boy' || !(g.minTarget.m < 64);
-      const ok = okT && okL && okS && g.said === gid(g.theme, g.i) && g.sayCount === 1 && g.overflow <= 0 && g.hidden;
+      /* S.say exclamations: known fx ids, none in the first 1.5 s, >= 2.5 s apart */
+      const fxOk = g.fx.every((f, k) => /^fx-/.test(f.id) && f.t >= 1450 && (k === 0 || f.t - g.fx[k - 1].t >= 2450));
+      if (!fxOk) g.fxBad = true;
+      const ok = okT && okL && okS && fxOk && g.said === gid(g.theme, g.i) && g.sayCount === 1 && g.overflow <= 0 && g.hidden;
       if (!ok) fail++;
       console.log('  ' + (ok ? 'ok  ' : 'FAIL') + ' ' + g.theme + ' ' + g.i + ': ' + (g.ms == null ? 'no onDone' : (g.ms / 1000).toFixed(1) + ' s') +
         ', ' + g.acts + ' gestures ' + JSON.stringify(g.types) + ', say ' + g.said + ' x' + g.sayCount + ', overflow ' + g.overflow + ', closed ' + g.hidden +
         ', latency ms med ' + lat.med + ' max ' + lat.max + ' (' + lat.n + ' touches, ' + lat.miss + ' not same frame' + (lat.anim ? ', ' + lat.anim + ' anim-only' : '') + ')' +
-        ', min target ' + (isFinite(g.minTarget.m) ? Math.round(g.minTarget.m) + ' px' + (g.minTarget.m < 64 ? ' (' + g.minTarget.who + ')' : '') : '-'));
+        ', min target ' + (isFinite(g.minTarget.m) ? Math.round(g.minTarget.m) + ' px' + (g.minTarget.m < 64 ? ' (' + g.minTarget.who + ')' : '') : '-') +
+        ', fx [' + g.fx.map((f) => f.id.slice(3) + '@' + (f.t / 1000).toFixed(1)).join(' ') + ']' + (g.fxBad ? ' BAD SPACING' : ''));
     }
     for (const c of r.checks || []) { if (!c.ok) fail++; console.log('  ' + (c.ok ? 'ok  ' : 'FAIL') + ' ' + c.msg); }
     for (const g of r.lat || []) {

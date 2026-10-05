@@ -160,6 +160,7 @@ export default {
         phase = 'end';
         towel.classList.add('is-away');
         pup.classList.add('is-happy');
+        st.say('fx-shine');
         st.hearts(box.x + 150 * box.s, box.y + 40 * box.s, 3);
         sfx('success');
       }
@@ -172,6 +173,7 @@ export default {
       water.classList.add('is-on');
       pup.classList.add('is-rinse');
       sfx('whoosh');
+      st.say('fx-splash');
       S.later(() => sfx('sparkle'), 500);
       S.later(() => {
         if (!S.active()) return;

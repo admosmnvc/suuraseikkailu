@@ -100,6 +100,7 @@ export default {
         S.snd('tap');
         S.later(() => setState('green'), YELLOW_MS);
       } else if (st === 'green') {
+        if (round === 0 || round === 2) S.say('fx-go');
         S.snd('ding', round);
         S.comic('Aja!', { x: L.light.x - L.lw * 1.3, y: L.light.y - L.lh * 0.2 });
         if (round === 0) showHint();
@@ -118,7 +119,7 @@ export default {
         S.bump(pedal, 0.6);
         car.classList.add('zoom');
         drive = { t: 0, from: cam, to: cam + L.D };
-        if (round >= ROUNDS) S.later(finishGame, 600); /* praise while the car speeds away */
+        if (round >= ROUNDS) { S.say('fx-vroom'); S.later(finishGame, 600); } /* praise while the car speeds away */
         return;
       }
       if (state === 'drive') return;

@@ -174,7 +174,7 @@ export default {
       sfx('plop');
       sfx('ding', count);
       count++;
-      if (count === 4) st.praise(v.x, v.y - 60, pick(WORDS));
+      if (count === 4) { st.praise(v.x, v.y - 60, pick(WORDS)); st.say('fx-pretty'); }
       if (count >= GOAL) { lightCandles(); S.later(() => S.finish(), 1200); }
       S.point();
       void fromP;
@@ -192,6 +192,7 @@ export default {
       cs.forEach((q, i) => { q.el.style.setProperty('--d', (i * 90) + 'ms'); q.el.classList.add('is-lit'); });
       cake.classList.add('is-lit');
       sfx('whoosh');
+      st.say('fx-yum');
       S.later(() => sfx('sparkle'), 300);
     }
     function moveHeld(p) {

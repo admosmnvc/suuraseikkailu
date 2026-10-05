@@ -174,6 +174,8 @@ export function makeStage(S, opt) {
     S.hint(o);
   };
   st.hideHint = () => { if (typeof S.hideHint === 'function') S.hideHint(); };
+  /* short voice exclamation (prompts FX_IDS, e.g. 'fx-wow'); the core rate-limits; optional */
+  st.say = (id) => { try { if (typeof S.say === 'function') S.say(id); } catch (e) { /* voice is decoration */ } };
   /* fn() returns the hint spec for the current situation (or null); the core calls it after ms without a touch */
   st.idle = function (fn, ms) {
     if (typeof S.idleHint === 'function') S.idleHint(() => { const spec = fn(); if (spec) st.hint(spec); }, ms || 2600);

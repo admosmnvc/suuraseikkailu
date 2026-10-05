@@ -32,12 +32,20 @@ Omistaja: "resitoinnin flow joka on vaan pilkottu". Jokaisesta suuran rivistä o
 
 ## Suomenkieliset opettajaäänet (`tools/make_voices.py`)
 
-- `fi-FI-NooraNeural`, nopeus `+3%`, sävelkorkeus `+15Hz` – kirkas, lämmin ja kannustava. 56 tiedostoa (kehotteet + merkitykset); `ask-name` on vain tekstiä.
-- **Ääntämiskorjaukset vain puheeseen** (`SAY_AS`; näkyvä teksti ei muutu): Al-Fatihan → Alfaatihan, Al-Ikhlasin → Alihlaasin, Al-Kawtharin → Alkautharin, Kawtharin → Kautharin, Upeaa → Upeeaa, Herraasi → Herraa-si, kaikkea → kaikke-a, **lähettiläs → lähetti-läs** (uusi: lauseen lopussa Noora nieli toisen l:n, "lähettiäs" kahdella Whisper-mallilla; korjattuna tunnistuu oikein).
+- **Nyt (väliaikainen):** `fi-FI-NooraNeural` (Edge), nopeus `+3%`, sävelkorkeus `+15Hz`. 83 tiedostoa (kehotteet + merkitykset); `ask-name` on vain tekstiä. v3.2:n 27 uutta kehotetta (intro-title, intro-go, nice-name, welcome-new, welcome-back, greet-*, bye, praise-6..10, game-done, fx-*) ovat **paikkamerkkejä** Nooran äänellä, kunnes ElevenLabs-ääni vaihdetaan.
+- **Vaihto ElevenLabsiin (omistajan valitsema ääni "Aurora", `YSabzCJMvEHDduIDMdwV`):** valmis, ajetaan seuraavassa istunnossa:
+  1. `export ELEVENLABS_API_KEY=…` (avainta ei koskaan tulosteta eikä tallenneta)
+  2. `python3 tools/make_voices.py --provider elevenlabs --samples --yes` → 3 näytettä `../qa/voice-samples/` (public/ ei muutu); asetuksia voi kokeilla: `--stability --similarity --style --speed --seed --model`
+  3. `python3 tools/make_voices.py --provider elevenlabs` näyttää merkkimäärän ja krediittiarvion (nyt 83 tiedostoa, 2027 merkkiä ≈ 2027 krediittiä, `eleven_multilingual_v2`), mitään ei lähetetä
+  4. `python3 tools/make_voices.py --provider elevenlabs --yes` tekee kaikki suomenkieliset tiedostot; sama jälkikäsittely ja tarkistus kuin nyt (mp3_44100_128 → reunat, −18.4 LUFS, mono 64 kbps). Onnistuneen ajon jälkeen `data.js`:n lähdemerkintä vaihtuu: "Suomenkieliset kehotteet: ElevenLabs, ääni Aurora."
+  - Oletusasetukset (iloinen): stability 0.35, similarity_boost 0.8, style 0.45, speaker boost, speed 1.0, seed 7. Jokainen asetus on osa tiedoston avainta: muuttumattomat tiedostot ohitetaan, muutetut tehdään uudelleen. Ilman `--provider`-valintaa käytetään edellisen ajon palvelua, joten pelkkä ajo ei vaihda ääntä vahingossa.
+  - Testit ilman avainta ja verkkoa: `python3 -m unittest tools/make_voices_test.py -v` (12 testiä: pyynnön rakenne, uudelleenyritys 429/503, avain ei koskaan näy, arvio ilman `--yes` ei lähetä mitään, ohitus, lähdemerkintä, näytteet, nimet).
+- **Lapsen nimi:** `python3 tools/make_name.py "Nimi" [--say "ääntämisasu"] [--out tiedosto.mp3] [--provider elevenlabs --yes]` tekee nimen samalla äänellä ja käsittelyllä projektikansion ULKOPUOLELLE (oletus `../suuraseikkailu-nimet/<nimi>.mp3`; kansion sisälle kirjoittaminen estetään). Nimiä ei koskaan lisätä projektiin.
+- **Ääntämiskorjaukset vain puheeseen:** koko teksti (`SAY_ID`): intro-title → "Suuuuraseikkailuu!" (venytetty, innostunut), bye → "Nähdään, taas!" (Noora puuroutti: "nahdantos"). Sanat (`SAY_AS`, Noora): Al-Fatihan → Alfaatihan, Al-Ikhlasin → Alihlaasin, Al-Kawtharin → Alkautharin, Kawtharin → Kautharin, Upeaa → Upeeaa, Herraasi → Herraa-si, kaikkea → kaikke-a, lähettiläs → lähetti-läs. ElevenLabsille vain arabialaiset nimet (Nooran vokaalikorjaukset eivät koske sitä).
 - **Jälkikäsittely:** hiljaisuus pois reunoilta (−50 dB RMS, 10 ms häivytys), 60 ms tyhjää, mono, kaksivaiheinen lineaarinen loudnorm, MP3 mono 44,1 kHz 64 kbps.
-- **Äänekkyys:** tavoite −18.4 LUFS = v2:n alkuperäisten Mishary-jaetiedostojen (14 kpl, `tools/recitation-src/everyayah/`) mediaani – viite ei enää ole `public/audio/`, koska `build-cuts.py` normalisoi ne samaan tavoitteeseen. True peak ≤ −1.5 dBTP.
-- **Tarkistus:** kaikki 56 läpi (kesto, äänekkyys −18.5…−18.3, true peak); kaikki litteroitu Whisperillä. Erot: gem "javokiven" (rajatapaus, l pehmeä), finale-* / mean-kawthar-1 täsmäävät puhemuotoon (`SAY_AS`), rocket-launch "3, 2, 1" (numeroina), game-girl-1 "Ruokieläimet" (yhdistetty), mean-shahada-1 nyt oikein.
-- Ajo: `python3 tools/make_voices.py` (`--check`, `--force`, `--only`, `--asr`, `--prune`).
+- **Äänekkyys:** tavoite −18.4 LUFS = v2:n alkuperäisten Mishary-jaetiedostojen (14 kpl, `tools/recitation-src/everyayah/`) mediaani. True peak ≤ −1.5 dBTP.
+- **Tarkistus:** kaikki 83 läpi (kesto, äänekkyys −18.5…−18.3, true peak); kaikki litteroitu Whisperillä. Erot: gem "javokiven" (l pehmeä), finale-* / mean-kawthar-1 täsmäävät puhemuotoon, rocket-launch "3, 2, 1", game-girl-1 "Ruokieläimet", intro-title "Suu-uuraseikkailu" (tarkoituksella venytetty), fx-vroom "Vroom", fx-wow "Wow", fx-yay "Yippee", fx-splash "Plats", fx-yum "Herkulista" (tunnistimen kirjoitusasuja), **fx-shine "Kiitoa" ja fx-beep "Tiit-tiit"** (Noora: l / p heikko; myös "Kiil-toa" ja "Piip, piip" kokeiltu – paikkamerkit, korvautuvat ElevenLabsilla).
+- Ajo: `python3 tools/make_voices.py` (`--check`, `--force`, `--only`, `--asr`, `--prune`, `--provider`, `--samples`, `--yes`).
 
 ## quran.com-sana-äänitteet (vain työkalukopio)
 
@@ -155,6 +163,33 @@ Vanhempi voi korvata asetuksissa (pitkä painallus → **Omat äänitykset**) Sh
 | `public/audio/fi/game-girl-3.mp3` | Koristele kakku! | 1.25 | -18.4 |
 | `public/audio/fi/game-girl-4.mp3` | Kasvata kukkaniitty! | 1.44 | -18.4 |
 | `public/audio/fi/game-girl-5.mp3` | Sytytä moskeijan valot! | 1.65 | -18.4 |
+| `public/audio/fi/intro-title.mp3` | Suuraseikkailu! | 1.46 | -18.4 |
+| `public/audio/fi/intro-go.mp3` | No niin, aloitetaan! Tule jo! | 2.79 | -18.4 |
+| `public/audio/fi/nice-name.mp3` | Oi, onpa kiva nimi! | 1.44 | -18.4 |
+| `public/audio/fi/welcome-new.mp3` | Jee! Tervetuloa mukaan! | 2.56 | -18.4 |
+| `public/audio/fi/welcome-back.mp3` | Hei taas! Kiva, että tulit! | 2.69 | -18.5 |
+| `public/audio/fi/greet-morning.mp3` | Hyvää huomenta! | 1.18 | -18.4 |
+| `public/audio/fi/greet-day.mp3` | Hyvää päivää! | 1.10 | -18.4 |
+| `public/audio/fi/greet-evening.mp3` | Hyvää iltaa! | 1.10 | -18.4 |
+| `public/audio/fi/bye.mp3` | Nähdään taas! | 1.25 | -18.4 |
+| `public/audio/fi/praise-6.mp3` | Olet tosi taitava! | 1.28 | -18.4 |
+| `public/audio/fi/praise-7.mp3` | Jee, hienosti! | 1.20 | -18.4 |
+| `public/audio/fi/praise-8.mp3` | Vau, ihan mahtavaa! | 1.54 | -18.4 |
+| `public/audio/fi/praise-9.mp3` | Upeasti sanottu! | 1.33 | -18.4 |
+| `public/audio/fi/praise-10.mp3` | Sinä osaat! | 0.99 | -18.3 |
+| `public/audio/fi/game-done.mp3` | Hienosti pelattu! | 1.25 | -18.4 |
+| `public/audio/fi/fx-vroom.mp3` | Vrruum! | 0.65 | -18.4 |
+| `public/audio/fi/fx-namnam.mp3` | Nam nam! | 0.78 | -18.4 |
+| `public/audio/fi/fx-shine.mp3` | Kiiltoa! | 0.76 | -18.4 |
+| `public/audio/fi/fx-splash.mp3` | Pläts! | 0.55 | -18.5 |
+| `public/audio/fi/fx-ready.mp3` | Valmista! | 0.84 | -18.4 |
+| `public/audio/fi/fx-wow.mp3` | Vau! | 0.55 | -18.4 |
+| `public/audio/fi/fx-yay.mp3` | Jippii! | 0.73 | -18.4 |
+| `public/audio/fi/fx-beep.mp3` | Piip piip! | 0.70 | -18.4 |
+| `public/audio/fi/fx-pretty.mp3` | Kaunista! | 0.76 | -18.4 |
+| `public/audio/fi/fx-yum.mp3` | Herkullista! | 0.94 | -18.4 |
+| `public/audio/fi/fx-go.mp3` | Mennään! | 0.73 | -18.4 |
+| `public/audio/fi/fx-boing.mp3` | Pomppis! | 0.73 | -18.4 |
 | `public/audio/fi/test-fi.mp3` | Hei! Tämä on suomen puheääni. | 2.95 | -18.4 |
 | `public/audio/fi/mean-shahada-0.mp3` | Todistan, että ei ole muuta jumalaa kuin Allah. | 3.00 | -18.4 |
 | `public/audio/fi/mean-shahada-1.mp3` | Ja todistan, että Muhammad on Allahin lähettiläs. | 3.13 | -18.4 |

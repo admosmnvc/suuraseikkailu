@@ -19,10 +19,18 @@ Source: branch `main` of github.com/admosmnvc/suuraseikkailu. Owner communicates
    (e.g. "Nyt sinun vuorosi! Sano perässä." / "Mahtavaa! Osaat koko Al-Fatihan!") with a cheerful, warm, slower delivery
    for 4–7-year-olds (try stability/style settings), send them to the owner for a quick OK, then generate all clips.
    The full Finnish script with ids is in PUHEKASIKIRJOITUS.md.
-3. Add an ElevenLabs provider to `tools/make_voices.py` (keep the trim / loudness −18.4 LUFS / validation pipeline),
-   regenerate every Finnish clip in `public/audio/fi/` (list: `node tools/list-clips.mjs`), keep the SAY_AS fixes only
-   if still needed, update credits in `src/content/data.js` + README + `tools/voices-report.md`.
-4. `npm run build && node tools/check-arabic.mjs && node tools/e2e.cjs dist` (~9 min, must be all PASS), then publish:
+3. The ElevenLabs provider is ALREADY implemented in `tools/make_voices.py` (unit tests:
+   `python3 -m unittest tools/make_voices_test.py -v`). Run, in order:
+   `python3 tools/make_voices.py --provider elevenlabs --samples --yes` (3 samples → ../qa/voice-samples/, send to owner)
+   `python3 tools/make_voices.py --provider elevenlabs` (estimate only: 83 clips ≈ 2 027 credits)
+   `python3 tools/make_voices.py --provider elevenlabs --yes` (all Finnish clips; credits line updated automatically).
+   Free plan (10 000 credits) is enough; ElevenLabs free tier = non-commercial + attribution (credit line covers it).
+   Currently all 83 Finnish clips are Edge Noora placeholders (27 new ones: intro-title, intro-go, nice-name, …, fx-*).
+4. Children's names: ask the owner for the names, then
+   `python3 tools/make_name.py "Nimi" --provider elevenlabs --yes` (writes OUTSIDE the project, ../suuraseikkailu-nimet/),
+   send the files to the owner via chat; the owner imports them in the app: Vanhemmille → Lapset → Nimi omalla äänellä →
+   Tuo tiedosto (stored only on the device). Never commit names.
+5. `npm run build && node tools/check-arabic.mjs && node tools/e2e.cjs dist` (~9 min, must be all PASS), then publish:
    commit to `main`; copy `dist/` (+ `.nojekyll`) to branch `gh-pages` and push. The service worker now uses
    network-first navigation + safe auto-reload, so phones show updates on the next open.
 

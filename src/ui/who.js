@@ -1,12 +1,18 @@
 /* "Kuka pelaa tänään?" picker (one card per child in its own theme + "+ Lisää lapsi") and the new-player
    onboarding (big name field + two huge Tyttö / Poika cards; tapping a card with a name creates the child).
+   A typed name (>= 2 letters, then 1.2 s without typing, Enter or leaving the field) gets 'nice-name' once per
+   distinct name (a longer / shorter spelling of the same name in this view does not count as new).
    OWNER: ui agent. */
 import ART from '../art.js';
 import { NAME_MAX, MAX_CHILDREN } from '../profiles.js';
 import { $, esc, focusEl, replayClass } from './dom.js';
+import { promptText } from '../content/prompts.js';
 
-let cb = null;          /* { onPick(id), onCreate(name, theme), onClose(), onBack() } */
+let cb = null;          /* { onPick(id), onCreate(name, theme, praise), onName(name, el), onClose(), onBack() } */
 let picked = null;      /* theme tapped before a name was typed */
+const NAME_IDLE_MS = 1200, BLUR_MS = 250;
+const praised = new Set(); /* names praised (lower case) */
+let praisedHere = [], nameTimer = 0;
 
 const clean = (v) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, NAME_MAX);
 
@@ -16,7 +22,29 @@ function say(msg) {
   replayClass(m, 'pop');
 }
 
+/* the name deserves 'nice-name' (and is marked as praised) */
+function praiseDue(name) {
+  const n = name.toLowerCase();
+  if (n.length < 2 || praised.has(n) || praisedHere.some((p) => p.startsWith(n) || n.startsWith(p))) return false;
+  praised.add(n);
+  praisedHere.push(n);
+  return true;
+}
+
+function praiseName() {
+  clearTimeout(nameTimer);
+  nameTimer = 0;
+  if ($('who').hidden || $('who').dataset.view !== 'new' || $('newForm').hidden) return false;
+  const name = clean($('newName').value);
+  if (!praiseDue(name)) return false;
+  say(promptText('nice-name'));
+  if (cb.onName) cb.onName(name, $('newMsg'));
+  return true;
+}
+
 function create(theme) {
+  clearTimeout(nameTimer);
+  nameTimer = 0;
   const name = clean($('newName').value);
   if (!name) {
     picked = theme;
@@ -26,7 +54,7 @@ function create(theme) {
     focusEl($('newName'));
     return;
   }
-  cb.onCreate(name, theme);
+  cb.onCreate(name, theme, praiseDue(name)); /* a praise still due comes first (the tap would cut it) */
 }
 
 export function initWho(callbacks) {
@@ -43,12 +71,18 @@ export function initWho(callbacks) {
   $('newBack').addEventListener('click', () => cb.onBack());
   $('pickGirl').addEventListener('click', () => create('girl'));
   $('pickBoy').addEventListener('click', () => create('boy'));
-  $('newName').addEventListener('input', () => { if ($('newMsg').textContent) $('newMsg').textContent = ''; });
+  $('newName').addEventListener('input', () => {
+    if ($('newMsg').textContent) $('newMsg').textContent = '';
+    clearTimeout(nameTimer);
+    nameTimer = clean($('newName').value).length >= 2 ? setTimeout(praiseName, NAME_IDLE_MS) : 0;
+  });
+  /* leaving the field: a little later, so a tap on Tyttö / Poika creates first (one sequence, nothing cut) */
+  $('newName').addEventListener('blur', () => { clearTimeout(nameTimer); nameTimer = setTimeout(praiseName, BLUR_MS); });
   $('newForm').addEventListener('submit', (e) => {
     e.preventDefault();
     if (picked) { create(picked); return; }
     if (!clean($('newName').value)) { say('Kirjoita ensin nimi.'); return; }
-    say('Valitse tyttö tai poika.');
+    if (!praiseName()) say('Valitse tyttö tai poika.');
     ['pickGirl', 'pickBoy'].forEach((id) => replayClass($(id), 'wiggle'));
     try { $('newName').blur(); } catch (err) { /* ignore */ }
   });
@@ -74,8 +108,11 @@ export function showView(view, opts) {
   $('who').dataset.view = view;
   $('newForm').hidden = view !== 'new';
   $('who').querySelector('.who-pick').hidden = view !== 'pick';
+  clearTimeout(nameTimer);
+  nameTimer = 0;
   if (view === 'new') {
     picked = null;
+    praisedHere = [];
     $('newName').value = '';
     $('newMsg').textContent = '';
     ['pickGirl', 'pickBoy'].forEach((id) => $(id).setAttribute('aria-pressed', 'false'));
