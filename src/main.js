@@ -37,7 +37,7 @@ import { applyTheme, syncBar } from './ui/theme.js';
 import { unitsOf, linesDoneBy, stepsBeforeLine, unitClips } from './ui/units.js';
 import { prefixClips } from './content/chunks.js';
 import { popPraise, randomWord } from './ui/praise.js';
-import { initIntro, playIntro, introBusy } from './ui/intro.js';
+import { initIntro, playIntro, introBusy, soundNow } from './ui/intro.js';
 import { initWho, renderPicker, showView, viewFocus } from './ui/who.js';
 import { renderLevel } from './ui/level.js';
 import { renderHome, initParentButton, forgetShown } from './ui/home.js';
@@ -87,7 +87,8 @@ const TAP_BLOCK_MS = 450;
 let tapBlockUntil = 0;
 const blockTaps = () => { tapBlockUntil = Date.now() + TAP_BLOCK_MS; };
 let gateAfterGame = false; /* audio got locked during a minigame: the gate waits until the game is done */
-let titleSaid = false;     /* the intro said 'intro-title' (sound allowed before the tap); else the start tap says it */
+let titleSaid = false;     /* the intro said 'intro-title' (sound allowed, or a tap on the cover); else the start tap says it */
+let titleBusy = false;     /* 'intro-title' is playing right now */
 let lastPraise = '';       /* reward praise: never the same twice in a row */
 let lastGameEnd = 0, lastGameDone = false; /* 'game-done': every other game when they come fast (every = 1, < 30 s) */
 const GAME_FAST_MS = 30000;
@@ -164,7 +165,11 @@ function greetId() {
 /* intro voice cues (intro.js, only when sound may start before a tap): never once the start button was tapped */
 function onIntroCue(name) {
   if (started || !gateOpen() || $('gate').dataset.mode !== 'start' || safe(() => settings.isSettingsOpen())) return;
-  if (name === 'title') { titleSaid = true; speak([promptItem('intro-title', $('introLogo'))]); }
+  if (name === 'title') {
+    if (titleSaid) return; /* once (a key press on the button during the intro must not say it twice) */
+    titleSaid = titleBusy = true;
+    speak([promptItem('intro-title', $('introLogo'))]).then(() => { titleBusy = false; });
+  }
   else if (name === 'go') speak([promptItem('intro-go')]); /* caption above the gate */
 }
 
@@ -675,10 +680,20 @@ function onGateTap() {
   blockTaps();
   safe(() => FX.burst(c.x, c.y, ['#FF7A9A', '#5AB4FF', '#FFD36E', '#8EE3C8', '#FFFFFF'], 26));
   safe(() => SFX.sparkle());
-  /* the title already said by the intro -> 'cover'; else the title instead of 'cover' (same words twice otherwise) */
-  if (!resume) { openWho(store.children.length ? 'pick' : 'new', false, [titleSaid ? 'cover' : 'intro-title']); return; }
+  /* the title heard -> 'cover'; still playing (a quick tap) -> straight on (same words twice otherwise); never said -> the title */
+  if (!resume) { openWho(store.children.length ? 'pick' : 'new', false, !titleSaid ? ['intro-title'] : titleBusy ? [] : ['cover']); return; }
   syncBar(isOpen('who'));
   resumeAfterUnlock();
+}
+
+/* Any tap on the cover that does not start (the intro's skip tap, a tap beside the button) still unlocks audio:
+   where sound could not start before a tap (iOS, a browser tab) the intro speaks from here on ('title', then 'go'). */
+function onCoverTap() {
+  if (started || $('gate').dataset.mode !== 'start') return;
+  safe(() => engine.unlock());
+  safe(() => SFX.unlock());
+  safe(() => soundNow());
+  if (!titleSaid && store.settings.speech !== false) onIntroCue('title');
 }
 
 function resumeAfterUnlock() {
@@ -715,6 +730,7 @@ function wire() {
     if (e.detail > 0 && Date.now() < tapBlockUntil && !$('gate').contains(e.target) && !$('settings').contains(e.target)) { e.stopPropagation(); e.preventDefault(); }
   }, true);
   $('gateBtn').addEventListener('click', onGateTap);
+  $('gate').addEventListener('click', onCoverTap); /* after onGateTap (bubbling): a start has set started */
 
   $('whoBtn').addEventListener('click', () => {
     stopVoice();

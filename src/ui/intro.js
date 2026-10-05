@@ -9,11 +9,12 @@
    A tap anywhere skips to the final state; reduced motion starts there. The scene stays behind the picker.
 
    Sound effects (sounds(), in step with the CSS timeline) only if the device lets sound start without a tap
-   (audio context.autoStart, decided within 0.5 s, before the first sound at 0.6 s): an engine hum + honk, hooves + a neigh, camel steps, the rocket's whoosh,
-   a clink per star, a pop per logo letter, a boing for the button. Otherwise (iOS, a first visit) it stays
-   silent; the start button unlocks audio as before. Effects switched off, reduced motion, a skip: no sounds.
-   Voice cues (main.js speaks them, only when sound may start without a tap): 'title' as SUURA drops in (not after
-   a skip), 'go' 3 s after the start button has appeared (main.js skips it once the button was tapped).
+   (audio context.autoStart; an installed Android app does): an engine hum + honk, hooves + a neigh, camel steps, the rocket's whoosh,
+   a clink per star, a pop per logo letter, a boing for the button. A slow cold start may decide late (up to
+   2.5 s): the sounds already passed are left out, the rest stay in step. Otherwise (iOS, a browser tab) it stays
+   silent until the first tap (soundNow()). Effects switched off, reduced motion, a skip: no sounds.
+   Voice cues (main.js speaks them, once sound may play): 'title' as SUURA drops in (not after a skip; main.js says it
+   on the skip tap instead), 'go' 3 s after the start button has appeared (main.js skips it once the button was tapped).
 
    Layers in #coverArt (same SVG, same viewBox, so they line up): .in-base (colour scenery), .in-grey (grey
    scenery, clipped away by the car's wipe), .in-bloom (colour scenery, revealed by a growing radial mask) and
@@ -225,7 +226,7 @@ export function playIntro(o = {}) {
   }
   if (!o.sfx && !cue) return;
   /* the silent media probe alone can take > 150 ms on a busy device; sounds stay on the animation's clock (t0) */
-  audio.autoStart(500).then((ok) => {
+  audio.autoStart(2500).then((ok) => {
     if (!ok || document.hidden) return;
     allowed = true;
     armGo();
@@ -242,6 +243,14 @@ export function playIntro(o = {}) {
       if (ms >= late) sfxTimers.push(setTimeout(() => { if (state === 'play') fn(); }, ms - late));
     });
   }, () => {});
+}
+
+/* a tap on the cover unlocked audio (main.js): the 'go' cue may play now – GO_MS after this tap if the button
+   has been there for a while already (else 'go' would come at once and cut the title) */
+export function soundNow() {
+  if (!allowed && state === 'done') buttonAt = Math.max(buttonAt, performance.now());
+  allowed = true;
+  armGo();
 }
 
 /* true while the intro still runs, or right after a skip tap (that tap's click must not start the app) */

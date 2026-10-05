@@ -21,9 +21,12 @@
      boygames   the boy's game turn seeded at 3, 4, 5: those games run (the flows reach boy-0..2).
      intro-sound    autoplay allowed: the intro starts Web Audio without a tap, its effects run in step with the
                     animation (car 0.6 s ... button 4.1 s), "intro-title" at the logo, "intro-go" 3 s after the button
-                    when nobody taps; a skip stops them (the title then follows the start tap); effects / speech off.
+                    when nobody taps; a skip stops them and says the title at once (+ "intro-go" 3 s later); effects / speech off;
+                    a slow start (probe answers after 1.2 s): the later sounds still play in step.
      intro-silent   a second Chromium WITHOUT the autoplay flag (iOS / first visit): no AudioContext, effect or voice
-                    before the tap, the intro plays + skips as usual, the start tap unlocks audio and says the title.
+                    before the tap, the intro plays as usual, the start tap unlocks audio and says the title; a skip tap
+                    unlocks audio too: "intro-title" at once, "intro-go" 3 s later (also a late tap beside the button);
+                    a quick start while the title still plays adds no "cover".
    Voice lines in the flows: onboarding "nice-name" (tap right away + after a 1.2 s pause, once per name), "welcome-new",
    picker name + "welcome-back" + time-of-day greeting, new child greeting + "welcome", "game-done" before the praise, finale Kotiin "bye".
    Every screen: no horizontal scroll, visible buttons >= 64 px (inside settings >= 44 px), labels inside their
@@ -144,7 +147,8 @@ function instrument() {
   }
   if (window.AudioScheduledSourceNode) {
     const ost = AudioScheduledSourceNode.prototype.start;
-    AudioScheduledSourceNode.prototype.start = function () { A.src.push(T()); return ost.apply(this, arguments); };
+    /* the 1-sample silent primer of an unlock is no effect */
+    AudioScheduledSourceNode.prototype.start = function () { if (!(this.buffer && this.buffer.length <= 1)) A.src.push(T()); return ost.apply(this, arguments); };
   }
   /* intro clock: when #gate's data-intro turns 'play' / 'done' */
   document.addEventListener('DOMContentLoaded', () => {
@@ -1102,8 +1106,12 @@ async function suiteIntroSound(browser, base) {
     const before = k.src.filter((t) => t < skipAt).length, after = k.src.filter((t) => t > skipAt + 120);
     check(S, 'sound path: a tap mid-intro skips and stops the remaining effects', before > 0 && after.length === 0 && k.done != null && k.done - k.at < 2200,
       JSON.stringify({ skipAt: Math.round(skipAt), before, after: after.slice(0, 5), doneAt: k.done - k.at }));
+    await W(ctx, () => window.__audio.log.some((e) => e.type === 'playing' && e.src === 'fi/intro-go.mp3'), null, 3000);
+    const ks = await fiTimed(ctx), kt = ks.filter(([id]) => id === 'intro-title'), kg = ks.filter(([id]) => id === 'intro-go'), kd = k.done - k.at;
+    check(S, 'sound path: skipped before the title -> the skip tap says "intro-title" at once, "intro-go" ~3 s later', kt.length === 1 && kt[0][1] - kd < 700 &&
+      kg.length === 1 && kg[0][1] - kd >= 2900 && kg[0][1] - kd <= 3800, JSON.stringify({ skipAt: kd, said: ks }));
     const c2 = await coverSaid(ctx, 'new');
-    check(S, 'sound path: skipped before the title -> the start tap says "intro-title", "ask-theme" (no "cover")', c2.ok && inOrder(c2.said, ['intro-title', 'ask-theme']) && !c2.said.includes('cover'), c2.said.join(','));
+    check(S, 'sound path: start after the skip -> "cover", "ask-theme" (title already said)', c2.ok && inOrder(c2.said, ['cover', 'ask-theme']) && !c2.said.includes('intro-title'), c2.said.join(','));
     /* nobody taps: 'intro-go' once, ~3 s after the button popped out (4.08 s) */
     await page.reload();
     await W(ctx, () => window.__audio.introAt != null && performance.now() - window.__audio.introAt > 8600, null, 12000);
@@ -1122,6 +1130,28 @@ async function suiteIntroSound(browser, base) {
     await W(ctx, () => window.__audio.introAt != null && performance.now() - window.__audio.introAt > 3600, null, 8000);
     const mute = await introAudio(ctx);
     check(S, 'speech + effects off: intro silent, no AudioContext before the tap', mute.ac.length === 0 && mute.src.length === 0 && !mute.probe.length, JSON.stringify(mute));
+    /* Enter on the focused button during the intro (a click without a pointer): the title once, not twice */
+    await seed(ctx, store([]));
+    await W(ctx, () => window.__audio.introAt != null && performance.now() - window.__audio.introAt > 1500, null, 8000);
+    await page.focus('#gateBtn');
+    await page.keyboard.press('Enter');
+    await W(ctx, () => performance.now() - window.__audio.introAt > 4200, null, 6000);
+    const ks2 = (await fiTimed(ctx)).filter(([id]) => id === 'intro-title');
+    check(S, 'keyboard: Enter during the intro -> "intro-title" once', ks2.length === 1, JSON.stringify(ks2));
+    /* a slow cold start (an Android app launch): the probe answers only after 1.2 s -> the later sounds still play, in step */
+    await page.addInitScript(() => {
+      const op = HTMLMediaElement.prototype.play;
+      HTMLMediaElement.prototype.play = function () {
+        const p = op.apply(this, arguments);
+        return String(this.src).startsWith('data:audio/wav') && p && p.then ? p.then((v) => new Promise((r) => setTimeout(() => r(v), 1200))) : p;
+      };
+    });
+    await seed(ctx, store([]));
+    await W(ctx, () => window.__audio.introAt != null && performance.now() - window.__audio.introAt > 4500, null, 9000);
+    const slow = await introAudio(ctx), st = (await fiTimed(ctx)).find(([id]) => id === 'intro-title');
+    check(S, 'slow start: probe after 1.2 s -> no early effects, the later ones + "intro-title" still play in step', slow.ac.length === 1 && slow.ac[0].t >= 1100 &&
+      slow.src.length >= 20 && slow.src[0] >= 1150 && slow.src[slow.src.length - 1] >= 4050 && slow.src[slow.src.length - 1] <= 4400 && !!st && st[1] >= 2600 && st[1] <= 3500,
+      JSON.stringify({ ac: slow.ac, starts: slow.src.length, first: slow.src[0], last: slow.src[slow.src.length - 1], title: st }));
   } catch (e) { await crash(ctx, e); }
   await finish(ctx);
   return ctx;
@@ -1143,11 +1173,34 @@ async function suiteIntroSilent(browser, base) {
     check(S, 'silent path: start tap -> "intro-title", "ask-theme" (no "cover")', c1.ok && inOrder(c1.said, ['intro-title', 'ask-theme']) && !c1.said.includes('cover'), c1.said.join(','));
     const u = await introAudio(ctx);
     check(S, 'silent path: the start tap creates + runs the AudioContext', u.ac.length === 1 && u.ac[0].tapped === true && u.ac[0].state === 'running', JSON.stringify(u.ac));
+    /* a skip tap unlocks audio: the title at once, 'go' 3 s later (as on a device that allows sound) */
     await page.reload();
     await intro(ctx, {});
     const r = await introAudio(ctx);
-    check(S, 'silent path: after a reload + skip still no AudioContext before the start tap', r.ac.length === 0 && r.src.length === 0, JSON.stringify(r));
-    check(S, 'silent path: start after a skip -> onboarding', await cover(ctx, 'new'));
+    check(S, 'silent path: the skip tap creates + runs the AudioContext (no effect)', r.ac.length === 1 && r.ac[0].tapped === true && r.ac[0].state === 'running' && r.src.length === 0, JSON.stringify(r));
+    await W(ctx, () => window.__audio.log.some((e) => e.type === 'playing' && e.src === 'fi/intro-go.mp3'), null, 4500);
+    const rs = await fiTimed(ctx), rt = rs.filter(([id]) => id === 'intro-title'), rg = rs.filter(([id]) => id === 'intro-go'), rd = r.done - r.at;
+    check(S, 'silent path: the skip tap says "intro-title" at once, "intro-go" ~3 s later', rt.length === 1 && rt[0][1] - rd >= 0 && rt[0][1] - rd < 700 &&
+      rg.length === 1 && rg[0][1] - rd >= 2900 && rg[0][1] - rd <= 3800, JSON.stringify({ skipAt: rd, said: rs }));
+    const c2 = await coverSaid(ctx, 'new');
+    check(S, 'silent path: start after a skip -> "cover", "ask-theme" (title already said)', c2.ok && inOrder(c2.said, ['cover', 'ask-theme']) && !c2.said.includes('intro-title'), c2.said.join(','));
+    /* the intro ended long ago, then a tap beside the button: the whole title at once, 'go' 3 s after that tap */
+    await page.reload();
+    await W(ctx, () => window.__audio.introDone != null && performance.now() - window.__audio.introAt > 8500, null, 12000);
+    const spot = await page.evaluate(() => { const x = innerWidth / 2, y = innerHeight * 0.12, el = document.elementFromPoint(x, y);
+      return { x, y, inGate: !!el && document.getElementById('gate').contains(el) && !el.closest('button') }; });
+    const tapAt = await page.evaluate(() => performance.now() - window.__audio.introAt);
+    await page.mouse.click(spot.x, spot.y, { delay: 40 });
+    await W(ctx, () => window.__audio.log.some((e) => e.type === 'playing' && e.src === 'fi/intro-go.mp3'), null, 4500);
+    const bs = await fiTimed(ctx), bt = bs.filter(([id]) => id === 'intro-title'), bg = bs.filter(([id]) => id === 'intro-go');
+    check(S, 'silent path: a late tap beside the button -> "intro-title" at once (not cut), "intro-go" ~3 s after the tap', spot.inGate && bt.length === 1 &&
+      bt[0][1] - tapAt >= 0 && bt[0][1] - tapAt < 700 && bg.length === 1 && bg[0][1] - tapAt >= 2900 && bg[0][1] - tapAt <= 3800 && bs[0][0] === 'intro-title',
+      JSON.stringify({ spot, tapAt: Math.round(tapAt), said: bs }));
+    /* a quick start right after the skip, the title still playing: no 'cover' on top of it */
+    await page.reload();
+    await intro(ctx, { quiet: true });
+    const c3 = await coverSaid(ctx, 'new');
+    check(S, 'silent path: skip + quick start -> "ask-theme" (no "cover", no second title)', c3.ok && inOrder(c3.said, ['ask-theme']) && !c3.said.includes('cover') && !c3.said.includes('intro-title'), c3.said.join(','));
   } catch (e) { await crash(ctx, e); }
   await finish(ctx);
   return ctx;
