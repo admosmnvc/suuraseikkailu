@@ -3,6 +3,7 @@
    No people: the helmet always shows a dark glossy visor. */
 import { uid, f, esc, clampInt, svgOpen, starPath, sparklePath, rectPath } from './common.js';
 import { INK, B, keep, lg, lgU, rg, rgU, drop, u, clay, twinkle, softStar, cloud, puff } from './soft.js';
+import { emblem, crescentStar } from './desert.js';
 
 /* ---------- motifs ---------- */
 
@@ -10,10 +11,16 @@ import { INK, B, keep, lg, lgU, rg, rgU, drop, u, clay, twinkle, softStar, cloud
 export const CAR_BOX = [92, 380, 236, 112];
 export function car(c, id, opt) {
   const k = c || keep, o = opt || {};
-  const wheel = (x) => '<circle cx="' + x + '" cy="462" r="23" fill="' + k('#34405F') + '"/><circle cx="' + x + '" cy="462" r="10" fill="' + k('#E4ECF8') + '"/>' +
-    '<g' + (o.spin ? ' class="art-spin"' : '') + '><circle cx="' + x + '" cy="456" r="2.4" fill="' + k('#9DB0D3') + '"/><circle cx="' + (x - 5.2) + '" cy="465" r="2.4" fill="' + k('#9DB0D3') + '"/><circle cx="' + (x + 5.2) + '" cy="465" r="2.4" fill="' + k('#9DB0D3') + '"/></g>';
-  return '<defs>' + lg(id + '-car', [[0, '#FF9A9C'], [1, o.color || B.red]], k) + lg(id + '-glass', [[0, '#DDF0FF'], [1, '#8CCBFF']], k) + '</defs>' +
+  // opt.wheelCls puts each whole wheel in its own group (spins around its own centre)
+  const wheel = (x) => (o.wheelCls ? '<g class="' + o.wheelCls + '" style="transform-box:fill-box;transform-origin:center">' : '') +
+    '<circle cx="' + x + '" cy="462" r="23" fill="' + k('#34405F') + '"/><circle cx="' + x + '" cy="462" r="10" fill="' + k('#E4ECF8') + '"/>' +
+    '<g' + (o.spin ? ' class="art-spin"' : '') + '><circle cx="' + x + '" cy="456" r="2.4" fill="' + k('#9DB0D3') + '"/><circle cx="' + (x - 5.2) + '" cy="465" r="2.4" fill="' + k('#9DB0D3') + '"/><circle cx="' + (x + 5.2) + '" cy="465" r="2.4" fill="' + k('#9DB0D3') + '"/></g>' +
+    (o.wheelCls ? '</g>' : '');
+  return '<defs>' + lg(id + '-car', [[0, '#FF9A9C'], [1, o.color || B.red]], k) + lg(id + '-glass', [[0, '#DDF0FF'], [1, '#8CCBFF']], k) +
+    (o.pennant ? lg(id + '-pen', [[0, '#7FE3D8'], [1, '#22AFA3']], k, 0, 0, 1, 0) : '') + '</defs>' +
     '<ellipse cx="210" cy="486" rx="120" ry="8" fill="' + k('#3E4C78') + '" opacity=".2"/>' +
+    (o.pennant ? '<path d="M134 418L126 352" stroke="' + k('#9DB0D3') + '" stroke-width="3.4" stroke-linecap="round"/>' +
+      '<path d="M126 352Q146 356 166 364Q146 370 128 378Z" fill="' + u(id + '-pen') + '"/>' + crescentStar(138, 364.5, 5.6, '#FFFFFF') : '') +
     '<path d="M100 448C100 428 112 418 130 416L160 414C172 394 190 384 214 384H236C256 384 270 396 280 412L300 416C316 418 324 430 322 448C322 458 316 462 306 462H112C104 462 100 456 100 448Z" fill="' + u(id + '-car') + '"/>' +
     '<path d="M172 412C180 398 194 392 212 392H234C248 392 258 400 266 412Z" fill="' + u(id + '-glass') + '"/>' +
     '<rect x="216" y="392" width="7" height="20" fill="#FFFFFF" opacity=".8"/>' +
@@ -41,8 +48,9 @@ export function rocket(c, id, opt) {
     '<path d="M430 96C452 118 466 146 473 174C446 182 414 182 387 174C394 146 408 118 430 96Z" fill="' + u(id + '-nose') + '"/>' +
     '<circle cx="430" cy="222" r="30" fill="#FFFFFF"/><circle cx="430" cy="222" r="23" fill="' + u(id + '-win') + '"/>' +
     '<path d="M416 214a16 16 0 0 1 12-10" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" fill="none" opacity=".85"/>' +
-    '<rect x="383" y="282" width="94" height="12" rx="6" fill="' + k(B.yellow) + '" opacity=".9"/>' +
-    '<path d="M404 140C396 168 394 210 396 260" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" fill="none" opacity=".7"/>';
+    '<rect x="383" y="' + (o.decal ? 302 : 282) + '" width="' + (o.decal ? 95 : 94) + '" height="' + (o.decal ? 10 : 12) + '" rx="5" fill="' + k(B.yellow) + '" opacity=".9"/>' +
+    '<path d="M404 140C396 168 394 210 396 260" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" fill="none" opacity=".7"/>' +
+    (o.decal ? emblem(430, 274, 17, id + '-em', k) : '');
 }
 
 // Trophy cup with a star. 100x100.

@@ -1,2 +1,9 @@
 node_modules/
 dist/
+# large / third-party source audio (re-downloadable or supplied by the owner; not published)
+tools/wbw/
+tools/wbw-src/
+tools/recitation-src/*.mp3
+tools/recitation-src/everyayah/
+tools/cut-src/*.mp3
+v2-reference/screens-390/

@@ -2,7 +2,7 @@
    verse marker – soft premium style. OWNER: art agent. */
 import { uid, f, esc, isHex, mix, svgOpen, starPath, wavyCircle, arabicDigits, themeOf } from './common.js';
 import { INK, G, B, keep, ghost, lg, rg, drop, u, fit, twinkle } from './soft.js';
-import { pony, PONY_BOX, ponyHead, bunny, tiara, crown100, castle, CASTLE_BOX, gem, heart } from './girl.js';
+import { pony, PONY_BOX, ponyHead, bunny, tiara, crown100, mosque, MOSQUE_BOX, gem, heart } from './girl.js';
 import { car, CAR_BOX, rocket, ROCKET_BOX, trophy, helmet, flag } from './boy.js';
 
 // every motif in a 100x100 box: (c, id) => markup
@@ -13,7 +13,8 @@ export const MOTIFS = {
   horse: (c, id) => ponyHead(c, id),
   'horse-crown': (c, id) => ponyHead(c, id, { crown: true }),
   bunny, tiara: (c, id) => tiara(c, id), crown: crown100,
-  castle: (c, id) => fit(castle(c, id), CASTLE_BOX, 50, 50, 96),
+  mosque: (c, id) => fit(mosque(c, id), MOSQUE_BOX, 50, 51, 96),
+  castle: (c, id) => fit(mosque(c, id), MOSQUE_BOX, 50, 51, 96),   // v2 name, now the mosque
   gem: (c, id) => gem(c, id, G.lavender), heart: (c, id) => heart(c, id),
   car: (c, id) => fit(car(c, id), CAR_BOX, 50, 52, 98),
   rocket: (c, id) => fit(rocket(c, id), ROCKET_BOX, 50, 50, 98),
@@ -26,7 +27,7 @@ export const MOTIFS = {
 const STICKERS = {
   girl: {
     shahada: ['tiara', '#F4EFFF', '#D9CCFF', -6, 76, 62], fatiha: ['pony-head', '#E6FAF2', '#BDEFDD', 0, 86, 64],
-    ikhlas: ['castle', '#FFF5EE', '#FFD8C4', 0, 80, 62], kawthar: ['bunny', '#FFF0F4', '#FFC9D8', 4, 80, 63], bonus: ['crown', '#FFF8E2', '#FFE09A', -8, 76, 62]
+    ikhlas: ['mosque', '#F4EFFF', '#DCD0FF', 0, 82, 62], kawthar: ['bunny', '#FFF0F4', '#FFC9D8', 4, 80, 63], bonus: ['crown', '#FFF8E2', '#FFE09A', -8, 76, 62]
   },
   boy: {
     shahada: ['car', '#EAF5FF', '#C2E0FF', -4, 84, 62], fatiha: ['rocket', '#E5F8F5', '#B4EBE4', 14, 80, 60],

@@ -8,6 +8,6 @@ import feed from './feed.js';
 import bath from './bath.js';
 import cake from './cake.js';
 import meadow from './meadow.js';
-import castle from './castle.js';
+import mosque from './mosque.js';
 
-export default [brush, feed, bath, cake, meadow, castle];
+export default [brush, feed, bath, cake, meadow, mosque];

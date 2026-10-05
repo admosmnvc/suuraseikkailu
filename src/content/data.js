@@ -22,10 +22,10 @@ const SUURA_DATA = {
      "rec": "shahada-1"
     },
     {
-     "ar": "وَأَشْهَدُ أَنَّ مُحَمَّدًا عَبْدُهُ وَرَسُولُهُ",
-     "tts": "وَأَشْهَدُ أَنَّ مُحَمَّدًا عَبْدُهُ وَرَسُولُه",
-     "tr": "wa ash-hadu anna Muhammadan ‘abduhuu wa rasuuluh.",
-     "fi": "Ja todistan, että Muhammad on Allahin palvelija ja lähettiläs.",
+     "ar": "وَأَشْهَدُ أَنَّ مُحَمَّدًا رَسُولُ اللَّهِ",
+     "tts": "وَأَشْهَدُ أَنَّ مُحَمَّدًا رَسُولُ اللَّه",
+     "tr": "wa ash-hadu anna Muhammadan rasuulullaah.",
+     "fi": "Ja todistan, että Muhammad on Allahin lähettiläs.",
      "audio": "audio/shahada-2.mp3",
      "n": 0,
      "rec": "shahada-2"
@@ -180,10 +180,11 @@ const SUURA_DATA = {
  ],
  "credits": [
   "Koraanin teksti: Tanzil Quran Text (Uthmani), © Tanzil Project, CC BY 3.0, tanzil.net. Tekstiä saa käyttää vain muuttamattomana.",
-  "Resitaatio: Mishary Rashid Alafasy, jakeittaiset MP3-tiedostot (64 kbps), haettu GitHub-repositoriosta Raf0707/q7h_alafasy (EveryAyah-nimeäminen).",
-  "Shahada ja suomenkieliset kehotteet: valmiiksi tehdyt puheäänitteet (Microsoft Edge -puheääni: suomi Noora, arabia Zariyah). Vanhempi voi korvata ne omalla äänellään asetuksissa.",
-  "Sana kerrallaan -äänitteet (Helppo ja Keskitaso): Quran.com, audio.qurancdn.com (word-by-word).",
-  "Fontit: Google Fonts (SIL Open Font License)."
+  "Resitaatio: Mishary Rashid Alafasy (murattal), Quran.com / quranicaudio.com; sana-ajat Quran.com (QDC).",
+  "Shahada: oikean ihmisen ääni, SC Brotherhood & News Reports (YouTube: How to recite the Shahada of Islam).",
+  "Suomenkieliset kehotteet: valmiiksi tehdyt puheäänitteet (Microsoft Edge -puheääni Noora). Vanhempi voi korvata ne ja Shahadan omalla äänellään asetuksissa.",
+  "Sana kerrallaan -paloittelu: Mishary Alafasyn resitaatio, sana-ajat Quran.com (QDC).",
+  "Fontit: Fredoka, Nunito ja Amiri Quran (SIL Open Font License 1.1)."
  ]
 };
 

@@ -1,5 +1,5 @@
 /* Home of the playing child: player chip (-> picker), greeting, section cards, the progress picture
-   (girl: castle windows light up, boy: rocket built part by part), sticker album, parent long-press button.
+   (girl: mosque windows light up, boy: rocket built part by part), sticker album, parent long-press button.
    OWNER: ui agent. */
 import ART from '../art.js';
 import { SFX } from '../audio/sfx.js';
@@ -9,7 +9,7 @@ import { $, esc, safe } from './dom.js';
 
 const HOLD_MS = 800;
 const TEXT = {
-  girl: { title: 'Linna', note: 'Jokainen rivi sytyttää yhden ikkunan.', full: 'Linna loistaa!', aria: (d, t) => 'Linna: ' + d + '/' + t + ' ikkunaa loistaa' },
+  girl: { title: 'Moskeija', note: 'Jokainen rivi sytyttää yhden ikkunan.', full: 'Moskeija loistaa!', aria: (d, t) => 'Moskeija: ' + d + '/' + t + ' ikkunaa loistaa' },
   boy: { title: 'Raketti', note: 'Jokainen rivi tuo raketille uuden osan.', full: 'Raketti on valmis!', aria: (d, t) => 'Raketti: ' + d + '/' + t + ' osaa valmiina' }
 };
 

@@ -1,6 +1,6 @@
-/* Suuraseikkailu v3 – art/girl.js: girl theme in the soft premium style – pony, bunny, tiara, crown, castle, gem,
-   the castle progress picture and the crown reward. OWNER: art agent.
-   Princess mood without people: crowns, tiaras, castles, jewels, animals with friendly faces. */
+/* Suuraseikkailu v3 – art/girl.js: girl theme in the soft premium style – pony, bunny, tiara, crown, mosque, gem,
+   the mosque progress picture (windows light up) and the crown reward. OWNER: art agent.
+   Princess mood without people: crowns, tiaras, jewels, animals with friendly faces; the building is a mosque. */
 import { uid, f, esc, clampInt, isHex, mix, svgOpen, onionPath, archPath, crescentPath, heartPath, sparklePath, starPath } from './common.js';
 import { INK, G, keep, lg, lgU, rg, rgU, drop, u, clay, twinkle, softStar, flower } from './soft.js';
 
@@ -117,26 +117,49 @@ export function crown(c, id) {
 }
 export function crown100(c, id) { return '<g transform="translate(4 14) scale(.92)">' + crown(c, id) + '</g>'; }
 
-// Castle (as on the cover). Native box [228, 132, 228, 274].
-export const CASTLE_BOX = [228, 132, 228, 274];
-export function castle(c, id) {
+// Pointed (Islamic) arch from `top` (the point) down to `bottom`.
+export function pointedArch(cx, top, w, bottom) {
+  const hw = w / 2, sh = Math.min(w * 1.05, bottom - top), ys = top + sh * 0.62;
+  return 'M' + f(cx - hw) + ' ' + f(bottom) + 'V' + f(ys) + 'Q' + f(cx - hw) + ' ' + f(top + sh * 0.14) + ' ' + f(cx) + ' ' + f(top) +
+    'Q' + f(cx + hw) + ' ' + f(top + sh * 0.14) + ' ' + f(cx + hw) + ' ' + f(ys) + 'V' + f(bottom) + 'Z';
+}
+
+// Minaret standing on y = base, centre x; body w, top of body y = top. Cap = small onion + crescent.
+function minaret(id, x, top, base, w, k) {
+  const hw = w / 2, upW = w * 0.72, bal = top + (base - top) * 0.3;
+  return '<rect x="' + f(x - hw) + '" y="' + f(bal) + '" width="' + f(w) + '" height="' + f(base - bal) + '" rx="' + f(w * 0.4) + '" fill="' + u(id + '-mn') + '"/>' +
+    '<rect x="' + f(x - upW / 2) + '" y="' + f(top) + '" width="' + f(upW) + '" height="' + f(bal - top + 6) + '" rx="' + f(upW * 0.4) + '" fill="' + u(id + '-mn') + '"/>' +
+    '<rect x="' + f(x - hw - w * 0.25) + '" y="' + f(bal - w * 0.22) + '" width="' + f(w * 1.5) + '" height="' + f(w * 0.42) + '" rx="' + f(w * 0.21) + '" fill="' + u(id + '-band') + '"/>' +
+    '<rect x="' + f(x - hw + w * 0.22) + '" y="' + f(bal + 8) + '" width="' + f(w * 0.22) + '" height="' + f(base - bal - 18) + '" rx="' + f(w * 0.11) + '" fill="#FFFFFF" opacity=".45"/>' +
+    '<path d="' + onionPath(x, top + 2, upW * 0.62, upW * 1.25) + '" fill="' + u(id + '-cap') + '"/>' +
+    '<path d="M' + f(x) + ' ' + f(top + 2 - upW * 1.25) + 'V' + f(top - upW * 1.25 - w * 0.36) + '" stroke="' + k('#F2B740') + '" stroke-width="' + f(Math.max(2, w * 0.12)) + '" stroke-linecap="round"/>' +
+    '<path d="' + crescentPath(x, top - upW * 1.25 - w * 0.62, w * 0.27, -Math.PI / 2) + '" fill="' + k('#FFC447') + '"/>';
+}
+
+function mosqueDefs(id, k) {
+  return lg(id + '-mn', [[0, '#FFF6EF'], [1, '#FFD9C6']], k, 0, 0, 1, 0) + lg(id + '-band', [[0, '#FFC8D6'], [1, '#FF9DB6']], k, 0, 0, 1, 0) +
+    lg(id + '-cap', [[0, '#FFEDB6'], [1, '#FFC24F']], k, 0, 0, 1, 0) + lg(id + '-hall', [[0, '#FFF6F0'], [1, '#FFD8C4']], k, 0, 0, 1, 0) +
+    lg(id + '-dome', [[0, '#E2D8FF'], [0.55, '#BBA7FF'], [1, '#9C86FF']], k, 0, 0, 1, 0.3) + lg(id + '-sd', [[0, '#FFD3DF'], [1, '#FF9DB6']], k, 0, 0, 1, 0) +
+    lg(id + '-drum', [[0, '#FFC8D6'], [1, '#FF9DB6']], k, 0, 0, 1, 0) + lg(id + '-door', [[0, '#FFA3B7'], [1, G.coral]], k) +
+    lg(id + '-win', [[0, '#FFF6D8'], [1, G.gold]], k);
+}
+
+// Mosque (cover, sticker, motif, backdrop): big dome with a crescent, two slender minarets. Native box below.
+export const MOSQUE_BOX = [228, 140, 228, 266];
+export function mosque(c, id) {
   const k = c || keep;
-  const tower = (x) => '<rect x="' + x + '" y="232" width="56" height="172" rx="14" fill="' + u(id + '-tw') + '"/>' +
-    '<path d="M' + (x - 10) + ' 242C' + (x + 6) + ' 206 ' + (x + 18) + ' 176 ' + (x + 28) + ' 146C' + (x + 38) + ' 176 ' + (x + 50) + ' 206 ' + (x + 66) + ' 242C' + (x + 46) + ' 252 ' + (x + 10) + ' 252 ' + (x - 10) + ' 242Z" fill="' + u(id + '-cone') + '"/>' +
-    '<circle cx="' + (x + 28) + '" cy="142" r="8" fill="' + u(id + '-dome') + '"/>' +
-    '<path d="' + archPath(x + 28, 268, 22, 304) + '" fill="' + u(id + '-win') + '"/>' +
-    '<rect x="' + (x + 8) + '" y="244" width="9" height="150" rx="4.5" fill="#FFFFFF" opacity=".35"/>';
-  return '<defs>' + lg(id + '-tw', [[0, '#FFD3DE'], [1, '#FFA9BF']], k, 0, 0, 1, 0) + lg(id + '-keep', [[0, '#FFF1E8'], [1, '#FFD2BA']], k, 0, 0, 1, 0) +
-    lg(id + '-cone', [[0, '#D9CCFF'], [1, '#9D88FF']], k, 0, 0, 1, 0) + lg(id + '-dome', [[0, '#FFEBB0'], [1, '#FFC24F']], k, 0, 0, 1, 0) +
-    lg(id + '-door', [[0, '#FFA3B7'], [1, G.coral]], k) + lg(id + '-win', [[0, '#FFF6D8'], [1, G.gold]], k) + '</defs>' +
-    tower(240) + tower(388) +
-    '<rect x="290" y="262" width="104" height="142" rx="16" fill="' + u(id + '-keep') + '"/>' +
-    '<path d="' + onionPath(342, 266, 44, 84) + '" fill="' + u(id + '-dome') + '"/>' +
-    '<path d="M330 196C334 210 336 236 334 258" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" fill="none" opacity=".55"/>' +
-    '<path d="M342 182V170" stroke="' + k('#F2B740') + '" stroke-width="5" stroke-linecap="round"/>' +
-    '<path d="' + crescentPath(342, 162, 11, -Math.PI / 2) + '" fill="' + k('#FFC447') + '"/>' +
-    '<path d="' + archPath(342, 330, 44, 404) + '" fill="' + u(id + '-door') + '"/>' +
-    '<circle cx="315" cy="296" r="11" fill="' + u(id + '-win') + '"/><circle cx="369" cy="296" r="11" fill="' + u(id + '-win') + '"/>';
+  return '<defs>' + mosqueDefs(id, k) + '</defs>' +
+    minaret(id, 252, 200, 404, 27, k) + minaret(id, 432, 200, 404, 27, k) +
+    '<rect x="270" y="300" width="144" height="104" rx="16" fill="' + u(id + '-hall') + '"/>' +
+    '<path d="' + onionPath(292, 302, 17, 32) + '" fill="' + u(id + '-sd') + '"/><path d="' + onionPath(392, 302, 17, 32) + '" fill="' + u(id + '-sd') + '"/>' +
+    '<rect x="304" y="280" width="76" height="24" rx="10" fill="' + u(id + '-drum') + '"/>' +
+    '<path d="' + onionPath(342, 284, 56, 92) + '" fill="' + u(id + '-dome') + '"/>' +
+    '<path d="M320 214C312 230 311 252 316 270" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" fill="none" opacity=".55"/>' +
+    '<path d="M342 194V180" stroke="' + k('#F2B740') + '" stroke-width="4.5" stroke-linecap="round"/>' +
+    '<path d="' + crescentPath(342, 172, 10, -Math.PI / 2) + '" fill="' + k('#FFC447') + '"/>' +
+    '<path d="' + starPath(342, 292, 7.5, 5, 8, -Math.PI / 8) + '" fill="#FFFFFF" opacity=".85"/>' +
+    '<path d="' + pointedArch(342, 334, 40, 404) + '" fill="' + u(id + '-door') + '"/>' +
+    '<path d="' + pointedArch(298, 330, 18, 366) + '" fill="' + u(id + '-win') + '"/><path d="' + pointedArch(386, 330, 18, 366) + '" fill="' + u(id + '-win') + '"/>';
 }
 
 // Faceted gem. 100x100.
@@ -158,93 +181,86 @@ export function heart(c, id, color) {
     '<path d="M24 30C28 22 36 19 42 21" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" opacity=".6"/>';
 }
 
-/* ---------- progress: castle whose windows glow (.pw[data-i] .on) – viewBox 360x300 ---------- */
+/* ---------- progress: a mosque whose windows glow (.pw[data-i] .on) – viewBox 360x300 ---------- */
 
-// Window plan for `n` lines: the rose (heart) window on the dome drum is always the last one; the others are
-// big arched windows on the keep (1–3 rows) and, from 12 lines on, stacked in both towers. Lit order = bottom-up.
+// Window plan for `n` lines: the 8-point star window on the dome drum is always the last one (.pw-heart); the
+// others are pointed-arch windows on the prayer hall (1–3 rows) and, from 10 lines on, stacked in both minarets.
+// Lit order = bottom-up, the star last.
 function windowPlan(n) {
   const r = n - 1, out = [];
-  const perTower = r <= 10 ? 0 : (r <= 18 ? 3 : (r <= 24 ? 4 : 5));
-  const keep = r - perTower * 2;
-  const rows = keep <= 5 ? 1 : (keep <= 12 ? 2 : 3);
-  const yTop = 146, yBot = 222, cellH = (yBot - yTop) / rows;
-  const h = rows === 1 ? 46 : (rows === 2 ? 32 : 22);
+  const perMin = r <= 8 ? 0 : (r <= 14 ? 3 : (r <= 20 ? 4 : 5));
+  const hall = r - perMin * 2;
+  const perRow = Math.ceil(hall / (hall <= 5 ? 1 : (hall <= 10 ? 2 : 3))) || 1;
+  const rows = hall ? Math.ceil(hall / perRow) : 0;
+  const yTop = 164, yBot = 215, cellH = (yBot - yTop) / Math.max(1, rows);
+  const h = rows <= 1 ? 42 : (rows === 2 ? 23 : 15.5);
+  const cellW = Math.min(172 / perRow, 44), w = Math.min(cellW * 0.6, h * 0.64, 26);
+  let left = hall;
   for (let row = 0; row < rows; row++) {
-    const inRow = Math.ceil((keep - row * Math.ceil(keep / rows)) > 0 ? Math.min(Math.ceil(keep / rows), keep - row * Math.ceil(keep / rows)) : 0);
-    const cellW = Math.min(176 / Math.max(1, Math.ceil(keep / rows)), 46), w = Math.min(cellW * 0.64, h * 0.66, 28);
-    for (let j = 0; j < inRow; j++) out.push({ cx: 180 + (j - (inRow - 1) / 2) * cellW, cy: yBot - (row + 0.5) * cellH, w: w, h: h });
+    const inRow = Math.min(perRow, left);
+    left -= inRow;
+    for (let j = 0; j < inRow; j++) out.push({ cx: 180 + (j - (inRow - 1) / 2) * cellW, cy: rows <= 1 ? 190 : yBot - (row + 0.5) * cellH, w: w, h: h });
   }
-  if (perTower) {
-    const th = perTower === 3 ? 28 : (perTower === 4 ? 22 : 18), tw = th * 0.66, y0 = 150, y1 = 246;
-    for (let j = 0; j < perTower; j++) {
-      const cy = y1 - j * (y1 - y0) / (perTower - 1);
-      out.push({ cx: 52, cy: cy, w: tw, h: th }, { cx: 308, cy: cy, w: tw, h: th });
+  if (perMin) {
+    const th = perMin === 3 ? 24 : (perMin === 4 ? 20 : 17), tw = 12, y0 = 150, y1 = 250;
+    for (let j = 0; j < perMin; j++) {
+      const cy = y1 - j * (y1 - y0) / (perMin - 1);
+      out.push({ cx: 46, cy: cy, w: tw, h: th }, { cx: 314, cy: cy, w: tw, h: th });
     }
   }
   out.sort((p, q) => (q.cy - p.cy) || (p.cx - q.cx));
-  out.push({ cx: 180, cy: 121, w: 30, h: 27, heart: true });
-  return { list: out, towers: perTower > 0 };
+  out.push({ cx: 180, cy: 142, w: 15, h: 15, star: true });
+  return out;
 }
 
-export function castleProgress(o) {
-  const n = clampInt(o.total, 1, 30, 6), k = clampInt(o.done, 0, n, 0), id = uid('cas');
+export function mosqueProgress(o) {
+  const n = clampInt(o.total, 1, 30, 6), k = clampInt(o.done, 0, n, 0), id = uid('msq');
   const done = k >= n;
-  let merl = '';
-  for (let x = 86; x < 276; x += 30) merl += '<rect x="' + x + '" y="124" width="18" height="18" rx="6"/>';
   let wins = '';
-  const plan = windowPlan(n);
-  plan.list.forEach((p, i) => {
+  windowPlan(n).forEach((p, i) => {
     const top = p.cy - p.h / 2, bot = p.cy + p.h / 2;
-    const arch = p.heart ? heartPath(p.cx, p.cy, p.w) : archPath(p.cx, top, p.w, bot);
-    wins += '<g class="pw' + (p.heart ? ' pw-heart' : '') + (i < k ? ' on' : '') + '" data-i="' + i + '" style="--art-d:' + f(-(i % 5) * 0.6) + 's">' +
-      '<path d="' + arch + '" fill="' + u(id + '-wd') + '"/>' +
+    const shape = p.star ? starPath(p.cx, p.cy, p.w, p.w * 0.72, 8, -Math.PI / 8) : pointedArch(p.cx, top, p.w, bot);
+    wins += '<g class="pw' + (p.star ? ' pw-heart' : '') + (i < k ? ' on' : '') + '" data-i="' + i + '" style="--art-d:' + f(-(i % 5) * 0.6) + 's">' +
+      '<path d="' + shape + '" fill="' + u(id + '-wd') + '"/>' +
       '<g class="art-pw-lit">' +
-      '<circle class="art-pw-glow" cx="' + f(p.cx) + '" cy="' + f(p.cy) + '" r="' + f(Math.max(p.w, p.h) * 0.95) + '" fill="' + u(id + '-gl') + '"/>' +
-      '<path d="' + arch + '" fill="' + u(id + '-wl') + '"/>' +
-      (p.heart ? '<path d="M' + f(p.cx - 8) + ' ' + f(p.cy - 3) + 'C' + f(p.cx - 7) + ' ' + f(p.cy - 7) + ' ' + f(p.cx - 4) + ' ' + f(p.cy - 9) + ' ' + f(p.cx - 1) + ' ' + f(p.cy - 8) + '" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" fill="none" opacity=".85"/></g>'
-        : '<path d="M' + f(p.cx - p.w * 0.2) + ' ' + f(bot - p.h * 0.22) + 'V' + f(top + p.w * 0.45) + '" stroke="#FFFFFF" stroke-width="' + f(Math.max(1.6, p.w * 0.16)) + '" stroke-linecap="round" opacity=".8"/></g>') +
-      '<path class="art-pw-star" d="' + sparklePath(p.cx + p.w * 0.5, top + 1, Math.max(4.5, p.w * 0.34)) + '" fill="#FFFFFF"/>' +
+      '<circle class="art-pw-glow" cx="' + f(p.cx) + '" cy="' + f(p.cy) + '" r="' + f(Math.max(p.w, p.h) * (p.star ? 1.5 : 0.95)) + '" fill="' + u(id + '-gl') + '"/>' +
+      '<path d="' + shape + '" fill="' + u(id + '-wl') + '"/>' +
+      (p.star ? '<circle cx="' + f(p.cx) + '" cy="' + f(p.cy) + '" r="4" fill="#FFFFFF" opacity=".85"/></g>'
+        : '<path d="M' + f(p.cx - p.w * 0.2) + ' ' + f(bot - p.h * 0.2) + 'V' + f(top + p.h * 0.42) + '" stroke="#FFFFFF" stroke-width="' + f(Math.max(1.6, p.w * 0.16)) + '" stroke-linecap="round" opacity=".8"/></g>') +
+      '<path class="art-pw-star" d="' + sparklePath(p.cx + p.w * (p.star ? 0.8 : 0.5), top + (p.star ? 0 : 2), Math.max(4.5, p.w * 0.36)) + '" fill="#FFFFFF"/>' +
       '</g>';
   });
-  const tower = (x) => '<rect x="' + x + '" y="112" width="56" height="162" rx="14" fill="' + u(id + '-tw') + '"/>' +
-    '<rect x="' + (x + 8) + '" y="126" width="8" height="136" rx="4" fill="#FFFFFF" opacity=".35"/>' +
-    '<path d="M' + (x - 10) + ' 122C' + (x + 6) + ' 88 ' + (x + 18) + ' 60 ' + (x + 28) + ' 32C' + (x + 38) + ' 60 ' + (x + 50) + ' 88 ' + (x + 66) + ' 122C' + (x + 46) + ' 132 ' + (x + 10) + ' 132 ' + (x - 10) + ' 122Z" fill="' + u(id + '-cone') + '"/>' +
-    '<circle cx="' + (x + 28) + '" cy="28" r="7.5" fill="' + u(id + '-dome') + '"/>' +
-    (plan.towers ? '' : '<circle cx="' + (x + 28) + '" cy="168" r="9" fill="' + u(id + '-orn') + '"/>');
   const fx = '<g class="art-done-fx">' +
     '<circle cx="180" cy="150" r="176" fill="' + u(id + '-halo') + '"/>' +
-    softStar(110, 46, 11, G.gold, -0.2) + softStar(256, 52, 9, G.gold, -1.1) +
-    '<path d="' + heartPath(24, 62, 20) + '" fill="' + G.rose + '"/><path d="' + heartPath(338, 70, 18) + '" fill="' + G.lavender + '"/>' +
-    twinkle(140, 18, 8, G.gold, -0.6) + twinkle(222, 16, 7, G.coral, -1.4) + '</g>';
-  return svgOpen('progress', '0 0 360 300', 'art-progress-girl art-castle' + (done ? ' art-complete' : '') + (o.cls ? ' ' + esc(o.cls) : '')) +
-    '<defs>' + drop(id + '-sh', '#E07A97', 10, 10, 0.22) +
-    lg(id + '-tw', [[0, '#FFD6E1'], [1, '#FFAEC3']], null, 0, 0, 1, 0) + lg(id + '-hall', [[0, '#FFF3EC'], [1, '#FFD5BF']], null, 0, 0, 1, 0) +
-    lg(id + '-cone', [[0, '#DCD0FF'], [1, '#A28CFF']], null, 0, 0, 1, 0) + lg(id + '-dome', [[0, '#FFEDB6'], [1, '#FFC24F']], null, 0, 0, 1, 0) +
-    lg(id + '-drum', [[0, '#FFC8D6'], [1, '#FF9DB6']], null, 0, 0, 1, 0) + lg(id + '-door', [[0, '#FFA3B7'], [1, G.coral]]) +
-    clay(id + '-orn', G.lavender) +
+    softStar(104, 48, 11, G.gold, -0.2) + softStar(258, 52, 9, G.gold, -1.1) +
+    '<path d="' + heartPath(96, 98, 18) + '" fill="' + G.rose + '"/><path d="' + heartPath(266, 100, 16) + '" fill="' + G.lavender + '"/>' +
+    twinkle(130, 20, 8, G.gold, -0.6) + twinkle(232, 18, 7, G.coral, -1.4) + twinkle(14, 46, 7, G.gold, -0.9) + twinkle(346, 40, 7, G.coral, -1.8) + '</g>';
+  return svgOpen('progress', '0 0 360 300', 'art-progress-girl art-mosque art-castle' + (done ? ' art-complete' : '') + (o.cls ? ' ' + esc(o.cls) : '')) +
+    '<defs>' + drop(id + '-sh', '#E07A97', 10, 10, 0.22) + mosqueDefs(id, null) +
     lg(id + '-wd', [[0, '#EEE8FA'], [1, '#D8CFF0']]) + lg(id + '-wl', [[0, '#FFF6CF'], [1, '#FFC447']]) +
     rg(id + '-gl', [[0, '#FFE9A0', 0.85], [0.5, '#FFE08A', 0.35], [1, '#FFE08A', 0]], null, 0.5, 0.5, 0.5) +
     rg(id + '-halo', [[0, '#FFFFFF', 0.85], [0.55, '#FFF1C9', 0.4], [1, '#FFF1C9', 0]], null, 0.5, 0.5, 0.5) +
     lg(id + '-h1', [[0, '#C9F3E4'], [1, '#A6E8D1']]) + lg(id + '-h2', [[0, '#B4EEDB'], [1, '#93E2C8']]) + '</defs>' +
     fx +
-    twinkle(18, 104, 8, G.gold, -0.4) + twinkle(344, 116, 7, '#FFFFFF', -1.3) +
+    twinkle(96, 150, 7, G.gold, -0.4) + twinkle(266, 34, 6, '#FFFFFF', -1.3) +
     '<path d="M0 300V272C60 254 120 250 180 250C240 250 300 254 360 272V300Z" fill="' + u(id + '-h1') + '"/>' +
     '<g filter="' + u(id + '-sh') + '">' +
-    tower(24) + tower(280) +
-    '<g fill="' + u(id + '-hall') + '">' + merl + '</g>' +
-    '<rect x="80" y="134" width="200" height="140" rx="18" fill="' + u(id + '-hall') + '"/>' +
-    '<rect x="138" y="100" width="84" height="40" rx="12" fill="' + u(id + '-drum') + '"/>' +
-    '<path d="' + onionPath(180, 104, 44, 76) + '" fill="' + u(id + '-dome') + '"/>' +
-    '<path d="M166 44C160 58 158 78 162 96" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" fill="none" opacity=".55"/>' +
-    '<path d="M180 30V18" stroke="#F2B740" stroke-width="4" stroke-linecap="round"/>' +
-    '<path d="' + crescentPath(180, 12, 8, -Math.PI / 2) + '" fill="#FFC447"/>' +
-    '<path d="' + archPath(180, 230, 38, 274) + '" fill="' + u(id + '-door') + '"/>' +
+    minaret(id, 46, 76, 274, 30, keep) + minaret(id, 314, 76, 274, 30, keep) +
+    '<rect x="72" y="152" width="216" height="122" rx="18" fill="' + u(id + '-hall') + '"/>' +
+    '<path d="' + onionPath(100, 154, 21, 36) + '" fill="' + u(id + '-sd') + '"/><path d="' + onionPath(260, 154, 21, 36) + '" fill="' + u(id + '-sd') + '"/>' +
+    '<rect x="122" y="124" width="116" height="34" rx="14" fill="' + u(id + '-drum') + '"/>' +
+    '<path d="' + onionPath(180, 128, 70, 92) + '" fill="' + u(id + '-dome') + '"/>' +
+    '<path d="M152 58C143 74 142 98 147 118" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" fill="none" opacity=".55"/>' +
+    '<path d="M180 37V24" stroke="#F2B740" stroke-width="4" stroke-linecap="round"/>' +
+    '<path d="' + crescentPath(180, 17, 8, -Math.PI / 2) + '" fill="#FFC447"/>' +
+    '<path d="' + pointedArch(180, 218, 42, 274) + '" fill="' + u(id + '-door') + '"/>' +
     wins + '</g>' +
     '<path d="M0 300V282C70 266 120 264 180 264C240 264 290 266 360 282V300Z" fill="' + u(id + '-h2') + '"/>' +
     '<path d="M20 280C60 270 100 266 140 266" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" fill="none" opacity=".5"/>' +
-    flower(44, 288, 0.7) + flower(318, 290, 0.6, '#FFFFFF', G.coral) + flower(250, 284, 0.5) +
+    flower(84, 288, 0.7) + flower(300, 290, 0.6, '#FFFFFF', G.coral) + flower(236, 286, 0.5) +
     '</svg>';
 }
+export const castleProgress = mosqueProgress;
 
 /* ---------- reward: crown with gem sockets (.slot[data-i] .on) – viewBox 240x180 ---------- */
 

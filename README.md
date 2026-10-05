@@ -225,9 +225,12 @@ v1-reference/               versio 1 vertailua varten (ei mukana buildissa)
   suura 1, jae 1.
 - **Fontit:** Fredoka, Nunito ja Amiri Quran, Google Fonts, SIL Open Font License 1.1. Ne tulevat
   @fontsource-npm-paketeista ja ovat buildin mukana, joten niitä ei haeta netistä.
-- **Opettajan äänet:** Microsoft Edge -puhesynteesi (`edge-tts`). Suomi: fi-FI-NooraNeural, arabia:
-  ar-SA-ZariyahNeural. Äänet on tehty skriptillä `tools/make_voices.py`. Jos sovellusta jaetaan laajasti,
-  tarkista Microsoftin palvelun käyttöehdot.
+- **Sana kerrallaan -paloittelu:** Misharyn resitaatio leikattuna sanojen rajoista (sana-ajat Quran.com QDC),
+  skripti `tools/build-cuts.py`; tiedostot `public/audio/cut/`.
+- **Shahada:** oikean ihmisen ääni, SC Brotherhood & News Reports (YouTube: How to recite the Shahada of Islam);
+  omistaja vastaa käyttöluvasta.
+- **Suomenkieliset kehotteet:** Microsoft Edge -puhesynteesi (`edge-tts`, fi-FI-NooraNeural), skripti
+  `tools/make_voices.py`. Jos sovellusta jaetaan laajasti, tarkista Microsoftin palvelun käyttöehdot.
 - **Kuvitus ja ääniefektit:** tämän projektin omaa työtä (SVG-kuvat ja Web Audiolla syntetisoidut efektit).
   Mukana ei ole Disneyn eikä muiden tahojen materiaalia.
 

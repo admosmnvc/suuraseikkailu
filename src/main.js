@@ -1,12 +1,13 @@
 /* Suuraseikkailu v3 entry: fonts + styles, boot, cover / audio gate, players, learning flow. OWNER: ui agent.
 
-   Flow: cover ("Aloita Suuraseikkailu", unlocks audio) -> "Kuka pelaa tänään?" picker (or the new-player
+   Flow: intro (~5 s, ui/intro.js) -> "Aloita Suuraseikkailu" (unlocks audio) -> "Kuka pelaa tänään?" picker (or the new-player
    onboarding: name + Tyttö / Poika = theme) -> home of that child -> section -> level choice -> steps.
    The level sets the unit size (HELPPO word, KESKITASO word pair, VAIKEA line); step k = units 1..k from the
    start: Kuuntele plays them + "your turn" -> "Sanoin!" -> minigame (every / every 2nd step) -> reward (+1 star;
    a step that completes a line: gem into the crown / part into the rocket) -> "Jatka" -> step k+1 ... the last
    step (whole section) -> finale + sticker. Audio locked again (background return) -> "Jatketaan!" gate, the tap
    resumes where the child was. */
+import '@fontsource/sniglet/latin-800.css';
 import '@fontsource/fredoka/latin-500.css';
 import '@fontsource/fredoka/latin-600.css';
 import '@fontsource/fredoka/latin-700.css';
@@ -34,7 +35,9 @@ import { initBackground } from './ui/background.js';
 import { initCaption, speak, speakGroups, stopVoice } from './ui/voice.js';
 import { applyTheme, syncBar } from './ui/theme.js';
 import { unitsOf, linesDoneBy, stepsBeforeLine, unitClips } from './ui/units.js';
+import { prefixClips } from './content/chunks.js';
 import { popPraise, randomWord } from './ui/praise.js';
+import { initIntro, playIntro, introBusy } from './ui/intro.js';
 import { initWho, renderPicker, showView, viewFocus } from './ui/who.js';
 import { renderLevel } from './ui/level.js';
 import { renderHome, initParentButton, forgetShown } from './ui/home.js';
@@ -168,20 +171,22 @@ function stopAll() {
   setActive(-1);
 }
 
-/* Voice groups of units 0..k-1: each fully covered line as its line clip (250 ms apart); the partly covered
-   line as its covered chunks' clips (gap 0 inside a chunk, 150 ms between chunks). lines[g] = line of group g. */
+/* The partly covered line up to the end of unit u: the recitation from the line start (content prefixClips: one
+   prefix cut; a section without cuts: its covered teacher chunk clips, 150 ms apart). */
+function partialGroup(u, pauseMs) {
+  return { items: prefixClips(cur.id, u.line, u.to, level).map((clip) => ({ clip })), gapMs: CHUNK_GAP, pauseMs };
+}
+
+/* Voice groups of units 0..k-1: each fully covered line as its line clip (250 ms apart), then the partly covered
+   line as its prefix (partialGroup). lines[g] = line of group g. */
 function unitGroups(k) {
   const groups = [], lines = [];
   const last = units[k - 1];
   for (let i = 0; i < k; i++) {
     const u = units[i];
-    if (u.line < last.line || last.last) {
-      if (u.last) { groups.push({ items: [{ clip: engine.line(cur, u.line) }], pauseMs: LINE_GAP }); lines.push(u.line); }
-    } else {
-      groups.push({ items: (u.clips || []).map((clip) => ({ clip })), pauseMs: groups.length && lines[lines.length - 1] === u.line ? CHUNK_GAP : LINE_GAP });
-      lines.push(u.line);
-    }
+    if (u.last && (u.line < last.line || last.last)) { groups.push({ items: [{ clip: engine.line(cur, u.line) }], pauseMs: LINE_GAP }); lines.push(u.line); }
   }
+  if (!last.last) { groups.push(partialGroup(last, LINE_GAP)); lines.push(last.line); }
   return { groups, lines };
 }
 
@@ -215,16 +220,14 @@ function playChain(pre) {
   });
 }
 
-/* One line card: its line clip; the partly covered line: only its covered chunks. */
+/* One line card: its line clip; the partly covered line: its prefix up to the newest unit. */
 function playSingle(i) {
   if (!cur || !cur.lines[i]) return;
   stopAll();
   const t = ++chainTok;
   const nu = units[step - 1];
   const partial = i === nu.line && !nu.last;
-  const groups = partial
-    ? units.filter((u, j) => j < step && u.line === i).map((u, j) => ({ items: (u.clips || []).map((clip) => ({ clip })), pauseMs: j ? CHUNK_GAP : 0 }))
-    : [{ items: [{ clip: engine.line(cur, i) }] }];
+  const groups = partial ? [partialGroup(nu, 0)] : [{ items: [{ clip: engine.line(cur, i) }] }];
   setActive(i);
   speakGroups(groups).then(() => { if (t === chainTok) setActive(-1); });
 }
@@ -628,6 +631,7 @@ function childrenChanged() {
 
 /* ---------- cover / gate ---------- */
 function onGateTap() {
+  if ($('gate').dataset.mode === 'start' && introBusy()) return; /* the intro's skip tap is not a start */
   /* SYNC inside the tap: unlock every audio channel before anything else */
   safe(() => engine.unlock());
   safe(() => SFX.unlock());
@@ -825,7 +829,9 @@ function boot() {
   wire();
   setThemeFromChild();
   if (child) { showHome(); showScreen('home'); } else showScreen('none');
+  initIntro($('coverArt'), $('gate'));
   showGate('start');
+  playIntro();
   syncBar(true);
   safe(() => engine.onLockChange(onLock));
   safe(() => engine.preload(['cover', 'who', 'ask-theme', 'welcome'].map((id) => engine.prompt(id))));

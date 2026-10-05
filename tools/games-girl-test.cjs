@@ -158,7 +158,7 @@ const BOTS = [
       await sleep(820);
     }
   },
-  async function castle(page, shot) {
+  async function mosque(page, shot) {
     for (let n = 0; n < 10 && !(await finished(page)); n++) {
       const w = await page.evaluate(() => [...document.querySelectorAll('.gc-win:not(.on)')].map((e) => {
         const r = e.querySelector('.gc-lit').getBoundingClientRect();

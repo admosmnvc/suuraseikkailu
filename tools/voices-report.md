@@ -1,74 +1,120 @@
-# Opettajaäänet ja sana-äänitteet – raportti
+# Äänet – raportti
 
-Kolme äänilähdettä, kaikki oikeaa puhetta (ei paloja resitaatiosta):
+Kaikki äänet ovat oikeaa puhetta. Rivit ja niiden alut ovat oikeasta resitaatiosta tai oikean ihmisen äänestä; konepuhetta on vain suomeksi.
 
 | Mitä | Lähde | Työkalu |
 |---|---|---|
-| Suurien rivit (Vaikea) | Mishary Rashid Alafasy, jakeittaiset MP3:t | (valmiit, `public/audio/SSSAAA.mp3`) |
-| Suurien sanat (Helppo, Keskitaso) | **Quran.com word-by-word -äänitteet**, `https://audio.qurancdn.com/wbw/SSS_AAA_WWW.mp3` – ihmisen lukemat yksittäiset sanat | `tools/build-words.py` |
-| Suomenkieliset kehotteet, Shahadan rivit ja Shahadan palat | Microsoft Edge -neuraalipuhe (`edge-tts`) | `tools/make_voices.py` |
+| Suurien rivit ja sana kerrallaan -palat (kaikki tasot) | Mishary Rashid Alafasy, murattal, luvuittaiset MP3:t + sana-ajat: **Quran.com QDC** (`api.qurancdn.com`, `download.quranicaudio.com`) | `tools/build-cuts.py` |
+| Shahadan rivit ja palat | **Oikean ihmisen ääni**: YouTube "How to recite the Shahada of Islam [HD]", SC Brotherhood & News Reports (omistajan lataama, omistaja vastaa käytöstä) | `tools/build-cuts.py` + `tools/cut-src/shahada.json` |
+| Suomenkieliset kehotteet ja merkitykset | Microsoft Edge -neuraalipuhe `fi-FI-NooraNeural` (`edge-tts`) | `tools/make_voices.py` |
 
-Lähdemerkintä (Asetukset → Lähteet ja lisenssit, `data.js` credits): "Sana kerrallaan -äänitteet (Helppo ja Keskitaso): Quran.com, audio.qurancdn.com (word-by-word)."
+Lähdemerkinnät (`data.js` credits, Asetukset → Lähteet ja lisenssit): "Resitaatio: Mishary Rashid Alafasy (murattal), Quran.com / quranicaudio.com; sana-ajat Quran.com (QDC).", "Shahada: oikean ihmisen ääni, SC Brotherhood & News Reports (YouTube: How to recite the Shahada of Islam).", "Sana kerrallaan -paloittelu: Mishary Alafasyn resitaatio, sana-ajat Quran.com (QDC)."
 
-## Opettajaäänet (`tools/make_voices.py`)
+## Resitaatio paloiteltuna (`tools/build-cuts.py`)
 
-- **Suomi:** `fi-FI-NooraNeural`, nopeus `+3%`, sävelkorkeus `+15Hz` – kirkas, lämmin ja kannustava (valittu vertailemalla viittä asetusta kolmella lauseella).
-- **Arabia (Shahada):** `ar-SA-ZariyahNeural`, nopeus `-25%`, sävelkorkeus `+8Hz` – selkeä ja hidas, jotta 4-vuotias ehtii toistaa. Teksti = `data.js`:n `tts`-kenttä täysin vokaalimerkein.
-- **Shahadan palat (v3, Helppo/Keskitaso):** 14 tiedostoa `public/audio/shahada-c-<rivi>-<taso>-<n>.mp3` samoilla Zariyah-asetuksilla. Teksti = vastaavat sanat `tts`-kentästä (`src/content/chunks.js`, `teacherChunkClips()`):
-  - rivi 1 helppo: أَشْهَدُ · أَنْ لا · إِلَهَ · إِلَّا اللَّه (Ash-hadu · an laa · ilaaha · illallaah); keskitaso: أَشْهَدُ أَنْ لا · إِلَهَ إِلَّا اللَّه
-  - rivi 2 helppo: وَأَشْهَدُ · أَنَّ · مُحَمَّدًا · عَبْدُهُ · وَرَسُولُه; keskitaso: وَأَشْهَدُ أَنَّ · مُحَمَّدًا عَبْدُهُ · وَرَسُولُه
-- **Uudet suomenkieliset kehotteet (v3):** cover, who, ask-theme, pick-level, level-easy/medium/hard, rocket-part, rocket-launch, game-boy-0..5, game-girl-0..5 (`ask-name` on vain tekstiä). Poistetut v2-pelikehotteet game-0..7 poistettiin (`--prune`). Kehotteita chunk-turn, chunk-good, line-now ja surah-now ei tehty (poistettu `prompts.js`:stä ennen generointia).
-- **Ääntämiskorjaukset vain puheeseen** (`SAY_AS`; näkyvät tekstit eivät muutu): Al-Fatihan → Alfaatihan, Al-Ikhlasin → Alihlaasin, Al-Kawtharin → Alkautharin, Kawtharin → Kautharin, Upeaa → Upeeaa, Herraasi → Herraa-si, kaikkea → kaikke-a. Syy: "Al-…" luettiin kirjaimina; Noora nieli vokaalin sanoista "Upeaa", "Herraasi" ja "kaikkea". Uudet kehotteet eivät tarvinneet korjauksia (tarkistettu puheentunnistuksella).
-- **Jälkikäsittely (ffmpeg):** hiljaisuus pois alusta ja lopusta (−50 dB RMS, 10 ms pehmeä häivytys), 60 ms tyhjää molempiin päihin, mono, kaksivaiheinen loudnorm (lineaarinen), MP3 mono 44,1 kHz 64 kbps.
-- **Äänekkyys:** tavoite -18.4 LUFS = Mishary-tiedostojen (14 kpl) mediaani; mono mitataan dual-monona, koska selain soittaa sen molemmista kaiuttimista kuten resitaation. True peak ≤ -1.5 dBTP.
+Omistaja: "resitoinnin flow joka on vaan pilkottu". Jokaisesta suuran rivistä on rivitiedosto (`public/audio/SSSAAA.mp3`, nimet ennallaan) ja jokaisen sanarajan kohdalta **alkupala** `public/audio/cut/SSS_AAA_wW.mp3` = jae alusta sanan W loppuun (40 kpl). Al-Ikhlasin ja Al-Kawtharin Bismillah = 1:1. Sovellus soittaa osittain sanotun rivin YHTENÄ alkupalana (`prefixClips()` `src/content/chunks.js`:ssä), valmiit rivit rivitiedostoina 250 ms välein.
 
-## Sana-äänitteet (`tools/build-words.py`)
+- **Lähde:** QDC (Mishary = reciter 7) luvut 1, 108, 112: MP3 + `verse_timings[].segments` = [sanan nro, alku ms, loppu ms] (rikkinäiset rivit kuten `[1]` hylätään). Tallessa `tools/recitation-src/` (ei mukana sovelluksessa).
+- **Sama esitys kuin v2:n jaetiedostot?** Kyllä: jokaisen rivin 0,5 s ikkunoiden korrelaatio v2:n EveryAyah-tiedostoon (`tools/recitation-src/everyayah/`) on 0.986–0.997 vakioviiveellä. Luvun tiedosto on kuitenkin parempi (44,1 kHz / 128 kbps vs. 22 kHz / 64 kbps), joten **sekä rivi että sen alkupalat leikataan luvun tiedostosta**: sama otto, sama vahvistus, alkupala on täsmälleen rivin alku. Rivien kesto muuttui alle 0,1 s.
+- **Leikkaus:** jokainen leikkauskohta (jakeen alku/loppu, sanan W+1 alku) siirretään hiljaisimpaan kohtaan (10 ms RMS) ±80 ms:n sisällä; 20 ms pehmeä alkuhäivytys, 60 ms loppuhäivytys (kosini), ei naksahduksia: ensimmäinen ja viimeinen 1 ms ≤ −62 dBFS kaikissa tiedostoissa.
+- **QDC-aikojen korjaus:** 11/14 jakeessa QDC:n sana-ajat alkavat 65 ms ennen jakeen aikaleimaa. Jos ne alkavat aikaisemmin, koko jakeen sana-ajat siirretään ylimäärän verran myöhemmäksi: 108:2 +400 ms, 108:3 +50 ms, 1:6 +10 ms. Ilman korjausta 108:2:n palat olivat "فلس" ja "فصلي لرب" (sanan keskeltä); korjattuina "فصل" ja "فصل لربك", ja kohdat osuvat energiakäyrän ja Whisperin sana-aikojen kohtiin.
+- **Äänekkyys:** rivi normalisoidaan −18.4 LUFS:iin (sama tavoite kuin kaikessa muussa; v2:n rivit vaihtelivat −16.3…−22.0 LUFS), alkupaloille **sama vahvistus kuin rivilleen**, joten pala kuulostaa täsmälleen samalta kuin rivin alku (palojen oma LUFS −22.5…−14.0; alle 0,4 s paloilla mittari ei anna arvoa). True peak ≤ −4.3 dBTP. MP3 stereo 44,1 kHz 96 kbps.
+- **Tarkistus (Whisper `large-v3-turbo`, kaikki 16 riviä + 46 palaa):** rivit tunnistuvat oikein (0.96–1.0). Palat: 40/46 täsmälleen odotetut sanat järjestyksessä. Loput: Whisper "täydentää" tuttuja fraaseja (1:1 w2/w3 → koko Bismillah, vaikka pala on 1.5 / 2.6 s 6.1 s:sta; 112:3 w3 "لم يلد ولم يلد"; Shahada 1 w3 "…لا إله"), lyhyet palat (1:7 w1 0.70 s "سليلوال"; 112:3 w1 0.39 s "لن" = lam). Näissä kohta tarkistettiin erikseen: Whisperin sana-ajat koko rivistä ±0,15 s ja Shahadassa erilliset palat ("لا" | "إِلَهَا").
+- **Ajo:** `python3 tools/build-cuts.py` (lataa puuttuvat, leikkaa muuttuneet, tarkistaa), `--check`, `--force`, `--asr [--only …]`, `--prune`. Deterministinen: toinen ajo ei muuta tavuakaan.
 
-- **Lähde:** Quran.com word-by-word, yksi tiedosto per sana, ihmisen lukema. Sanalista tulee sovelluksesta (`node tools/list-clips.mjs --words` = `src/content/words.js`): sana *n* rivillä = `SSS_AAA_<n>.mp3`, missä SSS/AAA tulee rivin jaetiedostosta. Al-Ikhlasin ja Al-Kawtharin Bismillah (rivi 0) käyttää Al-Fatihan 1:1 -sanoja → 54 eri tiedostoa (Al-Fatiha 29, Al-Ikhlas 15, Al-Kawthar 10).
-- **Lataus:** `curl` (Pythonin urllib saa välityspalvelimelta 403), alkuperäiset talteen `tools/wbw-src/` (3,4 MB, 320 kbps stereo; ladataan uudelleen jos puuttuu). Alkuperäisten SHA-256 ja URL tallennetaan `tools/words.json`:iin.
-- **Käsittely:** sama ketju kuin opettajaäänissä (`make_voices.master`), mutta reunat leikataan vain siitä, missä jokainen näyte on alle −50 dBFS (huippuarvo, ei RMS: hiljaista sanan loppua ei koskaan leikata), reunoihin n. 40 ms hiljaisuutta, lineaarinen loudnorm -18.4 LUFS, true peak ≤ -2 dBTP, MP3 mono 44,1 kHz 64 kbps → `public/audio/wbw/`. Sanan sisältä ei leikata mitään; alkuperäisissä oli 0,03–0,5 s tyhjää alussa (Al-Fatiha) ja n. 30 ms lopussa.
-- **Ajo:** `python3 tools/build-words.py` (lataa puuttuvat, käsittelee muuttuneet, tarkistaa kaiken), `--check` (vain tarkistus), `--force`, `--asr` (takaisinlitterointi), `--prune`. Skripti on deterministinen ja idempotentti: toinen ajo ei muuta yhtään tavua (tarkistettu md5:llä).
+## Shahada: oikean ihmisen ääni
 
-### Tarkistukset (kaikki läpi)
+- **Teksti (omistajan päätös):** rivi 2 = وَأَشْهَدُ أَنَّ مُحَمَّدًا رَسُولُ اللَّهِ ("wa ash-hadu anna Muhammadan rasuulullaah", "Ja todistan, että Muhammad on Allahin lähettiläs."). `tools/arabic-original.json` päivitettiin vain tältä riviltä; Koraanin rivit ovat tavu tavulta ennallaan (`node tools/check-arabic.mjs`).
+- **Äänite:** 278 s, Shahada 7 kertaa hitaina opetuspaloina (2–4 s hiljaisuus välissä). Kaikki 7 toistoa ovat samaa ottoa (palojen korrelaatio 0.98–0.996); käytetään toistoa 1 (2.8–44.7 s, "wa" mukana). Palat: Ash-hadu | an | laa ilaaha | illallaah | wa ash-hadu | anna | Muhammadan | rasuulullaah. "laa ilaaha" jaetaan إِلَٰهَ:n kurkkuäänteen kohdalta (13.08 s; erikseen tunnistettuna "لا" | "إِلَهَا").
+- **Käsittely:** palat rajataan puheeseen (−50 dBFS + 10 ms), 20 ms / 40 ms häivytykset, liitetään 220 ms:n tauoin (alkuperäisessä 2–4 s), mono 44,1 kHz 64 kbps, rivi −18.4 LUFS ja paloille sama vahvistus. Tiedostot: `public/audio/shahada-1.mp3` (12.1 s), `shahada-2.mp3` (14.3 s) ja yksikköjen loppuihin `public/audio/cut/shahada-1_w1/_w3/_w4.mp3`, `shahada-2_w1/_w2/_w3.mp3`.
+- **Tarkistus (Whisper):** rivit "أشهد أن لا إله إلا الله" ja "وأشهد أن محمداً رسول الله" (1.0); palat أشهد · أشهد أن لا (+ fraasin täydennys إله) · أشهد أن لا إله · وأشهاد · وأشهد أن · وأشهد أن محمداً.
+- Zariyah-konepuheen Shahada-tiedostot (`shahada-c-*`, vanhat `shahada-1/2`) poistettiin. Moottorin `preSlowed`-sääntö on nyt aina epätosi: hidas tila hidastaa myös Shahadan (0,8), kuten resitaation.
 
-- **Sanamäärä:** jokaiselle 14 jakeelle quran.comissa on täsmälleen yhtä monta sanatiedostoa kuin Tanzil-rivillä on sanoja – sana N+1 palauttaa 404 (`words.json` → `verses`).
-- **Tiedostot kelpaavat:** ffprobe lukee kaikki; kesto 0,2–4 s (alkuperäiset 0.63–2.92 s). Ainoa poikkeus, dokumentoitu: 1:7 sana 9 ٱلضَّآلِّينَ 6.45 s → 6.01 s (madd laazim, venytys 6 tavua – kolmen suuran pisin sana).
-- **Mitään ei leikattu sanasta:** valmis tiedosto on aina vähintään yhtä pitkä kuin alkuperäisen puheosuus (silencedetect −50 dB, riippumaton leikkaussuotimesta).
-- **Kesto järkevä:** puhetta sekunteina per arabialainen kirjain on jokaisella sanalla mediaanin 1/3–3× sisällä (väärä tiedosto väärässä kohdassa näkyisi tässä).
-- **Äänekkyys:** -18.5…-18.3 LUFS, true peak -12.4…-5.6 dBTP, kaikki "linear".
-- **Selain:** kaikki 54 sanaa, 14 Shahadan palaa ja 56 suomenkielistä kehotetta dekoodautuvat Chromiumissa (Web Audio), ei virheitä.
-- **Sanojen järjestys (takaisinlitterointi):** kaikki 54 käsiteltyä tiedostoa litteroitiin Whisperillä (`large-v3-turbo`, arabia). Jokainen tunnistus on oikea sana oikeassa kohdassa (konsonanttirunkojen samankaltaisuus 0.75–1.0; ainoa 0.5: 112:1 هُوَ → "أو", pehmeä h). Tunnistus vahvisti myös translitteroinnin säännön: jakeen keskellä sana luetaan täydellä päätteellä (بسمي = bismi, ربي = rabbi, مالكي = maaliki, نعبدو = na‘budu, فصلي = fasalli, لهو = lahuu), jakeen viimeinen sana taukomuodossa (نستعين = nasta‘iin, الرحيم = ar-rahiim, الدين = ad-diin, Ahad).
+## Suomenkieliset opettajaäänet (`tools/make_voices.py`)
 
-### Translitterointi (`src/content/words.js`)
+- `fi-FI-NooraNeural`, nopeus `+3%`, sävelkorkeus `+15Hz` – kirkas, lämmin ja kannustava. 56 tiedostoa (kehotteet + merkitykset); `ask-name` on vain tekstiä.
+- **Ääntämiskorjaukset vain puheeseen** (`SAY_AS`; näkyvä teksti ei muutu): Al-Fatihan → Alfaatihan, Al-Ikhlasin → Alihlaasin, Al-Kawtharin → Alkautharin, Kawtharin → Kautharin, Upeaa → Upeeaa, Herraasi → Herraa-si, kaikkea → kaikke-a, **lähettiläs → lähetti-läs** (uusi: lauseen lopussa Noora nieli toisen l:n, "lähettiäs" kahdella Whisper-mallilla; korjattuna tunnistuu oikein).
+- **Jälkikäsittely:** hiljaisuus pois reunoilta (−50 dB RMS, 10 ms häivytys), 60 ms tyhjää, mono, kaksivaiheinen lineaarinen loudnorm, MP3 mono 44,1 kHz 64 kbps.
+- **Äänekkyys:** tavoite −18.4 LUFS = v2:n alkuperäisten Mishary-jaetiedostojen (14 kpl, `tools/recitation-src/everyayah/`) mediaani – viite ei enää ole `public/audio/`, koska `build-cuts.py` normalisoi ne samaan tavoitteeseen. True peak ≤ −1.5 dBTP.
+- **Tarkistus:** kaikki 56 läpi (kesto, äänekkyys −18.5…−18.3, true peak); kaikki litteroitu Whisperillä. Erot: gem "javokiven" (rajatapaus, l pehmeä), finale-* / mean-kawthar-1 täsmäävät puhemuotoon (`SAY_AS`), rocket-launch "3, 2, 1" (numeroina), game-girl-1 "Ruokieläimet" (yhdistetty), mean-shahada-1 nyt oikein.
+- Ajo: `python3 tools/make_voices.py` (`--check`, `--force`, `--only`, `--asr`, `--prune`).
 
-Suomalaisittain luettava, `data.js`:n tyyli: pitkät vokaalit kahdella kirjaimella (aa, ii, uu), ‘ = ain, ’ = hamza, sh/kh/gh/dh/th, artikkeli väliviivalla (al-, ar-, as-, ad-). Jokainen sana kirjoitetaan niin kuin se kuuluu omassa äänitteessään: hamzat al-wasl saa vokaalinsa (ٱللَّهِ yksin = Allaahi, ٱهْدِنَا = Ihdinaa), jakeen sisällä täysi pääte, jakeen lopussa taukomuoto. Isolla alkukirjaimella rivin ensimmäinen sana (kuten `data.js`) ja Allaah. Palan teksti = sanojen tekstit välilyönnillä; Shahadassa omistajan yksiköt (Ash-hadu · an laa · ilaaha · illallaah).
+## quran.com-sana-äänitteet (vain työkalukopio)
 
-Keskitason parit: sanat pareittain vasemmalta oikealle (viimeinen voi jäädä yksin). Poikkeus, deterministinen (`LEADS` `chunks.js`:ssä): pieni partikkeli, joka johtaa seuraavaan sanaan (وَلَا), ei jää parin jälkimmäiseksi: 1:7 … | ‘alayhim | wa laa ad-daalliin.
-
-## Puheentunnistus: opettajaäänet
-
-Kaikki 72 opettajaäänitiedostoa on litteroitu takaisin paikallisella Whisper-mallilla (`faster-whisper`, `large-v3-turbo`, CPU; uudet 35 tässä ajossa: `make_voices.py --asr --only …`). Suomi: 48/56 täsmää näytettävään tekstiin ja 4 puhemuotoon (`SAY_AS`) (isot kirjaimet ja välimerkit ohitettu; huutomerkit kuuluvat tunnistimelle usein pisteinä). Arabia: 11/16 täsmää kirjain kirjaimelta (vokaalimerkit ohitettu). Erot:
-
-| Tiedosto | Odotettu | Tunnistettu | Arvio |
-|---|---|---|---|
-| gem | Sait jalokiven kruunuun! | Sait javokiven kruunuun. | (v2) rajatapaus, l on pehmeä; raakaversio tunnistui "jalokiven". |
-| finale-fatiha / -ikhlas / -kawthar, mean-kawthar-1 | Al-Fatihan … | alfaatihan … | täsmää puhemuotoon (`SAY_AS`) |
-| mean-shahada-1 | … Muhammad … | … Muhammed … | (v2) tunnistimen kirjoitusasu |
-| rocket-launch | Kolme, kaksi, yksi... Raketti lähtee! | 3, 2, 1. Raketti lähtee. | täsmää (numerot numeroina) |
-| game-girl-1 | Ruoki eläimet! | Ruokieläimet | täsmää (tunnistin yhdisti sanat) |
-| shahada-c-1-easy-2 | أَنْ لا | أنا لأ | lyhyt pala (0,9 s); keskitason pala أشهد أن لا tunnistuu oikein |
-| shahada-c-1-easy-3 | إِلَهَ | إلعا | toisella ajolla "إلاها / Ilaha" = ilaaha, oikein |
-| shahada-c-1-medium-2 | إِلَهَ إِلَّا اللَّه | إِلَهَا إِلَّا اللَّهِ | oikein (tunnistin lisäsi vokaalit) |
-| shahada-c-2-easy-2 | أَنَّ | ن | tunnistin ei saa 0,5 s sanasta otetta; taajuusanalyysi: a (160 ms) – nn (150 ms) – a, eli "anna" kuuluu kokonaan; keskitason pala وأشهد أن tunnistuu oikein |
-| shahada-c-2-easy-4 | عَبْدُهُ | عبدو | ‘abduh(u), loppu-h pehmeä; keskitason pala محمدا عبده tunnistuu oikein |
-
-Lyhyiden arabian palojen vaihtoehtoja kokeiltiin (piste perään, nopeus -10 %, `لَا`/`إِلَٰهَ`-kirjoitusasu): tunnistus ei parantunut, joten palat tehtiin samalla tekstillä ja asetuksilla kuin Shahadan rivit.
+v3:n ensimmäinen versio käytti quran.comin erillisiä sana-äänitteitä (`audio.qurancdn.com/wbw/SSS_AAA_WWW.mp3`, 54 kpl). Omistaja halusi resitaation omaa virtaa, joten niitä **ei enää ole sovelluksessa** (`public/audio/wbw/` poistettu). Kopio: alkuperäiset `tools/wbw-src/`, käsitellyt `tools/wbw/`, raportti `tools/words.json` (`tools/build-words.py`).
 
 ## Oma ääni
 
-Vanhempi voi korvata asetuksissa (pitkä painallus → **Omat äänitykset**) Shahadan rivit, vuorokehotteet, kehut, palkintolauseet ja juhlalauseet omalla nauhoituksellaan; oma nauhoitus soi aina ennen näitä tiedostoja. Asetuksia voi muuttaa skriptin alusta (`VOICES`, `SAY_AS`) ja ajaa uudelleen: `python3 tools/make_voices.py` (tarkistus ilman verkkoa: `--check`, kaikki uudestaan: `--force`, litterointi: `--asr`, käyttämättömät pois: `--prune`).
+Vanhempi voi korvata asetuksissa (pitkä painallus → **Omat äänitykset**) Shahadan rivit, kehotteet, kehut ja juhlalauseet omalla nauhoituksellaan; oma nauhoitus soi aina ennen tiedostoa.
 
-## Tiedostot: opettajaäänet
+## Tiedostot: resitaatio ja Shahada
+
+| Tiedosto | Sanat | Kesto (s) | LUFS | Tunnistus |
+|---|---|---|---|---|
+| `public/audio/shahada-1.mp3` | koko rivi | 12.12 | -18.4 | أشهد أن لا إله إلا الله (1.0) |
+| `public/audio/cut/shahada-1_w1.mp3` | أَشْهَدُ | 1.65 | -22.5 | أشهد (1.0) |
+| `public/audio/cut/shahada-1_w3.mp3` | أَشْهَدُ أَنْ لَا | 5.67 | -19.0 | أشهد أن لا إله (0.84) |
+| `public/audio/cut/shahada-1_w4.mp3` | أَشْهَدُ أَنْ لَا إِلَٰهَ | 7.26 | -18.8 | أشهد أن لا إله (1.0) |
+| `public/audio/shahada-2.mp3` | koko rivi | 14.29 | -18.4 | وأشهد أن محمداً رسول الله (1.0) |
+| `public/audio/cut/shahada-2_w1.mp3` | وَأَشْهَدُ | 2.01 | -19.5 | وأشهاد (0.91) |
+| `public/audio/cut/shahada-2_w2.mp3` | وَأَشْهَدُ أَنَّ | 5.15 | -19.3 | وأشهد أن (1.0) |
+| `public/audio/cut/shahada-2_w3.mp3` | وَأَشْهَدُ أَنَّ مُحَمَّدًا | 8.44 | -19.6 | وأشهد أن محمداً (1.0) |
+| `public/audio/001001.mp3` | koko rivi | 6.11 | -18.5 | بسم الله الرحمن الرحيم (1.0) |
+| `public/audio/cut/001_001_w1.mp3` | بِسْمِ | 0.63 | -16.6 | بسمي (0.86) |
+| `public/audio/cut/001_001_w2.mp3` | بِسْمِ ٱللَّهِ | 1.51 | -16.2 | بسم الله الرحمن الرحيم (0.54) |
+| `public/audio/cut/001_001_w3.mp3` | بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ | 2.61 | -17.3 | بسم الله الرحمن الرحيم (0.81) |
+| `public/audio/001002.mp3` | koko rivi | 5.64 | -18.3 | الحمد لله رب العالمين (0.97) |
+| `public/audio/cut/001_002_w1.mp3` | ٱلْحَمْدُ | 1.07 | -19.8 | الحمدل (0.91) |
+| `public/audio/cut/001_002_w2.mp3` | ٱلْحَمْدُ لِلَّهِ | 1.91 | -17.5 | الحمد لله (1.0) |
+| `public/audio/cut/001_002_w3.mp3` | ٱلْحَمْدُ لِلَّهِ رَبِّ | 2.51 | -17.5 | الحمد لله ربنا (0.91) |
+| `public/audio/001003.mp3` | koko rivi | 4.65 | -18.4 | الرحمن الرحيم (1.0) |
+| `public/audio/cut/001_003_w1.mp3` | ٱلرَّحْمَٰنِ | 1.23 | -17.9 | الرحمن (1.0) |
+| `public/audio/001004.mp3` | koko rivi | 4.70 | -18.4 | مالك يوم الدين (0.96) |
+| `public/audio/cut/001_004_w1.mp3` | مَٰلِكِ | 0.76 | -16.7 | مالك (0.86) |
+| `public/audio/cut/001_004_w2.mp3` | مَٰلِكِ يَوْمِ | 1.49 | -17.6 | مالك يومي (0.86) |
+| `public/audio/001005.mp3` | koko rivi | 6.74 | -18.4 | إياك نعبد وإياك نستعين (1.0) |
+| `public/audio/cut/001_005_w1.mp3` | إِيَّاكَ | 1.04 | -17.4 | إياك (1.0) |
+| `public/audio/cut/001_005_w2.mp3` | إِيَّاكَ نَعْبُدُ | 1.75 | -17.7 | إياك نعبد (1.0) |
+| `public/audio/cut/001_005_w3.mp3` | إِيَّاكَ نَعْبُدُ وَإِيَّاكَ | 2.95 | -17.4 | إياك نعبد وإياك نعبد (0.87) |
+| `public/audio/001006.mp3` | koko rivi | 5.64 | -18.4 | اهدنا الصراط المستقيم (0.97) |
+| `public/audio/cut/001_006_w1.mp3` | ٱهْدِنَا | 0.81 | -21.4 | إهدنا (1.0) |
+| `public/audio/cut/001_006_w2.mp3` | ٱهْدِنَا ٱلصِّرَٰطَ | 1.57 | -16.8 | اهدنا الصراط (0.95) |
+| `public/audio/001007.mp3` | koko rivi | 13.24 | -18.4 | صراط الذين أنعمت عليهم غير المغضوب عليهم ولا الضالين (0.99) |
+| `public/audio/cut/001_007_w1.mp3` | صِرَٰطَ | 0.70 | -15.3 | سليلوال (0.0) |
+| `public/audio/cut/001_007_w2.mp3` | صِرَٰطَ ٱلَّذِينَ | 1.62 | -16.1 | صراط الذين (0.94) |
+| `public/audio/cut/001_007_w3.mp3` | صِرَٰطَ ٱلَّذِينَ أَنْعَمْتَ | 2.61 | -16.9 | صراط الذين أنعمت (0.96) |
+| `public/audio/cut/001_007_w4.mp3` | صِرَٰطَ ٱلَّذِينَ أَنْعَمْتَ عَلَيْهِمْ | 3.68 | -17.0 | صراط الذين أنعمت عليهم (0.97) |
+| `public/audio/cut/001_007_w5.mp3` | صِرَٰطَ ٱلَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ | 4.13 | -17.2 | صراط الذين أنعمت عليهم غير (0.98) |
+| `public/audio/cut/001_007_w6.mp3` | صِرَٰطَ ٱلَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ ٱلْمَغْضُوبِ | 5.30 | -17.6 | صراط الذين أنعمت عليهم غير المغضوب (0.98) |
+| `public/audio/cut/001_007_w7.mp3` | صِرَٰطَ ٱلَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ ٱلْمَغْضُوبِ عَلَيْهِمْ | 6.40 | -17.6 | صراط الذين أنعمت عليهم غير المغضوب عليهم (0.99) |
+| `public/audio/cut/001_007_w8.mp3` | صِرَٰطَ ٱلَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ ٱلْمَغْضُوبِ عَلَيْهِمْ وَلَا | 6.74 | -17.6 | صراط الذين أنعمت عليهم غير المغضوب عليهم ولا (0.99) |
+| `public/audio/112001.mp3` | koko rivi | 3.00 | -18.4 | قل هو الله أحد (1.0) |
+| `public/audio/cut/112_001_w1.mp3` | قُلْ | 0.50 | -22.2 | قل (1.0) |
+| `public/audio/cut/112_001_w2.mp3` | قُلْ هُوَ | 0.68 | -20.9 | قل هو (1.0) |
+| `public/audio/cut/112_001_w3.mp3` | قُلْ هُوَ ٱللَّهُ | 1.72 | -17.3 | قل هو الله (1.0) |
+| `public/audio/112002.mp3` | koko rivi | 2.59 | -18.4 | الله الصمد (1.0) |
+| `public/audio/cut/112_002_w1.mp3` | ٱللَّهُ | 1.10 | -16.9 | الله (1.0) |
+| `public/audio/112003.mp3` | koko rivi | 3.03 | -18.3 | لم يلد ولم يولد (1.0) |
+| `public/audio/cut/112_003_w1.mp3` | لَمْ | 0.39 | – | لن (0.5) |
+| `public/audio/cut/112_003_w2.mp3` | لَمْ يَلِدْ | 0.99 | -17.2 | لم يلد (1.0) |
+| `public/audio/cut/112_003_w3.mp3` | لَمْ يَلِدْ وَلَمْ | 1.75 | -16.9 | لم يلد ولم يلد (0.84) |
+| `public/audio/112004.mp3` | koko rivi | 4.86 | -18.4 | ولم يكن له كفوا أحد (1.0) |
+| `public/audio/cut/112_004_w1.mp3` | وَلَمْ | 0.60 | -14.0 | والم (0.86) |
+| `public/audio/cut/112_004_w2.mp3` | وَلَمْ يَكُن | 1.25 | -16.6 | ولم يكن (1.0) |
+| `public/audio/cut/112_004_w3.mp3` | وَلَمْ يَكُن لَّهُۥ | 2.14 | -17.1 | ولم يكن له (1.0) |
+| `public/audio/cut/112_004_w4.mp3` | وَلَمْ يَكُن لَّهُۥ كُفُوًا | 3.06 | -17.5 | ولم يكن له كفوا (1.0) |
+| `public/audio/108001.mp3` | koko rivi | 6.74 | -18.4 | إنا أعطيناك الكوثر (0.97) |
+| `public/audio/cut/108_001_w1.mp3` | إِنَّآ | 3.58 | -17.7 | إنا (1.0) |
+| `public/audio/cut/108_001_w2.mp3` | إِنَّآ أَعْطَيْنَٰكَ | 5.07 | -17.8 | إنا أعطيناك (0.95) |
+| `public/audio/108002.mp3` | koko rivi | 3.60 | -18.3 | فصل لربك وانحر (1.0) |
+| `public/audio/cut/108_002_w1.mp3` | فَصَلِّ | 0.78 | -18.1 | فصل (1.0) |
+| `public/audio/cut/108_002_w2.mp3` | فَصَلِّ لِرَبِّكَ | 2.09 | -17.2 | فصل لربك (1.0) |
+| `public/audio/108003.mp3` | koko rivi | 5.25 | -18.4 | إن شانئك هو الأبتر (1.0) |
+| `public/audio/cut/108_003_w1.mp3` | إِنَّ | 1.59 | -18.2 | إِنَّ (1.0) |
+| `public/audio/cut/108_003_w2.mp3` | إِنَّ شَانِئَكَ | 2.90 | -17.2 | إن شانئك (1.0) |
+| `public/audio/cut/108_003_w3.mp3` | إِنَّ شَانِئَكَ هُوَ | 3.16 | -17.3 | إن شانئك هو (1.0) |
+
+## Tiedostot: suomenkieliset
 
 | Tiedosto | Teksti | Kesto (s) | LUFS |
 |---|---|---|---|
@@ -108,26 +154,10 @@ Vanhempi voi korvata asetuksissa (pitkä painallus → **Omat äänitykset**) Sh
 | `public/audio/fi/game-girl-2.mp3` | Kylvetä koiranpentu! | 1.33 | -18.4 |
 | `public/audio/fi/game-girl-3.mp3` | Koristele kakku! | 1.25 | -18.4 |
 | `public/audio/fi/game-girl-4.mp3` | Kasvata kukkaniitty! | 1.44 | -18.4 |
-| `public/audio/fi/game-girl-5.mp3` | Sytytä linnan valot! | 1.38 | -18.4 |
+| `public/audio/fi/game-girl-5.mp3` | Sytytä moskeijan valot! | 1.65 | -18.4 |
 | `public/audio/fi/test-fi.mp3` | Hei! Tämä on suomen puheääni. | 2.95 | -18.4 |
-| `public/audio/shahada-c-1-easy-1.mp3` | أَشْهَدُ | 0.89 | -18.3 |
-| `public/audio/shahada-c-1-easy-2.mp3` | أَنْ لا | 0.86 | -18.4 |
-| `public/audio/shahada-c-1-easy-3.mp3` | إِلَهَ | 0.76 | -18.4 |
-| `public/audio/shahada-c-1-easy-4.mp3` | إِلَّا اللَّه | 0.94 | -18.4 |
-| `public/audio/shahada-c-1-medium-1.mp3` | أَشْهَدُ أَنْ لا | 1.36 | -18.4 |
-| `public/audio/shahada-c-1-medium-2.mp3` | إِلَهَ إِلَّا اللَّه | 1.57 | -18.4 |
-| `public/audio/shahada-c-2-easy-1.mp3` | وَأَشْهَدُ | 1.04 | -18.3 |
-| `public/audio/shahada-c-2-easy-2.mp3` | أَنَّ | 0.68 | -18.4 |
-| `public/audio/shahada-c-2-easy-3.mp3` | مُحَمَّدًا | 1.28 | -18.4 |
-| `public/audio/shahada-c-2-easy-4.mp3` | عَبْدُهُ | 0.81 | -18.4 |
-| `public/audio/shahada-c-2-easy-5.mp3` | وَرَسُولُه | 1.20 | -18.4 |
-| `public/audio/shahada-c-2-medium-1.mp3` | وَأَشْهَدُ أَنَّ | 1.49 | -18.4 |
-| `public/audio/shahada-c-2-medium-2.mp3` | مُحَمَّدًا عَبْدُهُ | 1.62 | -18.4 |
-| `public/audio/shahada-c-2-medium-3.mp3` | وَرَسُولُه | 1.20 | -18.4 |
 | `public/audio/fi/mean-shahada-0.mp3` | Todistan, että ei ole muuta jumalaa kuin Allah. | 3.00 | -18.4 |
-| `public/audio/shahada-1.mp3` | أَشْهَدُ أَنْ لا إِلَهَ إِلَّا اللَّه | 2.48 | -18.4 |
-| `public/audio/fi/mean-shahada-1.mp3` | Ja todistan, että Muhammad on Allahin palvelija ja lähettiläs. | 3.81 | -18.4 |
-| `public/audio/shahada-2.mp3` | وَأَشْهَدُ أَنَّ مُحَمَّدًا عَبْدُهُ وَرَسُولُه | 3.63 | -18.4 |
+| `public/audio/fi/mean-shahada-1.mp3` | Ja todistan, että Muhammad on Allahin lähettiläs. | 3.13 | -18.4 |
 | `public/audio/fi/mean-fatiha-0.mp3` | Allahin, Armeliaan, Armahtavan nimeen. | 2.64 | -18.4 |
 | `public/audio/fi/mean-fatiha-1.mp3` | Kaikki kiitos kuuluu Allahille, maailmojen Herralle. | 3.24 | -18.4 |
 | `public/audio/fi/mean-fatiha-2.mp3` | Armeliaalle, Armahtavalle. | 1.83 | -18.4 |
@@ -144,64 +174,3 @@ Vanhempi voi korvata asetuksissa (pitkä painallus → **Omat äänitykset**) Sh
 | `public/audio/fi/mean-kawthar-1.mp3` | Me olemme antaneet sinulle Kawtharin, runsaasti hyvää. | 3.40 | -18.5 |
 | `public/audio/fi/mean-kawthar-2.mp3` | Rukoile siis Herraasi ja uhraa. | 2.43 | -18.4 |
 | `public/audio/fi/mean-kawthar-3.mp3` | Se, joka sinua vihaa, jää itse vaille kaikkea hyvää. | 3.45 | -18.4 |
-
-## Tiedostot: sana-äänitteet
-
-Kesto: alkuperäinen → käsitelty. Tunnistus = Whisperin arabiankielinen litterointi käsitellystä tiedostosta (samankaltaisuus 0–1). Alkuperäinen URL = `https://audio.qurancdn.com/wbw/<tiedosto>`.
-
-| Tiedosto | Jae:sana | Arabia | Translitterointi | Kesto (s) | LUFS | Tunnistus |
-|---|---|---|---|---|---|---|
-| `public/audio/wbw/001_001_001.mp3` | 1:1:1 | بِسْمِ | Bismi | 1.12 → 0.89 | -18.4 | بسمي (0.86) |
-| `public/audio/wbw/001_001_002.mp3` | 1:1:2 | ٱللَّهِ | Allaahi | 1.36 → 1.04 | -18.4 | الله (1.0) |
-| `public/audio/wbw/001_001_003.mp3` | 1:1:3 | ٱلرَّحْمَٰنِ | ar-rahmaani | 1.88 → 1.57 | -18.4 | الرحمن (1.0) |
-| `public/audio/wbw/001_001_004.mp3` | 1:1:4 | ٱلرَّحِيمِ | ar-rahiim | 1.75 → 1.46 | -18.4 | الرحيم (1.0) |
-| `public/audio/wbw/001_002_001.mp3` | 1:2:1 | ٱلْحَمْدُ | Al-hamdu | 1.33 → 1.04 | -18.4 | الحمد (1.0) |
-| `public/audio/wbw/001_002_002.mp3` | 1:2:2 | لِلَّهِ | lillaahi | 1.72 → 1.33 | -18.4 | لله (1.0) |
-| `public/audio/wbw/001_002_003.mp3` | 1:2:3 | رَبِّ | rabbi | 1.23 → 1.04 | -18.4 | ربي (0.8) |
-| `public/audio/wbw/001_002_004.mp3` | 1:2:4 | ٱلْعَٰلَمِينَ | al-‘aalamiin | 2.38 → 2.01 | -18.4 | العالمين (0.93) |
-| `public/audio/wbw/001_003_001.mp3` | 1:3:1 | ٱلرَّحْمَٰنِ | Ar-rahmaani | 1.80 → 1.54 | -18.4 | الرحمن (1.0) |
-| `public/audio/wbw/001_003_002.mp3` | 1:3:2 | ٱلرَّحِيمِ | ar-rahiim | 2.38 → 1.93 | -18.4 | الرحيم (1.0) |
-| `public/audio/wbw/001_004_001.mp3` | 1:4:1 | مَٰلِكِ | Maaliki | 1.80 → 1.36 | -18.4 | مالكي (0.75) |
-| `public/audio/wbw/001_004_002.mp3` | 1:4:2 | يَوْمِ | yawmi | 1.75 → 1.31 | -18.5 | يومي (0.86) |
-| `public/audio/wbw/001_004_003.mp3` | 1:4:3 | ٱلدِّينِ | ad-diin | 2.22 → 1.83 | -18.4 | الدين (1.0) |
-| `public/audio/wbw/001_005_001.mp3` | 1:5:1 | إِيَّاكَ | Iyyaaka | 1.77 → 1.38 | -18.4 | إياك (1.0) |
-| `public/audio/wbw/001_005_002.mp3` | 1:5:2 | نَعْبُدُ | na‘budu | 1.80 → 1.36 | -18.4 | نعبدو (0.89) |
-| `public/audio/wbw/001_005_003.mp3` | 1:5:3 | وَإِيَّاكَ | wa iyyaaka | 2.35 → 1.80 | -18.4 | وإياك (1.0) |
-| `public/audio/wbw/001_005_004.mp3` | 1:5:4 | نَسْتَعِينُ | nasta‘iin | 2.92 → 2.06 | -18.4 | نستعين (1.0) |
-| `public/audio/wbw/001_006_001.mp3` | 1:6:1 | ٱهْدِنَا | Ihdinaa | 1.46 → 1.18 | -18.4 | اهدينا (0.91) |
-| `public/audio/wbw/001_006_002.mp3` | 1:6:2 | ٱلصِّرَٰطَ | as-siraata | 1.88 → 1.59 | -18.4 | الصراط (0.91) |
-| `public/audio/wbw/001_006_003.mp3` | 1:6:3 | ٱلْمُسْتَقِيمَ | al-mustaqiim | 2.69 → 2.40 | -18.4 | المستقيم (1.0) |
-| `public/audio/wbw/001_007_001.mp3` | 1:7:1 | صِرَٰطَ | Siraata | 1.59 → 1.31 | -18.4 | صراط (0.86) |
-| `public/audio/wbw/001_007_002.mp3` | 1:7:2 | ٱلَّذِينَ | alladhiina | 1.59 → 1.33 | -18.4 | الذين (1.0) |
-| `public/audio/wbw/001_007_003.mp3` | 1:7:3 | أَنْعَمْتَ | an‘amta | 1.64 → 1.33 | -18.4 | أنعمت (1.0) |
-| `public/audio/wbw/001_007_004.mp3` | 1:7:4 | عَلَيْهِمْ | ‘alayhim | 1.96 → 1.57 | -18.4 | عليهم (1.0) |
-| `public/audio/wbw/001_007_005.mp3` | 1:7:5 | غَيْرِ | ghayri | 1.51 → 1.23 | -18.4 | أغيري (0.75) |
-| `public/audio/wbw/001_007_006.mp3` | 1:7:6 | ٱلْمَغْضُوبِ | al-maghduubi | 2.14 → 1.83 | -18.4 | المغضوب (1.0) |
-| `public/audio/wbw/001_007_007.mp3` | 1:7:7 | عَلَيْهِمْ | ‘alayhim | 1.93 → 1.72 | -18.4 | عليهم (1.0) |
-| `public/audio/wbw/001_007_008.mp3` | 1:7:8 | وَلَا | wa laa | 1.23 → 0.97 | -18.4 | ولا (1.0) |
-| `public/audio/wbw/001_007_009.mp3` | 1:7:9 | ٱلضَّآلِّينَ | ad-daalliin | 6.45 → 6.01 | -18.4 | الضالين (1.0) |
-| `public/audio/wbw/112_001_001.mp3` | 112:1:1 | قُلْ | Qul | 0.73 → 0.78 | -18.4 | قل (1.0) |
-| `public/audio/wbw/112_001_002.mp3` | 112:1:2 | هُوَ | huwa | 0.63 → 0.68 | -18.4 | أو (0.5) |
-| `public/audio/wbw/112_001_003.mp3` | 112:1:3 | ٱللَّهُ | Allaahu | 1.25 → 1.33 | -18.4 | الله (1.0) |
-| `public/audio/wbw/112_001_004.mp3` | 112:1:4 | أَحَدٌ | ahad | 0.94 → 0.99 | -18.4 | أحد (1.0) |
-| `public/audio/wbw/112_002_001.mp3` | 112:2:1 | ٱللَّهُ | Allaahu | 1.33 → 1.38 | -18.4 | الله (1.0) |
-| `public/audio/wbw/112_002_002.mp3` | 112:2:2 | ٱلصَّمَدُ | as-samad | 1.15 → 1.23 | -18.3 | الصمد (1.0) |
-| `public/audio/wbw/112_003_001.mp3` | 112:3:1 | لَمْ | Lam | 0.78 → 0.86 | -18.3 | لم (1.0) |
-| `public/audio/wbw/112_003_002.mp3` | 112:3:2 | يَلِدْ | yalid | 0.97 → 1.04 | -18.4 | ياليد (0.75) |
-| `public/audio/wbw/112_003_003.mp3` | 112:3:3 | وَلَمْ | wa lam | 1.07 → 1.15 | -18.4 | ولم (1.0) |
-| `public/audio/wbw/112_003_004.mp3` | 112:3:4 | يُولَدْ | yuulad | 1.07 → 1.15 | -18.4 | يولاد (0.89) |
-| `public/audio/wbw/112_004_001.mp3` | 112:4:1 | وَلَمْ | Wa lam | 0.84 → 0.89 | -18.4 | ولم (1.0) |
-| `public/audio/wbw/112_004_002.mp3` | 112:4:2 | يَكُن | yakun | 0.94 → 0.99 | -18.4 | يكون (0.86) |
-| `public/audio/wbw/112_004_003.mp3` | 112:4:3 | لَّهُۥ | lahuu | 1.04 → 1.12 | -18.4 | لهو (0.8) |
-| `public/audio/wbw/112_004_004.mp3` | 112:4:4 | كُفُوًا | kufuwan | 1.18 → 1.25 | -18.4 | كفوان (0.89) |
-| `public/audio/wbw/112_004_005.mp3` | 112:4:5 | أَحَدٌۢ | ahad | 0.97 → 1.04 | -18.3 | أحد (1.0) |
-| `public/audio/wbw/108_001_001.mp3` | 108:1:1 | إِنَّآ | Innaa | 1.54 → 1.59 | -18.4 | إِنَّا (1.0) |
-| `public/audio/wbw/108_001_002.mp3` | 108:1:2 | أَعْطَيْنَٰكَ | a‘taynaaka | 1.65 → 1.70 | -18.4 | أعطيناك (0.92) |
-| `public/audio/wbw/108_001_003.mp3` | 108:1:3 | ٱلْكَوْثَرَ | al-kawthar | 1.51 → 1.57 | -18.4 | الكوثر (1.0) |
-| `public/audio/wbw/108_002_001.mp3` | 108:2:1 | فَصَلِّ | Fasalli | 1.23 → 1.28 | -18.3 | فصلي (0.86) |
-| `public/audio/wbw/108_002_002.mp3` | 108:2:2 | لِرَبِّكَ | lirabbika | 1.18 → 1.25 | -18.4 | لربك (1.0) |
-| `public/audio/wbw/108_002_003.mp3` | 108:2:3 | وَٱنْحَرْ | wanhar | 1.12 → 1.18 | -18.4 | وانحر (1.0) |
-| `public/audio/wbw/108_003_001.mp3` | 108:3:1 | إِنَّ | Inna | 1.12 → 1.18 | -18.4 | إن (1.0) |
-| `public/audio/wbw/108_003_002.mp3` | 108:3:2 | شَانِئَكَ | shaani’aka | 1.33 → 1.38 | -18.4 | جانئك (0.8) |
-| `public/audio/wbw/108_003_003.mp3` | 108:3:3 | هُوَ | huwa | 0.76 → 0.84 | -18.5 | هو (1.0) |
-| `public/audio/wbw/108_003_004.mp3` | 108:3:4 | ٱلْأَبْتَرُ | al-abtar | 1.44 → 1.49 | -18.5 | الأبتر (1.0) |

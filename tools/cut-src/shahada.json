@@ -1,0 +1,25 @@
+{
+ "note": "Human Shahada recording for tools/build-cuts.py (not shipped). Owner's upload of the YouTube video 'How to recite the Shahada of Islam [HD]' by SC Brotherhood & News Reports (the owner takes responsibility for its use). It says the Shahada 7 times as slow teaching pieces separated by 2-4 s of digital silence; all 7 are the same take (piece correlation 0.98-0.996), repetition 1 (2.8-44.7 s) is used. Piece times = the silence gaps around each piece (the build trims them to the speech); 'laa ilaaha' is one piece split at the glottal stop of إِلَٰهَ (~13.0-13.1 s, refined to the quietest point; Whisper hears 'لا' | 'إلها'). Whisper timings: shahada-source-asr.json.",
+ "audio": "shahada-source.mp3",
+ "source": "YouTube: How to recite the Shahada of Islam [HD], SC Brotherhood & News Reports (owner upload)",
+ "gap_ms": 220,
+ "trim": true,
+ "fade_out_ms": 40,
+ "channels": 1,
+ "bitrate": "64k",
+ "lines": [
+  {"pieces": [
+   {"ms": [2600, 6900], "words": [0, 0], "say": "Ash-hadu"},
+   {"ms": [6900, 10300], "words": [1, 1], "say": "an"},
+   {"ms": [10300, 13000], "words": [2, 2], "say": "laa"},
+   {"ms": [13000, 17600], "words": [3, 3], "say": "ilaaha", "join": "continuous"},
+   {"ms": [17600, 24800], "words": [4, 5], "say": "illallaah"}
+  ]},
+  {"pieces": [
+   {"ms": [24800, 29300], "words": [0, 0], "say": "wa ash-hadu"},
+   {"ms": [29300, 33900], "words": [1, 1], "say": "anna"},
+   {"ms": [33900, 39500], "words": [2, 2], "say": "Muhammadan"},
+   {"ms": [39500, 46000], "words": [3, 4], "say": "rasuulullaah"}
+  ]}
+ ]
+}

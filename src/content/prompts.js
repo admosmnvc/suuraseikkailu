@@ -50,7 +50,7 @@ export const PROMPTS = {
   'game-girl-2': 'Kylvetä koiranpentu!',
   'game-girl-3': 'Koristele kakku!',
   'game-girl-4': 'Kasvata kukkaniitty!',
-  'game-girl-5': 'Sytytä linnan valot!',
+  'game-girl-5': 'Sytytä moskeijan valot!',
   'test-fi': 'Hei! Tämä on suomen puheääni.'
 };
 

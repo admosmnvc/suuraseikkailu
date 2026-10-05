@@ -6,7 +6,7 @@
    The band 45–55 % of the height stays clear in the middle for the ui's start button. No text, no humans. */
 import { uid, f, mix, svgOpen } from './common.js';
 import { G, B, keep, lg, lgU, rg, drop, blur, u, fit, cloud, twinkle, softStar, flower, puff } from './soft.js';
-import { pony, crown, crown100, castle, CASTLE_BOX } from './girl.js';
+import { pony, crown, crown100, mosque, MOSQUE_BOX } from './girl.js';
 import { rocket, car, ROCKET_BOX } from './boy.js';
 
 /* ---------- girl world (scene box 600x520; the ground continues far beyond) ---------- */
@@ -18,7 +18,7 @@ function girlScene(id) {
     '<circle cx="340" cy="230" r="250" fill="' + u(id + '-sun') + '"/>' +
     cloud(500, 96, 1.05) + cloud(86, 70, 0.75) +
     '<path d="M-400 420C-100 340 150 330 300 362C450 392 600 330 1000 360V1000H-400Z" fill="' + u(id + '-hb') + '"/>' +
-    '<g filter="' + u(id + '-sh') + '">' + castle(keep, id + '-cs') + '</g>' +
+    '<g filter="' + u(id + '-sh') + '">' + mosque(keep, id + '-ms') + '</g>' +
     '<path d="M-400 470C-150 402 120 382 330 396C520 410 700 380 1000 420V1000H-400Z" fill="' + u(id + '-hf') + '"/>' +
     '<path d="M-40 430C60 404 160 392 240 392" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" fill="none" opacity=".45"/>' +
     [[262, 476, 1], [520, 452, 0.85], [36, 488, 0.8], [430, 500, 0.7]].map((p) => flower(p[0], p[1], p[2])).join('') +
@@ -93,7 +93,7 @@ export function background(theme) {
       cloud(230, 84, 0.7) + cloud(985, 62, 0.6) +
       twinkle(420, 70, 9, G.gold, -0.3) + twinkle(800, 100, 7, G.rose, -1.2) + twinkle(96, 150, 7, G.gold, -2) + twinkle(1120, 130, 8, G.lavender, -0.8) +
       '<path d="' + far + '" fill="' + u(id + '-f') + '"/>' +
-      '<g opacity=".8">' + fit(castle(pale, id + '-c'), CASTLE_BOX, 600, 172, 112) + '</g>' +
+      '<g opacity=".8">' + fit(mosque(pale, id + '-m'), MOSQUE_BOX, 600, 168, 118) + '</g>' +
       '<path d="' + near + '" fill="' + u(id + '-n') + '"/>' +
       '<path d="M120 252C200 238 280 236 350 240" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" fill="none" opacity=".6"/>' +
       flower(300, 272, 0.55) + flower(860, 262, 0.5, '#FFFFFF', G.coral) + flower(540, 284, 0.45) +

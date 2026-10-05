@@ -28,7 +28,6 @@ const REC_MAX_S = Math.round((Number(recorder.MAX_MS) || 15000) / 1000);
 const SECTIONS = DATA.sections || [];
 const SECTION_IDS = SECTIONS.map((s) => s.id);
 const SHAHADA = SECTIONS.find((s) => s.id === 'shahada') || null;
-const WORD_CREDIT = 'Sana-äänitteet: Quran.com (audio.qurancdn.com)';
 
 const THEME_INFO = { girl: { label: 'Tyttö', icon: 'crown' }, boy: { label: 'Poika', icon: 'car' } };
 const LEVEL_INFO = { easy: { n: 1, sub: '1 sana' }, medium: { n: 2, sub: '2 sanaa' }, hard: { n: 3, sub: 'koko rivi' } };
@@ -375,7 +374,6 @@ function tipsCard() {
 
 function creditsCard(credits) {
   const list = (Array.isArray(credits) ? credits : (credits ? [credits] : [])).map(String);
-  if (!list.some((c) => /qurancdn/i.test(c))) list.push(WORD_CREDIT);
   return card('credits', 'check', 'Lähteet ja lisenssit',
     '<ul class="set-credits">' + list.map((c) => '<li>' + esc(c) + '</li>').join('') + '</ul>');
 }

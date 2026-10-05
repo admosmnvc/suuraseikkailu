@@ -78,12 +78,11 @@
  },
  "words": [
   {
-   "file": "audio/wbw/001_001_001.mp3",
+   "file": "wbw/001_001_001.mp3",
    "verse": "1:1",
    "word": 1,
    "words": 4,
    "ar": "بِسْمِ",
-   "tr": "Bismi",
    "uses": [
     "fatiha-0",
     "ikhlas-0",
@@ -111,12 +110,11 @@
    }
   },
   {
-   "file": "audio/wbw/001_001_002.mp3",
+   "file": "wbw/001_001_002.mp3",
    "verse": "1:1",
    "word": 2,
    "words": 4,
    "ar": "ٱللَّهِ",
-   "tr": "Allaahi",
    "uses": [
     "fatiha-0",
     "ikhlas-0",
@@ -144,12 +142,11 @@
    }
   },
   {
-   "file": "audio/wbw/001_001_003.mp3",
+   "file": "wbw/001_001_003.mp3",
    "verse": "1:1",
    "word": 3,
    "words": 4,
    "ar": "ٱلرَّحْمَٰنِ",
-   "tr": "ar-rahmaani",
    "uses": [
     "fatiha-0",
     "ikhlas-0",
@@ -177,12 +174,11 @@
    }
   },
   {
-   "file": "audio/wbw/001_001_004.mp3",
+   "file": "wbw/001_001_004.mp3",
    "verse": "1:1",
    "word": 4,
    "words": 4,
    "ar": "ٱلرَّحِيمِ",
-   "tr": "ar-rahiim",
    "uses": [
     "fatiha-0",
     "ikhlas-0",
@@ -210,12 +206,11 @@
    }
   },
   {
-   "file": "audio/wbw/001_002_001.mp3",
+   "file": "wbw/001_002_001.mp3",
    "verse": "1:2",
    "word": 1,
    "words": 4,
    "ar": "ٱلْحَمْدُ",
-   "tr": "Al-hamdu",
    "uses": [
     "fatiha-1"
    ],
@@ -241,12 +236,11 @@
    }
   },
   {
-   "file": "audio/wbw/001_002_002.mp3",
+   "file": "wbw/001_002_002.mp3",
    "verse": "1:2",
    "word": 2,
    "words": 4,
    "ar": "لِلَّهِ",
-   "tr": "lillaahi",
    "uses": [
     "fatiha-1"
    ],
@@ -272,12 +266,11 @@
    }
   },
   {
-   "file": "audio/wbw/001_002_003.mp3",
+   "file": "wbw/001_002_003.mp3",
    "verse": "1:2",
    "word": 3,
    "words": 4,
    "ar": "رَبِّ",
-   "tr": "rabbi",
    "uses": [
     "fatiha-1"
    ],
@@ -303,12 +296,11 @@
    }
   },
   {
-   "file": "audio/wbw/001_002_004.mp3",
+   "file": "wbw/001_002_004.mp3",
    "verse": "1:2",
    "word": 4,
    "words": 4,
    "ar": "ٱلْعَٰلَمِينَ",
-   "tr": "al-‘aalamiin",
    "uses": [
     "fatiha-1"
    ],
@@ -334,12 +326,11 @@
    }
   },
   {
-   "file": "audio/wbw/001_003_001.mp3",
+   "file": "wbw/001_003_001.mp3",
    "verse": "1:3",
    "word": 1,
    "words": 2,
    "ar": "ٱلرَّحْمَٰنِ",
-   "tr": "Ar-rahmaani",
    "uses": [
     "fatiha-2"
    ],
@@ -365,12 +356,11 @@
    }
   },
   {
-   "file": "audio/wbw/001_003_002.mp3",
+   "file": "wbw/001_003_002.mp3",
    "verse": "1:3",
    "word": 2,
    "words": 2,
    "ar": "ٱلرَّحِيمِ",
-   "tr": "ar-rahiim",
    "uses": [
     "fatiha-2"
    ],
@@ -396,12 +386,11 @@
    }
   },
   {
-   "file": "audio/wbw/001_004_001.mp3",
+   "file": "wbw/001_004_001.mp3",
    "verse": "1:4",
    "word": 1,
    "words": 3,
    "ar": "مَٰلِكِ",
-   "tr": "Maaliki",
    "uses": [
     "fatiha-3"
    ],
@@ -427,12 +416,11 @@
    }
   },
   {
-   "file": "audio/wbw/001_004_002.mp3",
+   "file": "wbw/001_004_002.mp3",
    "verse": "1:4",
    "word": 2,
    "words": 3,
    "ar": "يَوْمِ",
-   "tr": "yawmi",
    "uses": [
     "fatiha-3"
    ],
@@ -458,12 +446,11 @@
    }
   },
   {
-   "file": "audio/wbw/001_004_003.mp3",
+   "file": "wbw/001_004_003.mp3",
    "verse": "1:4",
    "word": 3,
    "words": 3,
    "ar": "ٱلدِّينِ",
-   "tr": "ad-diin",
    "uses": [
     "fatiha-3"
    ],
@@ -489,12 +476,11 @@
    }
   },
   {
-   "file": "audio/wbw/001_005_001.mp3",
+   "file": "wbw/001_005_001.mp3",
    "verse": "1:5",
    "word": 1,
    "words": 4,
    "ar": "إِيَّاكَ",
-   "tr": "Iyyaaka",
    "uses": [
     "fatiha-4"
    ],
@@ -520,12 +506,11 @@
    }
   },
   {
-   "file": "audio/wbw/001_005_002.mp3",
+   "file": "wbw/001_005_002.mp3",
    "verse": "1:5",
    "word": 2,
    "words": 4,
    "ar": "نَعْبُدُ",
-   "tr": "na‘budu",
    "uses": [
     "fatiha-4"
    ],
@@ -551,12 +536,11 @@
    }
   },
   {
-   "file": "audio/wbw/001_005_003.mp3",
+   "file": "wbw/001_005_003.mp3",
    "verse": "1:5",
    "word": 3,
    "words": 4,
    "ar": "وَإِيَّاكَ",
-   "tr": "wa iyyaaka",
    "uses": [
     "fatiha-4"
    ],
@@ -582,12 +566,11 @@
    }
   },
   {
-   "file": "audio/wbw/001_005_004.mp3",
+   "file": "wbw/001_005_004.mp3",
    "verse": "1:5",
    "word": 4,
    "words": 4,
    "ar": "نَسْتَعِينُ",
-   "tr": "nasta‘iin",
    "uses": [
     "fatiha-4"
    ],
@@ -613,12 +596,11 @@
    }
   },
   {
-   "file": "audio/wbw/001_006_001.mp3",
+   "file": "wbw/001_006_001.mp3",
    "verse": "1:6",
    "word": 1,
    "words": 3,
    "ar": "ٱهْدِنَا",
-   "tr": "Ihdinaa",
    "uses": [
     "fatiha-5"
    ],
@@ -644,12 +626,11 @@
    }
   },
   {
-   "file": "audio/wbw/001_006_002.mp3",
+   "file": "wbw/001_006_002.mp3",
    "verse": "1:6",
    "word": 2,
    "words": 3,
    "ar": "ٱلصِّرَٰطَ",
-   "tr": "as-siraata",
    "uses": [
     "fatiha-5"
    ],
@@ -675,12 +656,11 @@
    }
   },
   {
-   "file": "audio/wbw/001_006_003.mp3",
+   "file": "wbw/001_006_003.mp3",
    "verse": "1:6",
    "word": 3,
    "words": 3,
    "ar": "ٱلْمُسْتَقِيمَ",
-   "tr": "al-mustaqiim",
    "uses": [
     "fatiha-5"
    ],
@@ -706,12 +686,11 @@
    }
   },
   {
-   "file": "audio/wbw/001_007_001.mp3",
+   "file": "wbw/001_007_001.mp3",
    "verse": "1:7",
    "word": 1,
    "words": 9,
    "ar": "صِرَٰطَ",
-   "tr": "Siraata",
    "uses": [
     "fatiha-6"
    ],
@@ -737,12 +716,11 @@
    }
   },
   {
-   "file": "audio/wbw/001_007_002.mp3",
+   "file": "wbw/001_007_002.mp3",
    "verse": "1:7",
    "word": 2,
    "words": 9,
    "ar": "ٱلَّذِينَ",
-   "tr": "alladhiina",
    "uses": [
     "fatiha-6"
    ],
@@ -768,12 +746,11 @@
    }
   },
   {
-   "file": "audio/wbw/001_007_003.mp3",
+   "file": "wbw/001_007_003.mp3",
    "verse": "1:7",
    "word": 3,
    "words": 9,
    "ar": "أَنْعَمْتَ",
-   "tr": "an‘amta",
    "uses": [
     "fatiha-6"
    ],
@@ -799,12 +776,11 @@
    }
   },
   {
-   "file": "audio/wbw/001_007_004.mp3",
+   "file": "wbw/001_007_004.mp3",
    "verse": "1:7",
    "word": 4,
    "words": 9,
    "ar": "عَلَيْهِمْ",
-   "tr": "‘alayhim",
    "uses": [
     "fatiha-6"
    ],
@@ -830,12 +806,11 @@
    }
   },
   {
-   "file": "audio/wbw/001_007_005.mp3",
+   "file": "wbw/001_007_005.mp3",
    "verse": "1:7",
    "word": 5,
    "words": 9,
    "ar": "غَيْرِ",
-   "tr": "ghayri",
    "uses": [
     "fatiha-6"
    ],
@@ -861,12 +836,11 @@
    }
   },
   {
-   "file": "audio/wbw/001_007_006.mp3",
+   "file": "wbw/001_007_006.mp3",
    "verse": "1:7",
    "word": 6,
    "words": 9,
    "ar": "ٱلْمَغْضُوبِ",
-   "tr": "al-maghduubi",
    "uses": [
     "fatiha-6"
    ],
@@ -892,12 +866,11 @@
    }
   },
   {
-   "file": "audio/wbw/001_007_007.mp3",
+   "file": "wbw/001_007_007.mp3",
    "verse": "1:7",
    "word": 7,
    "words": 9,
    "ar": "عَلَيْهِمْ",
-   "tr": "‘alayhim",
    "uses": [
     "fatiha-6"
    ],
@@ -923,12 +896,11 @@
    }
   },
   {
-   "file": "audio/wbw/001_007_008.mp3",
+   "file": "wbw/001_007_008.mp3",
    "verse": "1:7",
    "word": 8,
    "words": 9,
    "ar": "وَلَا",
-   "tr": "wa laa",
    "uses": [
     "fatiha-6"
    ],
@@ -954,12 +926,11 @@
    }
   },
   {
-   "file": "audio/wbw/001_007_009.mp3",
+   "file": "wbw/001_007_009.mp3",
    "verse": "1:7",
    "word": 9,
    "words": 9,
    "ar": "ٱلضَّآلِّينَ",
-   "tr": "ad-daalliin",
    "uses": [
     "fatiha-6"
    ],
@@ -985,12 +956,11 @@
    }
   },
   {
-   "file": "audio/wbw/112_001_001.mp3",
+   "file": "wbw/112_001_001.mp3",
    "verse": "112:1",
    "word": 1,
    "words": 4,
    "ar": "قُلْ",
-   "tr": "Qul",
    "uses": [
     "ikhlas-1"
    ],
@@ -1016,12 +986,11 @@
    }
   },
   {
-   "file": "audio/wbw/112_001_002.mp3",
+   "file": "wbw/112_001_002.mp3",
    "verse": "112:1",
    "word": 2,
    "words": 4,
    "ar": "هُوَ",
-   "tr": "huwa",
    "uses": [
     "ikhlas-1"
    ],
@@ -1047,12 +1016,11 @@
    }
   },
   {
-   "file": "audio/wbw/112_001_003.mp3",
+   "file": "wbw/112_001_003.mp3",
    "verse": "112:1",
    "word": 3,
    "words": 4,
    "ar": "ٱللَّهُ",
-   "tr": "Allaahu",
    "uses": [
     "ikhlas-1"
    ],
@@ -1078,12 +1046,11 @@
    }
   },
   {
-   "file": "audio/wbw/112_001_004.mp3",
+   "file": "wbw/112_001_004.mp3",
    "verse": "112:1",
    "word": 4,
    "words": 4,
    "ar": "أَحَدٌ",
-   "tr": "ahad",
    "uses": [
     "ikhlas-1"
    ],
@@ -1109,12 +1076,11 @@
    }
   },
   {
-   "file": "audio/wbw/112_002_001.mp3",
+   "file": "wbw/112_002_001.mp3",
    "verse": "112:2",
    "word": 1,
    "words": 2,
    "ar": "ٱللَّهُ",
-   "tr": "Allaahu",
    "uses": [
     "ikhlas-2"
    ],
@@ -1140,12 +1106,11 @@
    }
   },
   {
-   "file": "audio/wbw/112_002_002.mp3",
+   "file": "wbw/112_002_002.mp3",
    "verse": "112:2",
    "word": 2,
    "words": 2,
    "ar": "ٱلصَّمَدُ",
-   "tr": "as-samad",
    "uses": [
     "ikhlas-2"
    ],
@@ -1171,12 +1136,11 @@
    }
   },
   {
-   "file": "audio/wbw/112_003_001.mp3",
+   "file": "wbw/112_003_001.mp3",
    "verse": "112:3",
    "word": 1,
    "words": 4,
    "ar": "لَمْ",
-   "tr": "Lam",
    "uses": [
     "ikhlas-3"
    ],
@@ -1202,12 +1166,11 @@
    }
   },
   {
-   "file": "audio/wbw/112_003_002.mp3",
+   "file": "wbw/112_003_002.mp3",
    "verse": "112:3",
    "word": 2,
    "words": 4,
    "ar": "يَلِدْ",
-   "tr": "yalid",
    "uses": [
     "ikhlas-3"
    ],
@@ -1233,12 +1196,11 @@
    }
   },
   {
-   "file": "audio/wbw/112_003_003.mp3",
+   "file": "wbw/112_003_003.mp3",
    "verse": "112:3",
    "word": 3,
    "words": 4,
    "ar": "وَلَمْ",
-   "tr": "wa lam",
    "uses": [
     "ikhlas-3"
    ],
@@ -1264,12 +1226,11 @@
    }
   },
   {
-   "file": "audio/wbw/112_003_004.mp3",
+   "file": "wbw/112_003_004.mp3",
    "verse": "112:3",
    "word": 4,
    "words": 4,
    "ar": "يُولَدْ",
-   "tr": "yuulad",
    "uses": [
     "ikhlas-3"
    ],
@@ -1295,12 +1256,11 @@
    }
   },
   {
-   "file": "audio/wbw/112_004_001.mp3",
+   "file": "wbw/112_004_001.mp3",
    "verse": "112:4",
    "word": 1,
    "words": 5,
    "ar": "وَلَمْ",
-   "tr": "Wa lam",
    "uses": [
     "ikhlas-4"
    ],
@@ -1326,12 +1286,11 @@
    }
   },
   {
-   "file": "audio/wbw/112_004_002.mp3",
+   "file": "wbw/112_004_002.mp3",
    "verse": "112:4",
    "word": 2,
    "words": 5,
    "ar": "يَكُن",
-   "tr": "yakun",
    "uses": [
     "ikhlas-4"
    ],
@@ -1357,12 +1316,11 @@
    }
   },
   {
-   "file": "audio/wbw/112_004_003.mp3",
+   "file": "wbw/112_004_003.mp3",
    "verse": "112:4",
    "word": 3,
    "words": 5,
    "ar": "لَّهُۥ",
-   "tr": "lahuu",
    "uses": [
     "ikhlas-4"
    ],
@@ -1388,12 +1346,11 @@
    }
   },
   {
-   "file": "audio/wbw/112_004_004.mp3",
+   "file": "wbw/112_004_004.mp3",
    "verse": "112:4",
    "word": 4,
    "words": 5,
    "ar": "كُفُوًا",
-   "tr": "kufuwan",
    "uses": [
     "ikhlas-4"
    ],
@@ -1419,12 +1376,11 @@
    }
   },
   {
-   "file": "audio/wbw/112_004_005.mp3",
+   "file": "wbw/112_004_005.mp3",
    "verse": "112:4",
    "word": 5,
    "words": 5,
    "ar": "أَحَدٌۢ",
-   "tr": "ahad",
    "uses": [
     "ikhlas-4"
    ],
@@ -1450,12 +1406,11 @@
    }
   },
   {
-   "file": "audio/wbw/108_001_001.mp3",
+   "file": "wbw/108_001_001.mp3",
    "verse": "108:1",
    "word": 1,
    "words": 3,
    "ar": "إِنَّآ",
-   "tr": "Innaa",
    "uses": [
     "kawthar-1"
    ],
@@ -1481,12 +1436,11 @@
    }
   },
   {
-   "file": "audio/wbw/108_001_002.mp3",
+   "file": "wbw/108_001_002.mp3",
    "verse": "108:1",
    "word": 2,
    "words": 3,
    "ar": "أَعْطَيْنَٰكَ",
-   "tr": "a‘taynaaka",
    "uses": [
     "kawthar-1"
    ],
@@ -1512,12 +1466,11 @@
    }
   },
   {
-   "file": "audio/wbw/108_001_003.mp3",
+   "file": "wbw/108_001_003.mp3",
    "verse": "108:1",
    "word": 3,
    "words": 3,
    "ar": "ٱلْكَوْثَرَ",
-   "tr": "al-kawthar",
    "uses": [
     "kawthar-1"
    ],
@@ -1543,12 +1496,11 @@
    }
   },
   {
-   "file": "audio/wbw/108_002_001.mp3",
+   "file": "wbw/108_002_001.mp3",
    "verse": "108:2",
    "word": 1,
    "words": 3,
    "ar": "فَصَلِّ",
-   "tr": "Fasalli",
    "uses": [
     "kawthar-2"
    ],
@@ -1574,12 +1526,11 @@
    }
   },
   {
-   "file": "audio/wbw/108_002_002.mp3",
+   "file": "wbw/108_002_002.mp3",
    "verse": "108:2",
    "word": 2,
    "words": 3,
    "ar": "لِرَبِّكَ",
-   "tr": "lirabbika",
    "uses": [
     "kawthar-2"
    ],
@@ -1605,12 +1556,11 @@
    }
   },
   {
-   "file": "audio/wbw/108_002_003.mp3",
+   "file": "wbw/108_002_003.mp3",
    "verse": "108:2",
    "word": 3,
    "words": 3,
    "ar": "وَٱنْحَرْ",
-   "tr": "wanhar",
    "uses": [
     "kawthar-2"
    ],
@@ -1636,12 +1586,11 @@
    }
   },
   {
-   "file": "audio/wbw/108_003_001.mp3",
+   "file": "wbw/108_003_001.mp3",
    "verse": "108:3",
    "word": 1,
    "words": 4,
    "ar": "إِنَّ",
-   "tr": "Inna",
    "uses": [
     "kawthar-3"
    ],
@@ -1667,12 +1616,11 @@
    }
   },
   {
-   "file": "audio/wbw/108_003_002.mp3",
+   "file": "wbw/108_003_002.mp3",
    "verse": "108:3",
    "word": 2,
    "words": 4,
    "ar": "شَانِئَكَ",
-   "tr": "shaani’aka",
    "uses": [
     "kawthar-3"
    ],
@@ -1698,12 +1646,11 @@
    }
   },
   {
-   "file": "audio/wbw/108_003_003.mp3",
+   "file": "wbw/108_003_003.mp3",
    "verse": "108:3",
    "word": 3,
    "words": 4,
    "ar": "هُوَ",
-   "tr": "huwa",
    "uses": [
     "kawthar-3"
    ],
@@ -1729,12 +1676,11 @@
    }
   },
   {
-   "file": "audio/wbw/108_003_004.mp3",
+   "file": "wbw/108_003_004.mp3",
    "verse": "108:3",
    "word": 4,
    "words": 4,
    "ar": "ٱلْأَبْتَرُ",
-   "tr": "al-abtar",
    "uses": [
     "kawthar-3"
    ],

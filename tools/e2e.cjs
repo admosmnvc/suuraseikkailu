@@ -11,7 +11,7 @@
                 360x740 runs with prefers-reduced-motion; 390x844 every step gets a game, the others every 2nd step.
      audio      VAIKEA Al-Fatiha step 7 chain order (level prompt, 001001..001007, turn-all), never overlapping, line
                 highlight, Kuuntele restarts, Sanoin! cuts within 150 ms, line chips; HELPPO chunk audio (Shahada step
-                5, Al-Fatiha step 6: full lines as line clips, then the covered word clips).
+                5, Al-Fatiha step 6: full lines as line clips, then the partial line as ONE recitation prefix clip).
      settings   short tap hint, long-press opens, children list, sound tests, record/play/delete (fake mic), own
                 recording in the lesson, switches (slow 0.8, translit off, speech off), default level, "Pelaa nyt",
                 reset one child, delete the playing child -> picker, Escape.
@@ -214,6 +214,7 @@ async function newCtx(browser, base, suite, vp, extra = {}) {
   });
   page.on('pageerror', (e) => ctx.console.push('pageerror: ' + (e && e.message) + ' @ ' + String((e && e.stack) || '').split('\n').slice(1, 3).map((l) => l.trim().replace(/^at /, '').replace(/https?:\/\/[^/]+\//, '')).join(' < ')));
   /* net::ERR_ABORTED = a preload cut by the suite's own reload / navigation, not a failure */
+  page.on('response', (r) => { if (r.status() >= 400) ctx.console.push('http ' + r.status() + ': ' + r.url().replace(/^https?:\/\/[^/]+\//, '')); });
   page.on('requestfailed', (r) => { const t = (r.failure() || {}).errorText || ''; if (!/ERR_ABORTED/.test(t)) ctx.failed.push(r.url() + ' ' + t); });
   return ctx;
 }
@@ -336,10 +337,42 @@ async function seed(ctx, st, key = KEY) {
   await ctx.page.reload();
 }
 
+/* The intro on the first screen: o.watch = let it run to the end (checks length + scene parts), otherwise a tap
+   (on the button's spot, the worst case) skips it. Reduced motion starts at the final state. */
+async function intro(ctx, o = {}) {
+  const S = ctx.suite, page = ctx.page;
+  await W(ctx, () => { const g = document.getElementById('gate'); return g && !g.hidden && g.dataset.mode === 'start' && g.dataset.intro !== 'idle'; });
+  const st = await page.evaluate(() => ({ intro: document.getElementById('gate').dataset.intro, rm: matchMedia('(prefers-reduced-motion: reduce)').matches,
+    parts: ['in-mosque', 'in-road', 'in-car', 'in-camel', 'in-pony', 'in-stars', 'in-rocket', 'in-crown'].filter((id) => document.querySelector('#coverArt #' + id + ', #coverArt [data-in="' + id + '"]')),
+    font: document.fonts.check('800 40px Sniglet') }));
+  if (st.rm) { if (!o.quiet) check(S, 'intro: reduced motion starts at the final state', st.intro === 'done', JSON.stringify(st)); return; }
+  if (st.intro === 'done') { if (!o.quiet) check(S, 'intro: still running when checked', false, JSON.stringify(st)); return; }
+  if (o.watch) {
+    const t0 = Date.now();
+    await screen(ctx, 'intro-start', 0);
+    await W(ctx, () => document.querySelector('.intro-logo') && getComputedStyle(document.querySelector('.intro-logo')).display !== 'none' &&
+      document.querySelector('.logo-bot i:last-child').getAnimations().some((a) => a.playState === 'finished' || a.currentTime > 450), null, 8000).catch(() => {});
+    await screen(ctx, 'intro-logo', 0);
+    const done = await tryW(ctx, () => document.getElementById('gate').dataset.intro === 'done', null, 8000);
+    const ms = Date.now() - t0;
+    check(S, 'intro: plays by itself (~5 s) to the final state, scene parts + Sniglet present', done && ms < 7000 && st.intro === 'play' && st.font &&
+      ['in-mosque', 'in-road', 'in-car', 'in-pony'].every((id) => st.parts.includes(id)), JSON.stringify(Object.assign(st, { ms })));
+    return;
+  }
+  const b = await page.evaluate(() => { const r = document.getElementById('gateBtn').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+  await page.mouse.click(b.x, b.y, { delay: 40 });
+  const skipped = await tryW(ctx, () => document.getElementById('gate').dataset.intro === 'done', null, 1500);
+  await sleep(120);
+  const still = await page.evaluate(() => !document.getElementById('gate').hidden && document.getElementById('who').hidden);
+  if (!o.quiet) check(S, 'intro: a tap skips to the final state and does not start the app', st.intro === 'play' && skipped && still, JSON.stringify({ st, skipped, still }));
+  await sleep(500);
+}
+
 /* the cover: tap "Aloita Suuraseikkailu" -> picker / onboarding; 'cover' + 'who' / 'ask-theme' prompts play */
-async function cover(ctx, view) {
+async function cover(ctx, view, o = {}) {
   await W(ctx, () => { const g = document.getElementById('gate'); return g && !g.hidden && g.dataset.mode === 'start'; });
   await ctx.page.evaluate(() => document.fonts && document.fonts.ready);
+  await intro(ctx, o.intro || { quiet: true });
   if (!ctx.coverShot) { ctx.coverShot = true; await screen(ctx, 'cover', 500); }
   const from = await alen(ctx);
   await tap(ctx, '#gateBtn');
@@ -541,7 +574,7 @@ async function suiteFlow(browser, base, vp, rm) {
   const every = vp[0] === 390 ? 1 : 2;
   try {
     await seed(ctx, store([], { every }));
-    check(S, 'empty device: cover -> onboarding, "ask-theme" plays', await cover(ctx, 'new'));
+    check(S, 'empty device: intro -> start -> onboarding, "ask-theme" plays', await cover(ctx, 'new', { intro: { watch: vp[0] === 390 } }));
     await screen(ctx, 'onboarding');
     await tap(ctx, '#pickGirl');
     const noName = await tryW(ctx, () => /nimi/.test(document.getElementById('newMsg').textContent) && !document.getElementById('who').hidden, null, 2000);
@@ -553,7 +586,7 @@ async function suiteFlow(browser, base, vp, rm) {
     let h = await homeInfo(ctx);
     let ls = await lsStore(ctx);
     const girlId = ls.children[0] && ls.children[0].id;
-    check(S, 'girl created: girl theme home, greeting, castle, nothing done', h.theme === 'girl' && h.greeting === 'Hei, ' + GIRL + '!' && h.progArt && h.progTitle === 'Linna' &&
+    check(S, 'girl created: girl theme home, greeting, mosque, nothing done', h.theme === 'girl' && h.greeting === 'Hei, ' + GIRL + '!' && h.progArt && h.progTitle === 'Moskeija' &&
       h.cards.length === SECS.length && h.cards.every((c) => !c.done) && h.album === '0/' + (SECS.length + 1) && h.stars === 0 &&
       ls.children.length === 1 && ls.children[0].theme === 'girl' && ls.activeId === girlId, JSON.stringify(h));
     await screen(ctx, 'home-girl');
@@ -568,7 +601,7 @@ async function suiteFlow(browser, base, vp, rm) {
     stars += await runSection(ctx, sec('kawthar'), 'hard', every, 'girl', GIRL, 'easy');
     h = await homeInfo(ctx);
     const lines = ['shahada', 'ikhlas', 'kawthar'].reduce((n, id) => n + sec(id).N, 0);
-    check(S, 'girl home: stars ' + stars + ', 3 cards done, 3 stickers, castle ' + lines + '/' + SECS.reduce((n, s) => n + s.N, 0),
+    check(S, 'girl home: stars ' + stars + ', 3 cards done, 3 stickers, mosque ' + lines + '/' + SECS.reduce((n, s) => n + s.N, 0),
       h.stars === stars && h.cards.filter((c) => c.done).length === 3 && h.album === '3/' + (SECS.length + 1) && h.prog.startsWith(lines + '/'), JSON.stringify(h));
     await screen(ctx, 'home-girl-done', 1500);
 
@@ -603,7 +636,7 @@ async function suiteFlow(browser, base, vp, rm) {
 
     /* reload keeps both */
     await ctx.page.reload();
-    check(S, 'reload: cover -> picker ("who")', await cover(ctx, 'pick'));
+    check(S, 'reload: intro (tap skips) -> start -> picker ("who")', await cover(ctx, 'pick', { intro: {} }));
     await pickKid(ctx, boyId);
     h = await homeInfo(ctx);
     check(S, 'reload keeps the boy (stars ' + boyStars + ', Al-Kawthar done, boy theme)', h.theme === 'boy' && h.stars === boyStars && h.cards.find((c) => c.id === 'kawthar').done, JSON.stringify(h));
@@ -697,10 +730,10 @@ async function suiteAudio(browser, base) {
     await tap(ctx, '#homeBtn');
     await waitShown(ctx, 'home');
 
-    /* HELPPO: full lines as line clips, then the covered chunk clips of the partial line */
+    /* HELPPO: full lines as line clips, then the partial line as ONE prefix clip (Quran: Mishary, Shahada: human voice) */
     const cases = [
-      { id: 'shahada', steps: 4, prog: 1, k: 5, want: ['shahada-1.mp3', 'shahada-c-2-easy-1.mp3'] },
-      { id: 'fatiha', steps: 5, prog: 1, k: 6, want: ['001001.mp3', 'wbw/001_002_001.mp3', 'wbw/001_002_002.mp3'] }
+      { id: 'shahada', steps: 4, prog: 1, k: 5, want: ['shahada-1.mp3', 'cut/shahada-2_w1.mp3'] },
+      { id: 'fatiha', steps: 5, prog: 1, k: 6, want: ['001001.mp3', 'cut/001_002_w2.mp3'] }
     ];
     for (const c of cases) {
       await seed(ctx, store([kid('a', GIRL, 'girl', { progress: { shahada: c.id === 'shahada' ? c.prog : 0, fatiha: c.id === 'fatiha' ? c.prog : 0, ikhlas: 0, kawthar: 0 }, steps: { [c.id]: { easy: c.steps } } })]));

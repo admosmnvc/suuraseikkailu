@@ -261,23 +261,23 @@
 .gm-fin .gb-wr { transform-origin: 0% 50%; }
 @keyframes gm-flap { 0% { transform: scaleX(1); } 100% { transform: scaleX(.45); } }
 
-/* =================== 5 light the castle =================== */
-.gg-castle .gg-bg { background: radial-gradient(60% 30% at 50% 100%, rgba(255, 201, 168, .9) 0%, rgba(255, 201, 168, 0) 100%), linear-gradient(180deg, #8C7DDE 0%, #B3A2F6 55%, #F6C3C9 100%); }
+/* =================== 5 light the mosque =================== */
+.gg-mosque .gg-bg { background: radial-gradient(60% 30% at 50% 100%, rgba(255, 201, 168, .9) 0%, rgba(255, 201, 168, 0) 100%), linear-gradient(180deg, #8C7DDE 0%, #B3A2F6 55%, #F6C3C9 100%); }
 .gc-sky { z-index: 1; }
 .gc-moon { z-index: 2; }
 .gc-hill { z-index: 3; border-radius: 50% 50% 0 0 / 34px 34px 0 0; background: linear-gradient(180deg, #A9EDD6 0%, #7FDABC 100%); }
-.gc-castle { z-index: 5; }
-.gc-castle > svg { filter: drop-shadow(0 14px 20px rgba(70, 50, 140, .28)); }
-.gc-castle svg g { transform-box: fill-box; transform-origin: center; }
+.gc-mosque { z-index: 5; }
+.gc-mosque > svg { filter: drop-shadow(0 14px 20px rgba(70, 50, 140, .28)); }
+.gc-mosque svg g { transform-box: fill-box; transform-origin: center; }
 .gc-win .gc-lit, .gc-win .gc-halo { opacity: 0; }
 .gc-win.on .gc-lit { opacity: 1; }
 .gc-win.on .gc-halo { opacity: 1; animation: gc-glow 1.6s ease-in-out infinite alternate; }
-.gc-win.on .gc-lit > g:last-child { animation: gc-peek .45s var(--gg-spring) both; }
+.gc-win.on .gc-peek { animation: gc-peek .45s var(--gg-spring) both; }
 @keyframes gc-glow { 0% { opacity: .6; } 100% { opacity: 1; } }
 @keyframes gc-peek { 0% { transform: translateY(30px); } 100% { transform: translateY(0); } }
-.gc-castle.is-lit .gc-star { animation: gc-star .8s ease-in-out infinite alternate; }
+.gc-mosque.is-lit .gc-star { animation: gc-star .8s ease-in-out infinite alternate; }
 @keyframes gc-star { 0% { transform: scale(1) rotate(-6deg); } 100% { transform: scale(1.3) rotate(6deg); } }
-.gc-castle.is-party > svg { animation: gg-pulse 1s ease-in-out infinite; }
+.gc-mosque.is-party > svg { animation: gg-pulse 1s ease-in-out infinite; }
 .gc-fw { z-index: 30; width: 0; height: 0; }
 .gc-fw i { position: absolute; left: -15px; top: -15px; width: 30px; height: 30px; filter: drop-shadow(0 0 6px rgba(255, 255, 255, .8)); animation: gc-fw 1.15s cubic-bezier(.15, .85, .3, 1) both; }
 .gc-fw.is-big i { left: -19px; top: -19px; width: 38px; height: 38px; }
@@ -294,10 +294,10 @@
 .gg-rm .gk-sin > svg, .gg-rm .gm-can > svg, .gg-rm .gd-soap > svg, .gg-rm .gd-towel > svg, .gg-rm .gm-sun > svg,
 .gg-rm .gm-mound::before, .gg-rm .gd-water i, .gg-rm .gm-fin > svg, .gg-rm .gm-fin .gb-wl, .gg-rm .gm-fin .gb-wr { animation: none; }
 .gg-rm .gp-pony.is-neigh svg .gp-head, .gg-rm .gf-animal .gf-body, .gg-rm .gd-pup svg g, .gg-rm .gk-cake > svg, .gg-rm .gk-decos,
-.gg-rm .gc-castle > svg, .gg-rm .gc-star, .gg-rm .gm-flower .gm-head, .gg-rm .gk-flame, .gg-rm .gd-shower > svg { animation: none !important; }
+.gg-rm .gc-mosque > svg, .gg-rm .gc-star, .gg-rm .gm-flower .gm-head, .gg-rm .gk-flame, .gg-rm .gd-shower > svg { animation: none !important; }
 .gg-rm .gm-fin { animation: gg-fade-in .5s both; }
 .gg-rm .gm-spot.is-bloom .gm-flower, .gg-rm .gk-deco.is-in > svg, .gg-rm .gf-bubble.is-in > *, .gg-rm .gf-fin,
-.gg-rm .gp-treat, .gg-rm .gp-pony svg .gp-accin, .gg-rm .gc-win.on .gc-lit > g:last-child { animation: gg-fade-in .25s both; }
+.gg-rm .gp-treat, .gg-rm .gp-pony svg .gp-accin, .gg-rm .gc-win.on .gc-peek { animation: gg-fade-in .25s both; }
 .gg-rm .gc-fw i { animation: gc-fw-rm 1.1s both; }
 .gg-rm .gc-fw b { animation: gg-fade .5s both; }
 @keyframes gg-fade-in { 0% { opacity: 0; } 100% { opacity: 1; } }

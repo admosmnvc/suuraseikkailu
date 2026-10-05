@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Suuraseikkailu: build the word-by-word recordings for HELPPO / KESKITASO (Quran lines only).
+"""Suuraseikkailu: quran.com word-by-word recordings (Quran lines) - TOOLS COPY ONLY, not shipped.
+
+v3 first used these isolated word recordings for HELPPO / KESKITASO; the owner chose the recitation flow itself
+instead (tools/build-cuts.py). The mastered words are kept in tools/wbw/ for reference.
 
 Source: quran.com word audio https://audio.qurancdn.com/wbw/SSS_AAA_WWW.mp3 (human recordings, one word
 per file, never cut from a recitation). The word list comes from the app (`node tools/list-clips.mjs --words`
@@ -13,7 +16,7 @@ Pipeline (deterministic):
   3. master with make_voices.master() (same chain as the teacher voices): mono, edge silence trimmed
      (peak below -50 dBFS, 10 ms soft lead-in kept) + PAD_S padding = ~40 ms at each end, two-pass linear loudnorm
      to the recitation target (median of the Mishary verse files, about -18.4 LUFS), true peak <= -2 dBTP,
-     MP3 mono 44.1 kHz 64 kbps -> public/audio/wbw/<same name>
+     MP3 mono 44.1 kHz 64 kbps -> tools/wbw/<same name>
   4. validate (duration, loudness, true peak, not silent, nothing but edge silence removed, duration per
      letter plausible) and write tools/words.json
 Usage:
@@ -21,7 +24,7 @@ Usage:
   python3 tools/build-words.py --force    # master everything again
   python3 tools/build-words.py --check    # validate only (no network, no ffmpeg encode)
   python3 tools/build-words.py --asr      # also back-transcribe with faster-whisper (optional QA)
-  python3 tools/build-words.py --prune    # delete public/audio/wbw/*.mp3 that no word uses
+  python3 tools/build-words.py --prune    # delete tools/wbw/*.mp3 that no word uses
 Exit code 1 if anything fails.
 """
 import argparse
@@ -43,14 +46,15 @@ import make_voices as mv  # noqa: E402  (shared meter + mastering)
 ROOT = mv.ROOT
 PUBLIC = mv.PUBLIC
 SRC_DIR = ROOT / 'tools' / 'wbw-src'           # untouched originals (cache, re-downloaded if missing)
-OUT_DIR = PUBLIC / 'audio' / 'wbw'
+TOOLS = ROOT / 'tools'
+OUT_DIR = TOOLS / 'wbw'
 REPORT = ROOT / 'tools' / 'words.json'
 BASE_URL = 'https://audio.qurancdn.com/'
 PAD_S = 0.03              # + the 10 ms kept lead-in/decay = ~40 ms of silence at each end
 TRIM_DETECTION = 'peak'   # trim only where every sample is below -50 dBFS (never a quiet word tail)
 DUR_MIN, DUR_MAX = 0.2, 4.0
 # ٱلضَّآلِّينَ (1:7, last word): madd laazim held for 6 counts, the longest word of the three surahs.
-LONG_WORDS = {'audio/wbw/001_007_009.mp3': 7.0}
+LONG_WORDS = {'wbw/001_007_009.mp3': 7.0}
 RATIO_SPREAD = 3.0        # speech seconds per letter must be within median / 3 .. median * 3
 PIPELINE = 'w1'           # bump when the processing changes -> everything is mastered again
 
@@ -66,7 +70,7 @@ def list_words():
 
 
 def url_of(file):
-    return BASE_URL + file[len('audio/'):]
+    return BASE_URL + file
 
 
 def curl_status(url, dest=None):
@@ -170,7 +174,7 @@ def main():
     with tempfile.TemporaryDirectory() as tmp:
         for e in entries:
             src = SRC_DIR / Path(e['file']).name
-            out = PUBLIC / e['file']
+            out = TOOLS / e['file']
             prev = old_words.get(e['file'], {})
             if not src.exists():
                 failed.append(f"{e['file']}: original missing ({src.relative_to(ROOT)})")
@@ -215,7 +219,8 @@ def main():
                 failed.append(f'{f}: {q:.3f} s per letter (median {med:.3f}) - wrong word?')
 
     if args.asr:
-        jobs = [{'id': Path(r['file']).stem, 'file': r['file'], 'lang': 'ar', 'text': r['ar']} for r in report]
+        jobs = [{'id': Path(r['file']).stem, 'file': str(TOOLS / r['file']), 'lang': 'ar', 'text': r['ar']}
+                for r in report]
         mv.asr(jobs, args.asr)
         for r, j in zip(report, jobs):
             if 'asr' in j:
@@ -225,7 +230,7 @@ def main():
             r['asr']['similarity'] = round(difflib.SequenceMatcher(
                 None, skeleton(r['ar']), skeleton(r['asr']['text'])).ratio(), 2)
 
-    used = {(PUBLIC / e['file']).resolve() for e in entries}
+    used = {(TOOLS / e['file']).resolve() for e in entries}
     for f in sorted(OUT_DIR.glob('*.mp3')):
         if f.resolve() not in used:
             if args.prune:
@@ -248,7 +253,7 @@ def main():
         a = r.get('asr')
         asr_txt = f"  asr {a['text']} ({a['similarity']})" if a else ''
         log(f"{Path(r['file']).name} {r['original']['duration_s']:5.2f}->{r['duration_s']:5.2f} s "
-            f"{r['lufs']:6.1f} LUFS {r['true_peak_dbtp']:5.1f} dBTP  {r['tr']}{asr_txt}")
+            f"{r['lufs']:6.1f} LUFS {r['true_peak_dbtp']:5.1f} dBTP  {r['ar']}{asr_txt}")
     if failed:
         log('\nFAILED:\n  ' + '\n  '.join(failed))
         sys.exit(1)

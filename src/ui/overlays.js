@@ -58,12 +58,12 @@ export function closeOverlay(id) {
 }
 
 /* ---------- cover / gate ---------- */
-/* mode 'start' = the split cover ("Aloita Suuraseikkailu"), 'resume' = audio got locked again ("Jatketaan!"). */
+/* mode 'start' = the intro scene + "Aloita Suuraseikkailu" (ui/intro.js draws the scene), 'resume' = audio got
+   locked again ("Jatketaan!"). */
 export function showGate(mode) {
   const gate = $('gate');
   gate.dataset.mode = mode;
-  if (mode === 'start' && !$('coverArt').firstElementChild) $('coverArt').innerHTML = ART.cover();
-  $('gateLabel').textContent = mode === 'resume' ? 'Jatketaan!' : 'Aloita Suuraseikkailu';
+  $('gateLabel').innerHTML = mode === 'resume' ? 'Jatketaan!' : '<span class="gl-1">Aloita</span> <span class="gl-2">Suuraseikkailu</span>';
   const hint = $('gateHint');
   hint.textContent = mode === 'resume' ? 'Napauta, niin ääni palaa.' : '';
   hint.hidden = mode !== 'resume';

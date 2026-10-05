@@ -358,8 +358,7 @@ async function playClip(clip, t, opts = {}) {
     const f = await loadSrc(clip.src);
     if (t !== token) return stopped;
     if (!f.missing) {
-      /* Shahada teacher files (lines with a rec id, and the shahada-c-* chunk clips) are generated slow already */
-      preSlowed = kind === 'recitation' && (!!clip.id || /(^|\/)audio\/shahada-/.test(String(clip.src)));
+      preSlowed = false; /* v3: no pre-slowed TTS files any more (the Shahada is a human recording): slow mode applies */
       const res = await playUrl(f.url, kind, t);
       preSlowed = false;
       if (res.r !== 'failed') return res.r === 'ended' ? { ok: true, source: 'file' } : stopped;

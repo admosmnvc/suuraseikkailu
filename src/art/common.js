@@ -5,7 +5,7 @@
    - Pure functions returning SVG strings. The only DOM access is injectCSS(), once, from src/art.js.
    - Gradient / filter / clip ids come from uid(), so many copies on one page never clash.
    - Motifs take (c, id): c = colour mapper (soft.keep = full colour, soft.ghost = "not earned"), id = unique prefix.
-   - Runtime state is CSS only: `.on` on `.pw` (castle window), `.rp` (rocket part), `.slot` (reward socket/part). */
+   - Runtime state is CSS only: `.on` on `.pw` (mosque window), `.rp` (rocket part), `.slot` (reward socket/part). */
 
 let counter = 0;
 export function uid(prefix) {
@@ -152,7 +152,7 @@ export const CSS =
   ':where(.ayah){display:inline-block;width:1.15em;height:1.15em;vertical-align:middle;margin-inline-start:.12em;line-height:1}' +
   '.ayah svg{width:100%;height:100%;display:block;overflow:visible}' +
   '.art-ayah-ring{stroke:#B9A4FF}[data-theme="boy"] .art-ayah-ring{stroke:#5AB4FF}' +
-  /* castle windows: warm glow fades in, a sparkle springs up */
+  /* mosque windows (svg keeps the class art-castle): warm glow fades in, a sparkle springs up */
   '.art-castle .pw .art-pw-lit{opacity:0;transition:opacity .45s ease}' +
   '.art-castle .pw.on .art-pw-lit{opacity:1}' +
   '.art-castle .pw .art-pw-star{transform-box:fill-box;transform-origin:center;transform:scale(0) rotate(-60deg);transition:transform .6s ' + SPRING + ' .1s}' +

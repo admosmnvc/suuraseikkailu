@@ -29,12 +29,17 @@ on disjoint files. v2 product brief (still valid where not changed): `KORJAUSPYY
    girls = princess mood, horses, animals ("harjaa hevosen tukka"). **Clear visual instructions** (animated hand showing
    the gesture). **Instantly responsive**: feedback in the same frame as the touch – v2 queued/paced taps (S.paced,
    10.5 s floor) and the owner felt the lag: REMOVE all artificial pacing; length comes from the task itself.
-5. Progress picture: girls keep the castle whose windows light up; boys get a **rocket** that is built part by part
+5. Progress picture: girls get a MOSQUE whose windows light up (owner: the castle became a mosque everywhere); boys get a **rocket** that is built part by part
    (one part per completed line) and launches when a surah is finished.
 6. Characters: **animals may have faces** (horse, puppy, kitten, bunny, etc.). **No humans** anywhere (no princess
-   figure, no people, no human faces): princess mood = crowns, tiaras, dresses on hangers, castles, jewels.
+   figure, no people, no human faces): princess mood = crowns, tiaras, dresses on hangers, mosques, jewels.
 7. Word audio for surahs (HELPPO/KESKITASO): **real human word-by-word recordings** (quran.com word audio,
    `https://audio.qurancdn.com/wbw/SSS_AAA_WWW.mp3`), never snippets cut from the Mishary recitation.
+   **SUPERSEDED (owner, later):** the isolated word recordings did not sound like the recitation – the owner wants the
+   Mishary recitation flow itself, just cut ("resitoinnin flow joka on vaan pilkottu"). Partial lines now play a PREFIX
+   cut of the verse (start → end of the covered words) from Mishary's chapter audio with quran.com (QDC) word timings
+   (tools/build-cuts.py, public/audio/cut/). Shahada: a real human recording supplied by the owner (wording changed by the
+   owner to "…anna Muhammadan rasuulullaah"), cut the same way.
    Shahada (not Quran): teacher voice ar-SA-ZariyahNeural per chunk. Finnish prompts: teacher voice fi-FI-NooraNeural.
 
 ## Hard rules (unchanged from v2 – never break)
@@ -66,8 +71,7 @@ Working rules: build only into your own outDir (`npx vite build --outDir ../buil
 (ui 5201, settings 5202, content 5203, games-boy 5204, games-girl 5205, art 5206). A build error in someone else's file:
 wait and retry, never fix it. Write whole files you own; never sed/Write files you don't own. Playwright:
 `/opt/node-tools/node_modules/playwright` (CommonJS), Chromium pre-installed. Look at your screenshots with Read.
-Fonts available via npm (@fontsource): fredoka, nunito, amiri-quran already installed; you MAY add `@fontsource/bangers`
-(comic display font, ui/art/games use it only for bursts/titles; it is caps-only) – the ui agent installs it.
+Fonts: @fontsource fredoka, nunito, amiri-quran (+ the kids' button/logo font chosen by the ui agent). No Bangers.
 
 ## Data: words and chunks (owner: content) – `import { chunks, words } from './content/chunks.js'`
 ```js
@@ -78,6 +82,7 @@ chunks(secId, lineIndex, level) -> [{ ar, tr, clips }]
   // 'easy'   -> one chunk per word (Shahada: the owner's units: أَشْهَدُ | أَنْ لَا | إِلَٰهَ | إِلَّا اللَّهُ, line 2 similar)
   // 'medium' -> two easy-chunks per chunk (last may be single)
   // ar = exact substring of the line's ar (words joined by ' '), tr = transliteration shown under it,
+  // (superseded: the app now uses prefixClip(secId, line, wordEnd) – one recitation cut from the line start)
   // clips = engine clips to play in order with gap 0: Quran: one {kind:'recitation', id:null, src:'audio/wbw/SSS_AAA_WWW.mp3',
   //   text:'', lang:'ar'} per word; Shahada: one teacher clip {kind:'recitation', id:null, src:'audio/shahada-c-<line>-<level>-<i>.mp3',
   //   text:<tts with diacritics>, lang:'ar'} per chunk.
@@ -98,8 +103,8 @@ VAIKEA unit = one line. Units run continuously through the whole section (across
   the newest unit highlighted ("UUSI"), the not-yet-covered words of that line hidden or very dimmed; transliteration
   shows only the covered part. No decoration on Arabic.
 - Progress: child.progress[secId] = completed LINES (a line is complete when a completed step covers its last unit) →
-  castle windows / rocket parts / crown slots (one per line, 18 total). The reward overlay after every step shows +1 star
-  and a comic burst; when the step completed a line, the gem flies into the crown (girl) / the part into the rocket (boy)
+  mosque windows / rocket parts / crown slots (one per line, 18 total). The reward overlay after every step shows +1 star
+  and a soft glow + confetti; when the step completed a line, the gem flies into the crown (girl) / the part into the rocket (boy)
   and the window/part lights. child.steps[secId][level] = completed steps at HELPPO/KESKITASO (VAIKEA uses progress, as v2).
   Changing the level mid-section resumes at the first unit of the first incomplete line (derived from progress).
 - Step bubbles: one per step can be many (Al-Fatiha HELPPO = 29): show a compact scrollable row or a progress bar with
@@ -136,18 +141,18 @@ All return SVG strings (aria-hidden), PREMIUM soft style (see brief 1: no outlin
 ```
 ART.icon(name, cls)                     home play star speech gear close check replay back sound mic stop trash plus user
                                         edit crown gem rocket car lock (24x24, currentColor stroke, bold)
-ART.cover()                             full split cover: left girl (castle, horse with a face, crown, hearts, sparkles),
-                                        right boy (race car, rocket, checkered flag, speed lines); diagonal comic split;
+ART.cover()                             full split cover: girl world (mosque, pony with a face, crown, sparkles),
+                                        right boy (race car, rocket, checkered flag); soft wavy split; (first screen is now ART.intro)
                                         preserveAspectRatio xMidYMid slice; no text in the SVG
 ART.avatar(theme, cls)                  profile badge (girl: crown/horse head; boy: race car/rocket) – no humans
-ART.progress(theme, { total, done, cls }) girl: castle with `total` windows, `done` lit (.pw[data-i], .on);
+ART.progress(theme, { total, done, cls }) girl: mosque with `total` windows, `done` lit (.pw[data-i], .on);
                                         boy: rocket with `total` parts assembled bottom-up (.rp[data-i], .on), flame when total===done
 ART.reward(theme, { slots, filled, cls }) girl: crown with gem sockets; boy: mini rocket with part slots;
                                         both use `.slot[data-i]` and `.on` (ui adds .on to animate the newest)
-ART.sticker(theme, id, earned)          ids: shahada fatiha ikhlas kawthar bonus; girl: tiara, horse, castle, bunny, crown…;
-                                        boy: race car, rocket, trophy, helmet, flag…; not earned = grey halftone ghost
-ART.burst(color, cls)                   comic explosion/burst shape (text is HTML on top), ART.bubble(cls) speech bubble
-ART.background(theme)                   wide pop-art backdrop for the bottom/back of screens (girl: castle hills, hearts,
+ART.sticker(theme, id, earned)          ids: shahada fatiha ikhlas kawthar bonus; girl: tiara, pony, mosque, bunny, crown…;
+                                        boy: race car, rocket, trophy, helmet, flag…; not earned = soft grey ghost
+ART.burst(color, cls)                   soft rosette praise badge (text is HTML on top), ART.bubble(cls) speech bubble
+ART.background(theme)                   wide soft backdrop for the bottom/back of screens (girl: mosque hills, hearts,
                                         stars; boy: city/track/space, speed lines) – xMidYMax slice
 ART.levelIcon(level, cls)               1/2/3 filled stars style badges for easy/medium/hard
 ART.ayah(n), ART.arabicDigits(n)        verse marker (keep calm, it sits next to Arabic)
